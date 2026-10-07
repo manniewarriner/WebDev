@@ -1,0 +1,481 @@
+/* ==========================================================================
+   Lincoln Window Cleaner: reviews + areas + FAQ section styles
+   Editorial, heritage-premium design with brass hairlines, Instrument Serif
+   ========================================================================== */
+
+/* Hero title for standalone pages */
+.hero-title {
+  font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 700;
+  line-height: 1.05; letter-spacing: -0.02em;
+  color: var(--navy-900);
+}
+
+
+
+.section--dark .hero-title em {
+  color: var(--aqua);
+}
+
+/* Eyebrow numeral styling */
+.eyebrow__numeral {
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+  font-weight: 500;
+  letter-spacing: .18em;
+  color: var(--brass);
+}
+
+/* ---------- REVIEWS SECTION ---------- */
+.reviews {
+  /* section background inherited from section--sky */
+}
+
+.reviews__summary {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  margin-bottom: clamp(2rem, 5vw, 3rem);
+  padding: 1.25rem 0;
+  border-top: 1px solid rgba(240,160,75,.55);
+  border-bottom: 1px solid var(--line);
+}
+.reviews__rating { display: flex; align-items: center; gap: 1rem; flex: none; }
+.reviews__score { font-family: var(--font-display); font-size: clamp(3rem, 6vw, 4.5rem); font-weight: 800; color: var(--navy-900); line-height: .9; letter-spacing: -.02em; }
+.reviews__stars .stars svg { width: 20px; height: 20px; }
+.reviews__meta { flex: 1; padding-left: clamp(1rem, 3vw, 2.5rem); border-left: 1px solid var(--line); }
+.reviews__meta p { margin: 0; }
+.reviews__meta p:first-child { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: var(--navy-900); }
+.reviews__meta p:last-child { font-family: var(--font-mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; margin-top: .3rem; }
+.reviews__meta a { color: var(--aqua-600); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Carousel: 3 per view on desktop, controls sit below the track */
+.reviews__carousel-wrap { position: relative; padding-bottom: 64px; }
+.reviews__carousel { position: relative; }
+.reviews__track {
+  --per: 1.15;
+  display: grid; grid-auto-flow: column; gap: 1.25rem;
+  grid-auto-columns: calc((100% - (var(--per) - 1) * 1.25rem) / var(--per));
+  padding: .5rem .25rem 1.5rem;
+  scroll-snap-type: x mandatory; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none;
+}
+@media (min-width: 700px) { .reviews__track { --per: 2; } }
+@media (min-width: 1100px) { .reviews__track { --per: 3; } }
+.reviews__track::-webkit-scrollbar { display: none; }
+.reviews__slide { scroll-snap-align: start; display: flex; }
+
+.reviews__card {
+  position: relative; display: flex; flex-direction: column; gap: 1rem; width: 100%;
+  padding: clamp(1.5rem, 2.5vw, 2rem);
+  border-radius: 4px;
+  background: rgba(255,255,255,.78);
+  box-shadow: inset 0 0 0 1px rgba(23,32,70,.08), 0 24px 48px -32px rgba(23,32,70,.35);
+  transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out);
+}
+.reviews__card::before { /* oversized serif quote mark */
+  content: "\201C"; position: absolute; top: .4rem; right: 1.25rem;
+  font-family: var(--font-display); font-size: 5rem; line-height: 1; color: rgba(240,160,75,.35);
+}
+.reviews__card::after { content: ""; position: absolute; left: 0; top: 0; width: 40px; height: 2px; background: var(--grad-brass); }
+.reviews__card:hover { transform: translateY(-4px); box-shadow: inset 0 0 0 1px rgba(240,160,75,.35), 0 30px 60px -30px rgba(23,32,70,.4); }
+.reviews__quote { display: none; }
+.reviews__card-top { display: flex; align-items: center; gap: .9rem; }
+.reviews__card-stars { color: var(--brass); letter-spacing: .14em; font-size: .9rem; }
+.reviews__date { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
+.reviews__text { font-family: var(--font-ui); font-size: clamp(1rem, 1.15vw, 1.08rem); line-height: 1.6; color: var(--ink); margin: 0; }
+.reviews__who { display: flex; align-items: center; gap: .75rem; padding-top: 1rem; border-top: 1px solid var(--line); margin-top: auto; }
+.reviews__avatar { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--navy-900); color: var(--brass); font-family: var(--font-display); font-size: 1.1rem; box-shadow: inset 0 0 0 1px rgba(240,160,75,.6); }
+.reviews__author { display: block; font-weight: 600; color: var(--navy-900); font-size: .95rem; }
+.reviews__source { display: block; font-family: var(--font-mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); margin-top: .15rem; }
+
+.reviews__btn {
+  position: absolute; bottom: 8px; top: auto; transform: none;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--navy-900); background: transparent; box-shadow: inset 0 0 0 1px rgba(23,32,70,.25);
+  transition: background .3s, color .3s, box-shadow .3s; z-index: 2;
+}
+.reviews__btn:hover { background: var(--navy-900); color: #fff; box-shadow: none; }
+.reviews__btn svg { width: 18px; height: 18px; }
+.reviews__btn--prev { right: 60px; left: auto; }
+.reviews__btn--next { right: 0; }
+
+.reviews__cta { text-align: left; margin-top: -54px; max-width: calc(100% - 140px); position: relative; }
+.reviews__cta .btn { min-height: 48px; padding: .7rem 1.4rem; }
+
+/* Grid layout (reviews.html) */
+.reviews__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: clamp(1.2rem, 3vw, 1.8rem); align-items: stretch; }
+.reviews__grid-item { display: flex; }
+
+@media (max-width: 768px) {
+  .reviews__meta { padding-left: 0; border-left: 0; flex-basis: 100%; }
+}
+
+/* ---------- AREAS SECTION ---------- */
+.areas {
+  background: var(--glass);
+}
+
+.areas__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2.5rem, 6vw, 4.5rem);
+  align-items: start;
+}
+
+.areas__map-wrap {
+  position: relative;
+  aspect-ratio: auto;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: linear-gradient(160deg, #fff, var(--sky-100));
+  box-shadow: inset 0 0 0 1px var(--line), var(--shadow-lift);
+  border: 1px solid rgba(240, 160, 75, 0.25);
+}
+
+.areas__map-coords {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: var(--glass-blur);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(240, 160, 75, 0.4);
+}
+
+.areas__coord-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+
+.areas__gmap {
+  display: block;
+  width: 100%;
+  height: clamp(320px, 42vw, 480px);
+  border: 0;
+  filter: saturate(0.85) contrast(1.02);
+}
+
+.areas__map-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.9rem 1.1rem;
+  background: #fff;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
+}
+
+.areas__map-bar a {
+  color: var(--aqua-600);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.areas__map-bar a:hover {
+  text-decoration: underline;
+}
+
+/* Areas list */
+.areas__list {
+  padding: 0;
+}
+
+.areas__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 1.5rem 0 0 0;
+}
+
+.areas__chip {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background: var(--sky-100);
+  color: var(--navy-900);
+  border-radius: var(--radius-pill);
+  font-weight: 400;
+  font-size: 0.95rem;
+  border: 1px solid var(--sky-200);
+  transition: all 0.3s var(--ease-out);
+  font-family: var(--font-ui);
+}
+
+.areas__chip:hover {
+  background: var(--sky-200);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(47, 184, 242, 0.15);
+}
+
+@media (max-width: 1000px) {
+  .areas__grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .areas__map-wrap {
+    aspect-ratio: auto;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .areas__map-coords {
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .areas__coord-label {
+    font-size: 0.7rem;
+  }
+}
+
+/* ---------- FAQ SECTION ---------- */
+.faq {
+  background: var(--glass);
+}
+
+.faq__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: start;
+}
+
+.faq__aside {
+  position: sticky;
+  top: calc(var(--nav-h) + 1rem);
+}
+
+.faq__aside .section-head {
+  margin-bottom: 2rem;
+}
+
+.faq__accordion {
+  max-width: none;
+  margin: 0;
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.2rem);
+}
+
+.faq__item {
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  box-shadow: inset 0 0 0 1px var(--glass-border), var(--shadow-soft);
+  overflow: hidden;
+  transition: box-shadow 0.4s var(--ease-out);
+  border-top: 1px solid rgba(240, 160, 75, 0.25);
+}
+
+.faq__item.is-open {
+  box-shadow: inset 0 0 0 1px var(--glass-border), var(--shadow-lift);
+}
+
+.faq__toggle {
+  width: 100%;
+  text-align: left;
+  padding: clamp(1.2rem, 2vw, 1.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-weight: 400;
+  font-size: clamp(0.95rem, 1vw, 1.05rem);
+  color: var(--navy-900);
+  transition: color 0.3s;
+  font-family: var(--font-ui);
+}
+
+.faq__toggle:hover {
+  color: var(--aqua-600);
+}
+
+.faq__toggle:focus {
+  outline: none;
+}
+
+.faq__toggle:focus-visible {
+  outline: 3px solid var(--aqua);
+  outline-offset: -3px;
+}
+
+.faq__numeral {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--brass);
+  text-transform: uppercase;
+  min-width: 2.5rem;
+}
+
+.faq__question {
+  flex: 1;
+}
+
+.faq__icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: var(--aqua-600);
+  transition: transform 0.4s var(--ease-out);
+}
+
+.faq__item.is-open .faq__icon {
+  transform: rotate(45deg);
+}
+
+.faq__content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s var(--ease-out);
+  padding: 0 clamp(1.2rem, 2vw, 1.5rem);
+}
+
+.faq__item.is-open .faq__content {
+  max-height: 500px;
+  padding: 0 clamp(1.2rem, 2vw, 1.5rem) clamp(1.2rem, 2vw, 1.5rem) clamp(1.2rem, 2vw, 1.5rem);
+}
+
+.faq__content p {
+  color: var(--ink-soft);
+  line-height: 1.7;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.faq__help {
+  padding: clamp(1.5rem, 2vw, 2rem);
+  border-radius: var(--radius);
+  background: var(--navy-900);
+  color: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 2px 0 var(--brass), var(--shadow-lift);
+  border: 1px solid rgba(240, 160, 75, 0.25);
+}
+
+.faq__help-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.015em;
+}
+
+.faq__help p:not(.faq__help-title) {
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.faq__help p:last-of-type {
+  margin-bottom: 0;
+}
+
+.faq__help .btn {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .faq__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .faq__aside {
+    position: static;
+  }
+
+  .faq__aside .section-head {
+    margin-bottom: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .faq__toggle {
+    padding: 1.2rem;
+    font-size: 1rem;
+  }
+
+  .faq__numeral {
+    font-size: 0.7rem;
+  }
+
+  .faq__content {
+    padding: 0 1.2rem;
+  }
+
+  .faq__item.is-open .faq__content {
+    padding: 0 1.2rem 1.2rem 1.2rem;
+  }
+}
+
+/* ---------- Ultrawide support (3440px) ---------- */
+@media (min-width: 3440px) {
+  .reviews__summary {
+    gap: 4rem;
+  }
+
+
+  .areas__grid {
+    gap: 5rem;
+  }
+
+  .faq__layout {
+    gap: 6rem;
+  }
+
+  .faq__accordion {
+    gap: 1.5rem;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .reviews__card {
+    transition: none;
+  }
+
+  .reviews__btn {
+    transition: none;
+  }
+
+  .areas__chip {
+    transition: none;
+  }
+
+  .faq__toggle {
+    transition: none;
+  }
+
+  .faq__icon {
+    transition: none;
+  }
+
+  .faq__content {
+    transition: none;
+  }
+
+  .faq__item.is-open .faq__content {
+    max-height: none;
+  }
+}
+
+/* ---------- PM pass: FAQ as an editorial ledger (hairline rows, serif questions) ---------- */
+.faq__accordion { gap: 0; border-top: 1px solid rgba(240,160,75,.55); }
+.faq__item, .faq__item.is-open { border-radius: 0; background: transparent; box-shadow: none; border-top: 0; border-bottom: 1px solid var(--line); }
+.faq__toggle { padding: 1.35rem .25rem; font-family: var(--font-display); font-weight: 600; letter-spacing: -.015em; font-size: clamp(1.05rem, 1.3vw, 1.2rem); line-height: 1.25; }
+.faq__numeral { font-size: .72rem; align-self: center; }
+.faq__icon { width: 34px; height: 34px; padding: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(23,32,70,.18); color: var(--navy-900); }
+.faq__item.is-open .faq__icon { background: var(--navy-900); color: #fff; box-shadow: none; }
+.faq__content, .faq__item.is-open .faq__content { padding-left: calc(2.5rem + 1rem + .25rem); padding-right: 3.5rem; }
+.faq__item.is-open .faq__content { padding-bottom: 1.5rem; }
+@media (max-width: 600px) { .faq__content, .faq__item.is-open .faq__content { padding-left: .25rem; padding-right: .25rem; } }

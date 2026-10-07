@@ -1,0 +1,190 @@
+/* ==========================================================================
+   Hero: Lincoln skyline seen through a grimy window that a squeegee wipes clean
+   ========================================================================== */
+
+.hero {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  min-height: 640px;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(180deg, #5FA6E6 0%, #8EC0EE 26%, #C9D3EC 46%, #F1D3C6 62%, #FBC69E 80%, #F8A774 100%);
+}
+
+/* ---------- Sky ---------- */
+.hero__sky { position: absolute; inset: 0; z-index: 0; }
+.hero__sun { /* low golden-hour sun sitting behind the hill */
+  position: absolute; left: 62%; bottom: 22%; transform: translateX(-50%);
+  width: clamp(380px, 48vw, 900px); aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, #FFF8E1 0%, #FFE2A8 9%, rgba(255,196,130,.75) 20%, rgba(255,170,120,.28) 42%, rgba(255,160,120,0) 68%);
+}
+.hero__skyline {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 46vh;
+}
+.hero__layer { will-change: transform; }
+
+/* ---------- Copy ---------- */
+.hero__content {
+  position: relative; z-index: 1;
+  height: 100%;
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center;
+  padding-top: calc(var(--nav-h) + clamp(2.5rem, 9vh, 6.5rem));
+  padding-bottom: 0;
+}
+.hero .hero-title {
+  font-size: var(--fs-hero);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  color: var(--navy-900);
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-wrap: balance;
+}
+.hero__lead { max-width: 52ch; margin-inline: auto; color: #3B3F5E; margin-top: 1.1rem; }
+.hero__ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; margin-top: 1.8rem; }
+.hero__trust {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.5rem;
+  justify-content: center; margin-top: 1.5rem; font-size: .86rem; color: #3B3F5E;
+}
+.hero__trust li { display: inline-flex; align-items: center; gap: .55rem; font-family: var(--font-ui); }
+.hero__trust li + li { padding-left: 1.5rem; border-left: 1px solid rgba(23, 32, 70, 0.18); }
+.hero__trust strong { color: var(--ink); font-weight: 500; letter-spacing: .015em; }
+.hero__trust svg { width: 20px; height: 20px; color: var(--aqua-600); flex-shrink: 0; }
+.hero__trust .stars svg { width: 16px; height: 16px; color: var(--brass); }
+
+/* ---------- The window ---------- */
+.hero__window { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.hero__glare {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.28) 38%, rgba(255,255,255,0) 46%),
+    linear-gradient(115deg, rgba(255,255,255,0) 50%, rgba(255,255,255,.14) 54%, rgba(255,255,255,0) 58%);
+  mix-blend-mode: screen;
+}
+.hero__grime { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero__frame {
+  /* uPVC window frame around the viewport */
+  position: absolute; inset: 0;
+  border: clamp(8px, 1.1vw, 16px) solid #FBFDFF;
+  box-shadow:
+    inset 0 0 0 1px rgba(23,32,70,.10),
+    inset 0 8px 18px -6px rgba(23,32,70,.25),
+    inset 0 0 0 clamp(11px, 1.4vw, 20px) rgba(255,255,255,.35);
+}
+
+/* Squeegee: blade vertical, pulled horizontally. Position is set by JS. */
+.hero__squeegee {
+  position: absolute; left: 0; top: 0;
+  width: 120px; height: 300px;
+  transform-origin: 10px 150px;
+  filter: drop-shadow(0 14px 18px rgba(23,32,70,.35));
+  opacity: 0;
+  will-change: transform;
+}
+.hero__squeegee svg { width: 100%; height: 100%; }
+
+/* Droplets that run down the clean glass */
+.hero__droplets { position: absolute; inset: 0; overflow: hidden; }
+.hero__drop {
+  position: absolute; top: -20px;
+  width: var(--s, 10px); height: calc(var(--s, 10px) * 1.25);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.95) 0 12%, rgba(255,255,255,.25) 30%, rgba(160,205,235,.25) 70%, rgba(23,32,70,.18) 100%);
+  box-shadow: 0 1px 2px rgba(23,32,70,.18), inset -1px -2px 3px rgba(23,32,70,.12);
+}
+.hero__drop::after { /* the wet trail */
+  content: ""; position: absolute; left: 50%; bottom: 100%;
+  width: 2px; height: var(--trail, 80px); transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(255,255,255,.55), rgba(255,255,255,0));
+  border-radius: 2px;
+}
+
+/* Glint when the glass is fully clean */
+.hero__sparkle { position: absolute; inset: 0; opacity: 0; }
+.hero__sparkle::before {
+  content: ""; position: absolute; top: -20%; bottom: -20%; width: 30%; left: -40%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.75), transparent);
+  transform: skewX(-12deg);
+}
+.hero__sparkle.is-on { opacity: 1; }
+.hero__sparkle.is-on::before { animation: hero-glint 1.4s var(--ease-out) forwards; }
+.hero__sparkle i {
+  position: absolute; width: 26px; height: 26px; transform: scale(0);
+  background: radial-gradient(circle, #fff 0 18%, transparent 20%),
+    conic-gradient(from 45deg, transparent 0 20%, #fff 22% 28%, transparent 30% 45%, #fff 47% 53%, transparent 55% 70%, #fff 72% 78%, transparent 80% 95%, #fff 97%);
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
+}
+.hero__sparkle i:nth-child(1) { left: 22%; top: 28%; }
+.hero__sparkle i:nth-child(2) { left: 61%; top: 18%; width: 18px; height: 18px; }
+.hero__sparkle i:nth-child(3) { left: 78%; top: 56%; }
+.hero__sparkle i:nth-child(4) { left: 40%; top: 66%; width: 16px; height: 16px; }
+.hero__sparkle.is-on i { animation: hero-twinkle 1.2s var(--ease-out) forwards; }
+.hero__sparkle.is-on i:nth-child(2) { animation-delay: .15s; }
+.hero__sparkle.is-on i:nth-child(3) { animation-delay: .3s; }
+.hero__sparkle.is-on i:nth-child(4) { animation-delay: .45s; }
+@keyframes hero-glint { to { left: 120%; } }
+@keyframes hero-twinkle { 0% { transform: scale(0) rotate(0); } 45% { transform: scale(1.15) rotate(45deg); } 100% { transform: scale(0) rotate(90deg); } }
+
+/* Refined open-badge in hero context (less pill-like, more refined) */
+.hero .open-badge {
+  background: transparent;
+  padding: .2rem 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--aqua-600);
+}
+.hero .open-badge::before {
+  width: 6px; height: 6px;
+  margin-right: .4rem;
+}
+
+/* Scroll hint */
+.hero__hint {
+  position: absolute; z-index: 3; left: 50%; bottom: clamp(1.5rem, 4vh, 2.5rem);
+  transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .7rem;
+  padding: .55rem 1rem .55rem .7rem; border-radius: var(--radius-pill);
+  background: rgba(255,255,255,.7); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-soft);
+  font-size: .82rem; font-weight: 600; color: var(--ink);
+  transition: opacity .5s, transform .5s var(--ease-out);
+}
+.hero__hint.is-gone { opacity: 0; transform: translate(-50%, 10px); pointer-events: none; }
+.hero__hint-mouse { width: 18px; height: 28px; border: 2px solid var(--ink); border-radius: 10px; display: grid; justify-items: center; padding-top: 4px; }
+.hero__hint-mouse span { width: 3px; height: 6px; border-radius: 2px; background: var(--aqua-600); animation: hero-wheel 1.6s infinite; }
+@keyframes hero-wheel { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(8px); opacity: 0; } 100% { opacity: 0; } }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .hero__sun { left: 60%; bottom: 18%; }
+}
+@media (max-width: 720px) {
+  .hero { min-height: 680px; }
+  .hero__content { justify-content: flex-start; padding-top: calc(var(--nav-h) + 2.5rem); padding-bottom: 0; }
+  .hero__skyline { height: 30vh; left: auto; width: 170%; max-width: none; }
+  /* phones don't pin, so let the hero grow: copy on top, skyline fully clear below it */
+  .hero { height: auto; min-height: 100svh; }
+  .hero__content { height: auto; padding-bottom: calc(30vh + 1.5rem); }
+  .hero__ctas .btn { width: 100%; }
+  .hero__trust { gap: .6rem 1rem; font-size: .86rem; }
+  .hero__trust li + li { padding-left: 0; border-left: 0; }
+  .hero__hint { display: none; }
+  .hero__squeegee { width: 84px; height: 210px; transform-origin: 7px 105px; }
+}
+
+.reduced-motion .hero__grime,
+.reduced-motion .hero__squeegee,
+.reduced-motion .hero__hint { display: none; }
+
+/* Pill badge above the headline (eyebrow) */
+.hero .eyebrow { padding: .4rem .9rem; margin-bottom: 1.4rem; border-radius: var(--radius-pill); background: rgba(255,255,255,.72); box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 6px 20px -10px rgba(23,32,70,.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--navy-900); }
+.hero .eyebrow::before { width: 7px; height: 7px; border-radius: 50%; background: #F0A04B; box-shadow: 0 0 0 3px rgba(240,160,75,.25); }
+@media (max-width: 720px) { .hero .hero-title { font-size: clamp(2.5rem, 11vw, 3.2rem); } }
+
+/* sunlit stone needs a crisp edge against the warm sky */
+.hero__castle, .hero__cathedral { stroke: #A8703F; stroke-width: 1; stroke-linejoin: round; paint-order: stroke; }
+.hero__cathedral path, .hero__castle path { vector-effect: non-scaling-stroke; }
+.nav__actions .open-badge { white-space: nowrap; }
+@media (max-width: 1400px) { .nav__actions .open-badge { display: none; } }

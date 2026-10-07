@@ -1,0 +1,155 @@
+<section id="pure-water" class="section section--dark water" aria-labelledby="water-title">
+  <div class="water__caustics" aria-hidden="true"></div>
+  <div class="container">
+    <div class="section-head section-head--center">
+      <p class="eyebrow"><span class="water__numeral">01</span> The pure-water difference</p>
+      <h2 id="water-title" class="h2" data-split>Why my windows <em>stay</em> cleaner for longer</h2>
+      <p class="lead" data-reveal>Tap water leaves minerals behind, and that's what causes spots and streaks. I use a water-fed pole with ultra-pure water, filtered down to zero dissolved solids, so your glass dries naturally to a perfect, spot-free shine. No ladders, no chemicals, no residue.</p>
+    </div>
+  </div>
+
+  <!-- Pinned story: steps on the left, one morphing visual on the right -->
+  <div class="water__story">
+    <div class="container water__grid">
+      <ol class="water__steps">
+        <li class="water__step is-active">
+          <span class="water__num">01</span>
+          <div>
+            <h3 class="h3">Tap water</h3>
+            <p>Straight from the tap, Lincolnshire's hard water carries dissolved minerals, often <strong>300 parts per million</strong> or more. Wash a window with it and they dry onto the glass as spots and smears.</p>
+          </div>
+        </li>
+        <li class="water__step">
+          <span class="water__num">02</span>
+          <div>
+            <h3 class="h3">Multi-stage filtration</h3>
+            <p>The water is pushed through <strong>reverse osmosis</strong> and <strong>de-ionising resin</strong>, which strip out the calcium, magnesium and salts, particle by particle.</p>
+          </div>
+        </li>
+        <li class="water__step">
+          <span class="water__num">03</span>
+          <div>
+            <h3 class="h3">Ultra-pure: 0 ppm</h3>
+            <p>Checked with a TDS meter, it comes out at <strong>zero dissolved solids</strong>, and pure water like this lifts grime off glass and frames without a drop of soap.</p>
+          </div>
+        </li>
+        <li class="water__step">
+          <span class="water__num">04</span>
+          <div>
+            <h3 class="h3">Spot-free finish</h3>
+            <p>Brushed and rinsed with a water-fed pole from the ground, your windows <strong>dry naturally, streak-free</strong>, with nothing left behind to attract new dirt.</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="water__stage" aria-hidden="true">
+        <svg class="water__svg" viewBox="0 0 520 520">
+          <defs>
+            <radialGradient id="w-tap" cx="40%" cy="35%" r="75%">
+              <stop offset="0" stop-color="#9FB7C4"/><stop offset=".6" stop-color="#6F8A99"/><stop offset="1" stop-color="#4C6574"/>
+            </radialGradient>
+            <radialGradient id="w-pure" cx="40%" cy="35%" r="75%">
+              <stop offset="0" stop-color="#E9FBFF"/><stop offset=".45" stop-color="#7FE0F7"/><stop offset="1" stop-color="#139CC6"/>
+            </radialGradient>
+            <linearGradient id="w-arc" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#2FB8F2"/><stop offset="1" stop-color="#F0A04B"/>
+            </linearGradient>
+            <linearGradient id="w-cart" x1="0" x2="1">
+              <stop offset="0" stop-color="#2A557D"/><stop offset=".5" stop-color="#3E74A3"/><stop offset="1" stop-color="#3A4A9C"/>
+            </linearGradient>
+            <clipPath id="w-drop-clip">
+              <path d="M260 92C260 92 150 222 150 300a110 110 0 0 0 220 0C370 222 260 92 260 92Z"/>
+            </clipPath>
+          </defs>
+
+          <!-- Window that appears in step 4 -->
+          <g class="water__window" opacity="0">
+            <rect x="96" y="70" width="328" height="380" rx="14" fill="none" stroke="#F7FBFF" stroke-width="10"/>
+            <path d="M260 70v380M96 260h328" stroke="#F7FBFF" stroke-width="8"/>
+            <rect x="106" y="80" width="308" height="360" rx="6" fill="#FFE3C8" opacity=".12"/>
+            <path class="water__shine" d="M120 420L300 90h40L160 420Z" fill="#fff" opacity=".0"/>
+          </g>
+
+          <!-- TDS gauge -->
+          <g class="water__gauge">
+            <circle cx="260" cy="270" r="214" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12"/>
+            <circle class="water__gauge-arc" cx="260" cy="270" r="214" fill="none" stroke="url(#w-arc)" stroke-width="12"
+              stroke-linecap="round" transform="rotate(-90 260 270)" pathLength="100" stroke-dasharray="100 100" stroke-dashoffset="0"/>
+            <g class="water__ticks" stroke="rgba(255,255,255,.25)" stroke-width="2"></g>
+          </g>
+
+          <!-- Filter cartridges (step 2) -->
+          <g class="water__filter" opacity="0">
+            <rect x="196" y="6" width="56" height="88" rx="12" fill="url(#w-cart)" stroke="rgba(255,255,255,.3)"/>
+            <rect x="268" y="6" width="56" height="88" rx="12" fill="url(#w-cart)" stroke="rgba(255,255,255,.3)"/>
+            <text x="224" y="56" text-anchor="middle" fill="#fff" font-family="Inter, sans-serif" font-size="15" font-weight="700">RO</text>
+            <text x="296" y="56" text-anchor="middle" fill="#fff" font-family="Inter, sans-serif" font-size="15" font-weight="700">DI</text>
+            <path d="M224 94v12h72V94M260 106v-0" stroke="#2FB8F2" stroke-width="4" fill="none"/>
+          </g>
+
+          <!-- The droplet -->
+          <g class="water__drop">
+            <path d="M260 92C260 92 150 222 150 300a110 110 0 0 0 220 0C370 222 260 92 260 92Z" fill="url(#w-tap)"/>
+            <path class="water__drop-pure" d="M260 92C260 92 150 222 150 300a110 110 0 0 0 220 0C370 222 260 92 260 92Z" fill="url(#w-pure)" opacity="0"/>
+            <g clip-path="url(#w-drop-clip)">
+              <g class="water__particles"></g>
+            </g>
+            <path d="M206 250c-14 22-20 44-16 66" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none" opacity=".55"/>
+            <circle cx="214" cy="226" r="6" fill="#fff" opacity=".6"/>
+          </g>
+
+          <!-- Sparkles (step 4) -->
+          <g class="water__sparkles" fill="#fff" opacity="0">
+            <path d="M120 120l5 14 14 5-14 5-5 14-5-14-14-5 14-5z"/>
+            <path d="M400 160l4 11 11 4-11 4-4 11-4-11-11-4 11-4z"/>
+            <path d="M380 400l6 16 16 6-16 6-6 16-6-16-16-6 16-6z"/>
+            <path d="M150 380l3 9 9 3-9 3-3 9-3-9-9-3 9-3z"/>
+          </g>
+        </svg>
+
+        <div class="water__reading">
+          <span class="water__ppm">300</span>
+          <span class="water__unit">ppm</span>
+          <small class="water__label">dissolved solids</small>
+        </div>
+        <div class="water__badge">✓ 0 ppm · spot-free guaranteed</div>
+      </div>
+    </div>
+
+    <div class="water__progress" aria-hidden="true"><span></span></div>
+  </div>
+
+  <!-- Benefits -->
+  <div class="container">
+    <ul class="water__benefits" data-reveal-stagger>
+      <li class="water__benefit glass-card">
+        <span class="water__benefit-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 44 34 6M34 6l4 3-4 6M30 12l6 4"/><path d="M8 40h12"/></svg>
+        </span>
+        <h3 class="h3">Up to 4 storeys<!-- PLACEHOLDER: confirm reach with client --></h3>
+        <p>The water-fed pole reaches high windows safely from the ground. No ladders, no scaffolding, no trampled flowerbeds.</p>
+      </li>
+      <li class="water__benefit glass-card">
+        <span class="water__benefit-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 6s-12 14-12 22a12 12 0 0 0 24 0c0-8-12-22-12-22z"/><path d="M18 30l4 4 8-8"/></svg>
+        </span>
+        <h3 class="h3">Zero chemicals</h3>
+        <p>Pure water only: no detergents or soaps. Safe for children, pets, plants and ponds.</p>
+      </li>
+      <li class="water__benefit glass-card">
+        <span class="water__benefit-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="32" height="36" rx="3"/><path d="M24 6v36M8 24h32M4 42h40"/></svg>
+        </span>
+        <h3 class="h3">Frames &amp; sills included</h3>
+        <p>Every clean includes frames, sills and doors as standard, with no extra charges.</p>
+      </li>
+      <li class="water__benefit glass-card">
+        <span class="water__benefit-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="12" width="40" height="28" rx="4"/><circle cx="24" cy="26" r="8"/><path d="M16 12l3-5h10l3 5"/></svg>
+        </span>
+        <h3 class="h3">4K camera proof</h3>
+        <p>Gutter jobs come with before &amp; after photos and video, so you can see exactly what's been cleared.</p>
+      </li>
+    </ul>
+  </div>
+</section>

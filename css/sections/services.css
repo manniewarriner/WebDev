@@ -1,0 +1,416 @@
+/* ==========================================================================
+   Services section: cards, before/after slider, landmarks marquee
+   ========================================================================== */
+
+/* ========== A. SERVICE PANELS ========== */
+.services .section-head {
+  margin-bottom: clamp(3rem, 8vw, 5rem);
+}
+
+.services__numeral {
+  font-family: var(--font-mono);
+  color: var(--brass);
+  margin-right: 0.5rem;
+  letter-spacing: .08em;
+}
+
+/* Editorial three-column ledger: hairline-divided columns, brass rule on top */
+.services__panels {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-bottom: clamp(2.5rem, 6vw, 4rem);
+  border-top: 1px solid rgba(240, 160, 75, .55);
+  border-bottom: 1px solid var(--line);
+}
+@media (min-width: 900px) {
+  .services__panels { grid-template-columns: 1.15fr 1fr 1fr; }
+  .services__panel + .services__panel { border-left: 1px solid var(--line); }
+}
+.services__panel {
+  position: relative;
+  display: flex; flex-direction: column;
+  padding: clamp(1.75rem, 3vw, 2.6rem) clamp(1.25rem, 2.4vw, 2.2rem) clamp(2rem, 3vw, 2.6rem);
+  transition: background .4s var(--ease-out);
+}
+@media (max-width: 899px) { .services__panel + .services__panel { border-top: 1px solid var(--line); } }
+.services__panel::before { /* brass marker that grows on hover */
+  content: ""; position: absolute; left: 0; top: -1px; height: 3px; width: 56px;
+  background: var(--grad-brass); transition: width .6s var(--ease-out);
+}
+.services__panel--featured { background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.35)); box-shadow: 0 30px 60px -40px rgba(23,32,70,.35); }
+.services__panel-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: clamp(1.5rem, 3vw, 2.25rem); }
+.services__panel-num {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(3.5rem, 6vw, 5rem); line-height: .8; color: var(--brass); letter-spacing: -.02em;
+  order: 0;
+}
+.services__panel-icon {
+  order: 1; width: 52px; height: 52px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; color: var(--navy-700);
+  box-shadow: inset 0 0 0 1px rgba(240,160,75,.5);
+}
+.services__panel-icon svg { width: 26px; height: 26px; }
+.services__panel h3 { order: 2; flex-basis: 100%; margin-top: 1.25rem; font-size: clamp(1.7rem, 2.4vw, 2.15rem); font-weight: 400; }
+.services__panel-header { flex-wrap: wrap; }
+.services__panel-desc { color: var(--ink-soft); margin: 0 0 1.5rem; line-height: 1.65; }
+.services__list { list-style: none; padding: 0; margin: 0 0 2rem; border-top: 1px solid var(--line); }
+.services__list li {
+  position: relative; padding: .7rem 0 .7rem 1.6rem; border-bottom: 1px solid var(--line);
+  color: var(--ink); font-size: .94rem; line-height: 1.45;
+}
+.services__list li::before {
+  content: ""; position: absolute; left: 2px; top: 1.05rem; width: 9px; height: 5px;
+  border-left: 1.5px solid var(--brass-600); border-bottom: 1.5px solid var(--brass-600); transform: rotate(-45deg);
+}
+.services__cta { margin-top: auto; align-self: flex-start; }
+@media (hover: hover) and (pointer: fine) {
+  .services__panel:hover { background: rgba(255,255,255,.6); }
+  .services__panel--featured:hover { background: linear-gradient(180deg, #fff, rgba(255,255,255,.5)); }
+  .services__panel:hover::before { width: 100%; }
+}
+
+/* Commercial badge */
+.services__commercial {
+  padding: 0;
+  text-align: left;
+  font-family: var(--font-mono); font-size: .8rem !important; letter-spacing: .06em;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.services__commercial p {
+  margin: 0;
+}
+
+.services__commercial strong {
+  color: var(--ink);
+}
+
+/* ========== B. BEFORE/AFTER SLIDER ========== */
+.beforeafter {
+  padding-block: clamp(4rem, 12vw, 8rem);
+}
+
+.beforeafter .section-head {
+  margin-bottom: clamp(2.5rem, 6vw, 4rem);
+}
+
+/* Scene toggle buttons */
+.beforeafter__tabs {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: clamp(2rem, 5vw, 3.5rem);
+}
+
+.beforeafter__tab {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-pill);
+  background: rgba(23, 32, 70, 0.08);
+  color: var(--ink);
+  border: 2px solid transparent;
+  font-weight: 600;
+  transition: all 0.3s var(--ease-out);
+  cursor: pointer;
+}
+
+.beforeafter__tab:hover {
+  background: rgba(23, 32, 70, 0.15);
+}
+
+.beforeafter__tab.is-active {
+  background: var(--navy-900);
+  color: #fff;
+  border-color: var(--aqua);
+}
+
+/* Slider wrapper and container */
+.beforeafter__wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.beforeafter__slider {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+  outline: none;
+  background: #f0f0f0;
+  aspect-ratio: 4/3;
+}
+
+.beforeafter__slider:focus-visible {
+  outline: 3px solid var(--aqua);
+  outline-offset: 4px;
+}
+
+/* Layer management */
+.beforeafter__layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.beforeafter__before {
+  z-index: 1;
+}
+
+.beforeafter__after {
+  z-index: 2;
+  clip-path: inset(0 var(--clip-right, 50%) 0 0);
+}
+
+/* SVG scenes */
+.beforeafter__scene {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Handle (squeegee) */
+.beforeafter__handle {
+  position: absolute;
+  top: 50%;
+  left: var(--handle-x, 50%);
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  width: 60px;
+  height: 150px;
+  cursor: col-resize;
+  color: var(--aqua);
+  transition: none;
+}
+
+.beforeafter__squeegee {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+/* Caption */
+.beforeafter__caption {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* Responsive slider */
+@media (max-width: 768px) {
+  .beforeafter__slider {
+    aspect-ratio: 3/2.5;
+  }
+
+  .beforeafter__handle {
+    width: 50px;
+    height: 120px;
+  }
+}
+
+/* ========== C. LANDMARKS & MARQUEE ========== */
+.landmarks {
+  position: relative;
+  padding-block: clamp(5rem, 14vw, 10rem);
+  padding-top: clamp(5rem, 14vw, 10rem);
+}
+
+.landmarks__numeral {
+  font-family: var(--font-mono);
+  color: var(--brass);
+  margin-right: 0.5rem;
+  letter-spacing: .08em;
+}
+
+.landmarks__content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 6vw, 4rem);
+  align-items: center;
+  margin-bottom: clamp(4rem, 10vw, 7rem);
+}
+
+.landmarks__quote {
+  position: relative;
+  padding: clamp(2rem, 5vw, 3.5rem);
+  border: 1.5px solid rgba(240, 160, 75, 0.35);
+}
+
+.landmarks__quote::before,
+.landmarks__quote::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--brass);
+}
+
+.landmarks__quote::before {
+  top: -8px;
+  left: -8px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.landmarks__quote::after {
+  bottom: -8px;
+  right: -8px;
+  border-left: none;
+  border-top: none;
+}
+
+.landmarks__quote h2 {
+  margin-bottom: 1.2rem;
+  line-height: 1.15;
+}
+
+.landmarks__quote .lead {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.landmarks__icon {
+  width: 100%;
+  max-width: 250px;
+  height: auto;
+  color: var(--aqua);
+  margin: 0 auto;
+}
+
+.landmarks__icon svg {
+  width: 100%;
+  height: auto;
+}
+
+/* Marquee band */
+.landmarks__marquee {
+  position: relative;
+  width: 100vw;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  padding-block: clamp(2rem, 4vw, 3rem);
+  background: rgba(23, 32, 70, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow: hidden;
+  border-top: 1px solid var(--line-light);
+  border-bottom: 1px solid var(--line-light);
+}
+
+.landmarks__marquee-track {
+  display: flex;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: center;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  animation: marquee-scroll 30s linear infinite;
+  animation-play-state: running;
+}
+
+.landmarks__marquee-track.is-paused {
+  animation-play-state: paused;
+}
+
+.landmarks__sparkle {
+  display: inline-block;
+  opacity: 0.6;
+  margin: 0 0.5rem;
+  animation: sparkle-pulse 2s ease-in-out infinite;
+  animation-delay: inherit;
+}
+
+@keyframes marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+  .landmarks__content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .landmarks__icon {
+    max-width: 180px;
+  }
+
+  .landmarks__marquee-track {
+    gap: 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* ========== REDUCED MOTION ========== */
+@media (prefers-reduced-motion: reduce) {
+  .services__panel {
+    transition: none;
+  }
+
+  .beforeafter__tab {
+    transition: none;
+  }
+
+  .beforeafter__handle {
+    transition: none;
+  }
+
+  .landmarks__marquee-track {
+    animation: none;
+  }
+
+  .landmarks__sparkle {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .beforeafter__slider {
+    --clip-right: 50%;
+    --handle-x: 50%;
+  }
+}
+
+/* ==========================================================================
+   Integration polish (PM pass)
+   ========================================================================== */
+.services { background: linear-gradient(180deg, var(--glass) 0%, var(--sky-100) 100%); }
+
+.services__cta {
+  min-height: 46px;
+  padding: .8rem 1.4rem;
+  font-size: .95rem;
+}
+.services__cta svg {
+  width: 18px;
+  height: 18px;
+  transition: transform .35s var(--ease-out);
+}
+.services__cta:hover svg { transform: translateX(4px); }
+.services__cta.btn--brass { box-shadow: 0 8px 24px -8px rgba(240,160,75,.35); }
+
+/* Landmarks band (PM pass) */
+.landmarks__content { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: clamp(2rem, 6vw, 6rem); align-items: center; }
+.landmarks__art { margin: 0; justify-self: center; width: min(100%, 300px); text-align: center; }
+.landmarks__art svg { width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 30px 50px rgba(47,184,242,.18)); }
+.landmarks__art figcaption { margin-top: 1rem; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
+.landmarks__glint { animation: lm-glint 5s var(--ease-in-out) infinite; }
+@keyframes lm-glint { 0%, 55% { transform: skewX(-18deg) translateX(0); } 100% { transform: skewX(-18deg) translateX(460px); } }
+.landmarks__sparkle { color: var(--brass); font-size: .9em; }
+@media (max-width: 860px) { .landmarks__content { grid-template-columns: 1fr; } .landmarks__art { width: 200px; } }
+.reduced-motion .landmarks__glint { animation: none; }
+
+/* Real limestone behind the Bishop's Palace band (Poly Haven CC0) */
+.landmarks { position: relative; isolation: isolate; }
+.landmarks::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: url("../../assets/img/tex/castle_wall_varriation.webp") center / 520px auto repeat;
+  opacity: .14; mix-blend-mode: luminosity;
+  -webkit-mask-image: linear-gradient(90deg, transparent 20%, #000 75%); mask-image: linear-gradient(90deg, transparent 20%, #000 75%);
+}

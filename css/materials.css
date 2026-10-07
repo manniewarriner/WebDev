@@ -1,0 +1,28 @@
+/* ==========================================================================
+   Real materials (Poly Haven CC0, tinted in tools): lime plaster on light
+   sections and cards, honed slate on dark sections and the footer.
+   Loaded last so it layers a texture under each section's own gradient.
+   ========================================================================== */
+:root {
+  --tex-plaster: url("../assets/img/tex/plaster_soft.webp");
+  --tex-slate: url("../assets/img/tex/slate_soft.webp");
+}
+
+/* Light sections: plaster multiplied into the existing wash */
+.section--sky { background-image: var(--tex-plaster), var(--grad-sky); background-size: 640px auto, auto; background-blend-mode: multiply, normal; }
+.services { background-image: var(--tex-plaster), linear-gradient(180deg, var(--glass) 0%, var(--sky-100) 100%); background-size: 640px auto, auto; background-blend-mode: multiply, normal; }
+.areas, .faq { background-image: var(--tex-plaster), linear-gradient(var(--glass), var(--glass)); background-size: 640px auto, auto; background-blend-mode: multiply, normal; }
+
+/* Dark sections + footer: slate overlaid on the dusk gradient */
+.section--dark { background-image: var(--tex-slate), var(--grad-night); background-size: 560px auto, auto; background-blend-mode: overlay, normal; }
+.footer { background-image: var(--tex-slate), linear-gradient(var(--navy-950), var(--navy-950)); background-size: 560px auto, auto; background-blend-mode: overlay, normal; }
+.quote::before { background: radial-gradient(circle at 50% -60%, rgba(255,178,122,.22) 0%, transparent 55%); }
+
+/* Cards read as paper-white plaster, not flat fills */
+.reviews__card, .services__panel--featured {
+  background-color: #FFFDF9;
+  background-image: var(--tex-plaster);
+  background-size: 420px auto;
+  background-blend-mode: multiply;
+}
+.faq__help { background-image: var(--tex-slate), linear-gradient(var(--navy-900), var(--navy-900)); background-size: 420px auto, auto; background-blend-mode: overlay, normal; }

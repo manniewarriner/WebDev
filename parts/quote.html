@@ -1,0 +1,205 @@
+<section id="quote" class="section quote section--dark">
+  <div class="container">
+    <!-- Section head -->
+    <div class="section-head section-head--center" data-reveal="fade">
+      <p class="eyebrow">08 Quote</p>
+      <h2 class="h2" data-split>Get your <em>instant</em> price</h2>
+      <p class="lead">Tell me about your property and I'll calculate an estimate in seconds. Send it over WhatsApp to confirm, usually within the hour.</p>
+    </div>
+
+    <!-- Main glass panel: calculator + summary -->
+    <div class="quote__panel" data-reveal="scale">
+      <div class="quote__calculator">
+        <form id="quote-form" class="quote-form">
+          <!-- 1. Property type -->
+          <fieldset class="quote-form__group">
+            <legend class="quote-form__label">Property type</legend>
+            <div class="quote-form__cards" role="group">
+              <label class="quote-form__radio-card">
+                <input type="radio" name="property" value="flat" checked>
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="4" x2="9" y2="18"/><line x1="15" y1="4" x2="15" y2="18"/></svg>
+                  <span>Flat/Apartment</span>
+                </span>
+              </label>
+              <label class="quote-form__radio-card">
+                <input type="radio" name="property" value="terraced">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20V6l7-4 7 4v14M9 20v-6h6v6M2 10h14"/></svg>
+                  <span>Terraced</span>
+                </span>
+              </label>
+              <label class="quote-form__radio-card">
+                <input type="radio" name="property" value="semi">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20V8l5-4h10l5 4v12M12 20v-6h6v6M2 12h16"/></svg>
+                  <span>Semi-detached</span>
+                </span>
+              </label>
+              <label class="quote-form__radio-card">
+                <input type="radio" name="property" value="detached">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l9 5v13H3V7l9-5m0 5v10h6V7h-6"/></svg>
+                  <span>Detached</span>
+                </span>
+              </label>
+              <label class="quote-form__radio-card">
+                <input type="radio" name="property" value="large">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V6l9-4 9 4v14M6 13v7h3v-7m6 7h3v-7m-8-3h12M3 13h18"/></svg>
+                  <span>Large detached</span>
+                </span>
+              </label>
+              <label class="quote-form__radio-card">
+                <input type="radio" name="property" value="commercial">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="1"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/></svg>
+                  <span>Commercial</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- 2. Number of windows -->
+          <fieldset class="quote-form__group">
+            <legend class="quote-form__label">Number of windows</legend>
+            <div class="quote-form__windows">
+              <div class="quote-form__stepper">
+                <button type="button" class="quote-form__step-btn quote-form__step-minus" aria-label="Decrease windows">−</button>
+                <output class="quote-form__window-count" aria-label="Number of windows" aria-live="polite">10</output>
+                <button type="button" class="quote-form__step-btn quote-form__step-plus" aria-label="Increase windows">+</button>
+              </div>
+              <input type="range" id="quote-windows-slider" name="windows" class="quote-form__slider" min="4" max="40" value="10" aria-labelledby="quote-windows-slider">
+            </div>
+          </fieldset>
+
+          <!-- 3. Services -->
+          <fieldset class="quote-form__group">
+            <legend class="quote-form__label">Services</legend>
+            <div class="quote-form__checkboxes">
+              <label class="quote-form__checkbox-card">
+                <input type="checkbox" name="services" value="windows" checked>
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__check-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M7 12l3 3 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>Window cleaning</span>
+                </span>
+              </label>
+              <label class="quote-form__checkbox-card">
+                <input type="checkbox" name="services" value="gutters">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__check-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h18v2H3V8m1 4h16v6H4v-6m2 2v2m4 0v2m4 0v2m4 0v2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+                  <span>Gutter vacuuming</span>
+                </span>
+              </label>
+              <label class="quote-form__checkbox-card">
+                <input type="checkbox" name="services" value="fascia">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__check-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 10h20v8H2v-8m1-2h18V6H3v2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+                  <span>Fascia & soffit</span>
+                </span>
+              </label>
+              <label class="quote-form__checkbox-card">
+                <input type="checkbox" name="services" value="conservatory">
+                <span class="quote-form__card-inner">
+                  <svg class="quote-form__check-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8v10h16V8H4m2 2v6h3v-6H6m5 0v6h3v-6h-3m5 0v6h3v-6h-3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                  <span>Conservatory roof</span>
+                </span>
+              </label>
+            </div>
+            <div class="quote-form__error" role="alert" aria-live="polite" style="display:none;">At least one service is required</div>
+          </fieldset>
+
+          <!-- 4. Frequency -->
+          <fieldset class="quote-form__group">
+            <legend class="quote-form__label">Frequency</legend>
+            <div class="quote-form__frequency">
+              <label class="quote-form__freq-btn">
+                <input type="radio" name="frequency" value="oneoff" checked>
+                <span>One-off</span>
+              </label>
+              <label class="quote-form__freq-btn">
+                <input type="radio" name="frequency" value="4weekly">
+                <span>Every 4 weeks</span>
+              </label>
+              <label class="quote-form__freq-btn">
+                <input type="radio" name="frequency" value="8weekly">
+                <span>Every 8 weeks</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- 5. Contact details -->
+          <fieldset class="quote-form__group">
+            <legend class="quote-form__label">Your details (optional)</legend>
+            <div class="quote-form__inputs">
+              <input type="text" name="name" class="quote-form__input" placeholder="Your name" aria-label="Your name">
+              <input type="text" name="postcode" class="quote-form__input" placeholder="Postcode or area" aria-label="Postcode or area">
+            </div>
+            <div class="quote-form__contact-pref">
+              <label class="quote-form__radio-inline">
+                <input type="radio" name="contact" value="whatsapp" checked>
+                <span>WhatsApp</span>
+              </label>
+              <label class="quote-form__radio-inline">
+                <input type="radio" name="contact" value="call">
+                <span>Call me</span>
+              </label>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <!-- Summary panel -->
+      <div class="quote__summary">
+        <div class="quote__estimate">
+          <p class="quote__estimate-label">Estimated cost per clean</p>
+          <div class="quote__estimate-price" aria-live="polite" aria-label="Estimated price">£25–£30</div>
+        </div>
+
+        <div class="quote__breakdown" aria-label="Price breakdown">
+          <p class="quote__breakdown-title">Breakdown</p>
+          <ul class="quote__breakdown-list">
+            <li><span>Windows (10)</span><span class="quote__breakdown-price">£12.00</span></li>
+          </ul>
+        </div>
+
+        <div class="quote__claims">
+          <p class="quote__claim"><span class="quote__claim-icon" aria-hidden="true">✓</span> Frames, sills & doors always included</p>
+          <p class="quote__claim"><span class="quote__claim-icon" aria-hidden="true">✓</span> No payment until the job's done</p>
+        </div>
+
+        <div class="quote__ctas">
+          <a href="https://wa.me/447397872353" target="_blank" rel="noopener" class="btn btn--whatsapp btn--lg quote__cta-whatsapp">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .6l-.4.6-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>
+            Send to WhatsApp
+          </a>
+          <a href="tel:+447397872353" class="btn btn--ghost quote__cta-call" data-tel>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+            Call 07397 872353
+          </a>
+        </div>
+
+        <p class="quote__disclaimer">Estimates are a guide only; final price confirmed after a quick look.</p>
+      </div>
+    </div>
+
+    <!-- Contact strip -->
+    <div class="quote__contact-strip" data-reveal-stagger>
+      <a class="glass-card quote__contact-card" data-reveal data-tel href="tel:+447397872353">
+        <span class="quote__contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span>
+        <span><span class="quote__contact-label">Call Florida</span><span class="quote__contact-link">07397 872353</span></span>
+      </a>
+      <a class="glass-card quote__contact-card" data-reveal data-whatsapp href="https://wa.me/447397872353">
+        <span class="quote__contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.7A8.4 8.4 0 1 1 21 11.5z"/></svg></span>
+        <span><span class="quote__contact-label">WhatsApp</span><span class="quote__contact-link">Message any time</span></span>
+      </a>
+      <div class="glass-card quote__contact-card" data-reveal>
+        <span class="quote__contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <span><span class="quote__contact-label">Hours</span><span class="quote__contact-text">Mon–Sun 8am–8pm <span class="open-badge" data-open-badge></span></span></span>
+      </div>
+    </div>
+
+    <!-- Service area -->
+    <p class="quote__area" data-reveal="fade">Covering Lincoln & surrounding villages</p>
+  </div>
+</section>
