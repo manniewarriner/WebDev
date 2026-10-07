@@ -1,8 +1,8 @@
 <section id="quote" class="section quote section--dark">
   <div class="container">
     <!-- Section head -->
-    <div class="section-head section-head--center" data-reveal="fade">
-      <p class="eyebrow">08 Quote</p>
+    <div class="section-head" data-reveal="fade">
+      <p class="eyebrow">08 — Get a quote</p>
       <h2 class="h2" data-split>Get your <em>instant</em> price</h2>
       <p class="lead">Tell me about your property and I'll calculate an estimate in seconds. Send it over WhatsApp to confirm, usually within the hour.</p>
     </div>
@@ -62,14 +62,14 @@
 
           <!-- 2. Number of windows -->
           <fieldset class="quote-form__group">
-            <legend class="quote-form__label">Number of windows</legend>
+            <legend class="quote-form__label" id="quote-windows-label">Number of windows</legend>
             <div class="quote-form__windows">
               <div class="quote-form__stepper">
                 <button type="button" class="quote-form__step-btn quote-form__step-minus" aria-label="Decrease windows">−</button>
                 <output class="quote-form__window-count" aria-label="Number of windows" aria-live="polite">10</output>
                 <button type="button" class="quote-form__step-btn quote-form__step-plus" aria-label="Increase windows">+</button>
               </div>
-              <input type="range" id="quote-windows-slider" name="windows" class="quote-form__slider" min="4" max="40" value="10" aria-labelledby="quote-windows-slider">
+              <input type="range" id="quote-windows-slider" name="windows" class="quote-form__slider" min="4" max="40" value="10" aria-labelledby="quote-windows-label">
             </div>
           </fieldset>
 

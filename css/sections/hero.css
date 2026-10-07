@@ -36,10 +36,10 @@
 .hero .hero-title {
   font-size: var(--fs-hero);
   line-height: 1.02;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.02em;
   color: var(--navy-900);
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 400;
   text-wrap: balance;
 }
 .hero__lead { max-width: 52ch; margin-inline: auto; color: #3B3F5E; margin-top: 1.1rem; }

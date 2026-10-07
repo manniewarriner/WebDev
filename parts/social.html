@@ -118,9 +118,12 @@
         <div class="areas__map-coords">
           <span class="areas__coord-label">53.2307° N, 0.5406° W</span>
         </div>
-        <iframe class="areas__gmap" title="Google Map of Lincoln and the surrounding villages"
-          src="https://maps.google.com/maps?q=53.2307,-0.5406&amp;z=11&amp;output=embed"
+        <iframe class="areas__gmap" title="Google Map of Lincoln and the surrounding villages" data-consent-src="https://maps.google.com/maps?q=53.2307,-0.5406&amp;z=11&amp;output=embed"
           loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+        <div class="consent-placeholder" data-consent-placeholder>
+          <p>The map is provided by Google, which may set cookies.</p>
+          <button type="button" class="btn btn--glass" data-consent-accept>Show the map</button>
+        </div>
         <div class="areas__map-bar">
           <span><strong>Lincoln</strong> + villages within about 10 miles</span>
           <a href="https://www.google.com/maps/place/Lincoln,+UK" target="_blank" rel="noopener">Open in Google Maps ↗</a>
@@ -187,7 +190,7 @@
         <h2 class="h2" data-split>Questions, <em>answered</em></h2>
         <p class="lead">Everything people usually ask before their first clean.</p>
       </div>
-      <div class="faq__help" data-reveal>
+      <div class="faq__help corner-ticks" data-reveal>
         <p class="faq__help-title">Still have a question?</p>
         <p>Send a quick message and you'll get a straight answer.</p>
         <a class="btn btn--whatsapp" data-whatsapp href="https://wa.me/447397872353">Ask on WhatsApp</a>

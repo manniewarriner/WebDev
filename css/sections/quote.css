@@ -1,23 +1,25 @@
 /* ==========================================================================
-   Quote section: conversion calculator + contact
+   Quote section: editorial price calculator + contact
+   Hairline structure, brass rules, ruled tiles. Tokens from base.css only.
    ========================================================================== */
 
+/* Section frame: navy night with a faint aqua survey grid */
 .quote {
   position: relative;
   background: var(--grad-night);
+  color: var(--glass);
 }
 
-/* Backdrop glow + grid pattern */
 .quote::before {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 50% -100%, var(--aqua-glow) 0%, transparent 50%),
-    repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(47,184,242,.04) 60px, rgba(47,184,242,.04) 61px),
-    repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(47,184,242,.04) 60px, rgba(47,184,242,.04) 61px);
   pointer-events: none;
   z-index: 0;
+  background:
+    radial-gradient(60% 40% at 85% 0%, color-mix(in srgb, var(--aqua) 16%, transparent) 0%, transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 119px, color-mix(in srgb, var(--aqua) 4%, transparent) 119px 120px),
+    repeating-linear-gradient(0deg, transparent 0 119px, color-mix(in srgb, var(--aqua) 4%, transparent) 119px 120px);
 }
 
 .quote .container {
@@ -25,212 +27,308 @@
   z-index: 1;
 }
 
+/* ========== Section head: left-aligned, heading left, intro right at >=960 ========== */
 .quote .section-head {
-  color: #fff;
-  margin-bottom: clamp(2rem, 8vw, 4rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  max-width: none;
+  text-align: left;
+  color: var(--glass);
+  padding-bottom: clamp(1.75rem, 4vw, 2.5rem);
+  margin-bottom: clamp(2.5rem, 6vw, 4rem);
+  border-bottom: 1px solid var(--line-light);
 }
 
-.quote .lead {
-  color: rgba(255, 255, 255, 0.78);
+.quote .section-head .eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brass);
 }
 
-/* ========== Main glass panel ========== */
+.quote .section-head .h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(3rem, 7vw, 6.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  color: var(--glass);
+}
+
+.quote .section-head .h2 em {
+  font-family: inherit;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--brass);
+}
+
+.quote .section-head .lead {
+  margin: 0;
+  max-width: 34ch;
+  font-size: var(--fs-lead);
+  color: color-mix(in srgb, var(--glass) 74%, transparent);
+}
+
+@media (min-width: 960px) {
+  .quote .section-head {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    grid-template-areas:
+      "eyebrow eyebrow"
+      "title   lead";
+    align-items: end;
+    column-gap: clamp(2rem, 5vw, 5rem);
+  }
+  .quote .section-head .eyebrow { grid-area: eyebrow; }
+  .quote .section-head .h2 { grid-area: title; }
+  .quote .section-head .lead { grid-area: lead; justify-self: start; }
+}
+
+/* ========== Main panel: calculator + summary ========== */
 .quote__panel {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(1.5rem, 4vw, 2.5rem);
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 3.5rem);
   margin-bottom: clamp(3rem, 8vw, 5rem);
 }
 
 @media (min-width: 920px) {
   .quote__panel {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: start;
   }
 }
 
-/* ========== Calculator form ========== */
-.quote__calculator {
-  /* Grid layout for form sections on desktop */
-}
-
+/* ========== Form ========== */
 .quote-form {
   display: flex;
   flex-direction: column;
-  gap: clamp(1.5rem, 4vw, 2.25rem);
+  gap: clamp(2rem, 4vw, 2.75rem);
 }
 
 .quote-form__group {
   border: 0;
   padding: 0;
   margin: 0;
+  min-width: 0;
 }
 
 .quote-form__label {
   display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgba(255,255,255,.8);
-  margin-bottom: 1rem;
+  width: 100%;
+  margin: 0 0 1.1rem;
+  padding: 0 0 0.85rem;
+  border-bottom: 1px solid var(--line-light);
   font-family: var(--font-mono);
-  letter-spacing: .12em;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+  color: color-mix(in srgb, var(--glass) 82%, transparent);
 }
 
-/* Property type: radio cards */
-.quote-form__cards {
+/* Hidden native controls: still focusable, visual state drawn by siblings */
+.quote-form__radio-card input,
+.quote-form__checkbox-card input,
+.quote-form__freq-btn input,
+.quote-form__radio-inline input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ----- Ruled tile grids (property + services) ----- */
+.quote-form__cards,
+.quote-form__checkboxes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 0.75rem;
+  gap: 1px;
+  background: var(--line-light);
+  border: 1px solid var(--line-light);
 }
 
-@media (min-width: 768px) {
-  .quote-form__cards {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.quote-form__cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-@media (min-width: 1024px) {
-  .quote-form__cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
+@media (min-width: 640px) {
+  .quote-form__cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.quote-form__checkboxes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .quote-form__radio-card,
 .quote-form__checkbox-card {
   position: relative;
   display: block;
+  min-width: 0;
+  cursor: pointer;
 }
 
-.quote-form__radio-card input,
-.quote-form__checkbox-card input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.quote-form__radio-card .quote-form__card-inner,
-.quote-form__checkbox-card .quote-form__card-inner {
-  position: relative;
+.quote-form__card-inner {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  padding: 1rem 0.75rem;
-  border-radius: var(--radius-sm);
-  background: var(--glass-bg-dark);
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  cursor: pointer;
-  transition: all 0.3s var(--ease-out);
-  min-height: 80px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.875rem;
+  align-items: flex-start;
+  gap: 0.9rem;
+  height: 100%;
+  min-height: 6.75rem;
+  padding: 1.05rem 1.05rem 1rem;
+  background-color: var(--navy-950);
+  color: color-mix(in srgb, var(--glass) 80%, transparent);
+  font-family: var(--font-ui);
+  font-size: 0.92rem;
   font-weight: 500;
-  text-align: center;
-  line-height: 1.2;
+  line-height: 1.3;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass) 6%, transparent);
+  transition:
+    background-color 0.35s var(--ease-out),
+    color 0.35s var(--ease-out),
+    box-shadow 0.35s var(--ease-out);
+}
+
+.quote-form__checkbox-card .quote-form__card-inner {
+  flex-direction: row;
+  align-items: center;
+  min-height: 4.5rem;
 }
 
 .quote-form__icon {
-  width: 24px;
-  height: 24px;
-  stroke: currentColor;
-  stroke-width: 1.5;
+  flex: none;
+  width: 28px;
+  height: 28px;
   fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transition: color 0.35s var(--ease-out);
 }
 
 .quote-form__check-icon {
-  width: 24px;
-  height: 24px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  transition: color 0.35s var(--ease-out);
 }
 
-/* Radio/checkbox checked state */
+/* Hover (both tile types) */
+.quote-form__radio-card:hover .quote-form__card-inner,
+.quote-form__checkbox-card:hover .quote-form__card-inner {
+  background-color: color-mix(in srgb, var(--aqua) 7%, var(--navy-950));
+  color: var(--glass);
+}
+
+/* Selected: brass tint, inner brass rule, opposite corner ticks */
 .quote-form__radio-card input:checked ~ .quote-form__card-inner,
 .quote-form__checkbox-card input:checked ~ .quote-form__card-inner {
-  background: var(--glass-bg);
-  border-color: var(--aqua);
-  color: #fff;
-  box-shadow: 0 0 0 2px var(--aqua-glow), inset 0 0 0 1px var(--aqua);
-  transform: scale(1.02);
+  background-color: color-mix(in srgb, var(--brass) 11%, var(--navy-950));
+  color: var(--glass);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--brass) 60%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--brass) 25%, transparent);
+  background-image:
+    linear-gradient(var(--brass), var(--brass)),
+    linear-gradient(var(--brass), var(--brass)),
+    linear-gradient(var(--brass), var(--brass)),
+    linear-gradient(var(--brass), var(--brass));
+  background-size: 14px 1px, 1px 14px, 14px 1px, 1px 14px;
+  background-position: top left, top left, bottom right, bottom right;
+  background-repeat: no-repeat;
 }
 
-.quote-form__radio-card:focus-within .quote-form__card-inner,
-.quote-form__checkbox-card:focus-within .quote-form__card-inner {
-  outline: 3px solid var(--aqua);
-  outline-offset: 2px;
+.quote-form__radio-card input:checked ~ .quote-form__card-inner .quote-form__icon {
+  color: var(--brass);
 }
 
-/* Windows: stepper + slider */
+.quote-form__checkbox-card input:checked ~ .quote-form__card-inner .quote-form__check-icon {
+  color: var(--aqua);
+}
+
+.quote-form__radio-card input:focus-visible ~ .quote-form__card-inner,
+.quote-form__checkbox-card input:focus-visible ~ .quote-form__card-inner {
+  outline: 2px solid var(--aqua);
+  outline-offset: -2px;
+}
+
+/* ----- Windows stepper + slider ----- */
 .quote-form__windows {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .quote-form__windows {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 2rem;
+  }
 }
 
 .quote-form__stepper {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  background: var(--glass-bg-dark);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-sm);
-  padding: 0.75rem 1rem;
+  align-items: stretch;
+  width: fit-content;
+  border: 1px solid var(--line-light);
 }
 
 .quote-form__step-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  border-radius: 6px;
-  background: rgba(47, 184, 242, 0.15);
-  color: var(--aqua);
-  font-size: 1.25rem;
-  font-weight: 600;
-  transition: all 0.2s var(--ease-out);
-  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  min-height: 3.25rem;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--glass);
+  background: transparent;
+  transition: background-color 0.3s var(--ease-out), color 0.3s var(--ease-out);
 }
 
-.quote-form__step-btn:hover,
+.quote-form__step-btn:hover {
+  background-color: color-mix(in srgb, var(--aqua) 10%, transparent);
+  color: var(--aqua);
+}
+
 .quote-form__step-btn:focus-visible {
-  background: rgba(47, 184, 242, 0.25);
-  transform: scale(1.05);
+  outline: 2px solid var(--aqua);
+  outline-offset: -2px;
 }
 
 .quote-form__window-count {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fff;
-  min-width: 3rem;
-  text-align: center;
-  font-family: var(--font-ui);
+  display: grid;
+  place-items: center;
+  min-width: 4.5rem;
+  padding: 0 0.75rem;
+  border-inline: 1px solid var(--line-light);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--glass);
 }
 
-/* Range slider */
 .quote-form__slider {
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(
-    to right,
-    var(--aqua) 0%,
-    var(--aqua) var(--value, 50%),
-    rgba(255, 255, 255, 0.15) var(--value, 50%),
-    rgba(255, 255, 255, 0.15) 100%
-  );
-  outline: none;
   -webkit-appearance: none;
   appearance: none;
+  width: 100%;
+  height: 2px;
+  margin: 0.6rem 0 0.25rem;
+  border-radius: 0;
   cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--brass) var(--value, 20%),
+    color-mix(in srgb, var(--glass) 18%, transparent) var(--value, 20%)
+  );
 }
 
 .quote-form__slider::-webkit-slider-thumb {
@@ -238,500 +336,462 @@
   appearance: none;
   width: 20px;
   height: 20px;
+  margin-top: -9px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--aqua) 0%, var(--aqua-600) 100%);
-  cursor: pointer;
-  box-shadow: 0 0 0 4px rgba(47, 184, 242, 0.2);
-  transition: box-shadow 0.2s;
+  border: 2px solid var(--brass);
+  background: var(--navy-950);
+  transition: transform 0.2s var(--ease-out);
 }
 
-.quote-form__slider::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 8px rgba(47, 184, 242, 0.3);
-}
+.quote-form__slider::-webkit-slider-thumb:hover { transform: scale(1.12); }
 
 .quote-form__slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--aqua) 0%, var(--aqua-600) 100%);
-  cursor: pointer;
-  border: 0;
-  box-shadow: 0 0 0 4px rgba(47, 184, 242, 0.2);
-  transition: box-shadow 0.2s;
-}
-
-.quote-form__slider::-moz-range-thumb:hover {
-  box-shadow: 0 0 0 8px rgba(47, 184, 242, 0.3);
+  border: 2px solid var(--brass);
+  background: var(--navy-950);
 }
 
 .quote-form__slider::-moz-range-track {
+  height: 2px;
   background: transparent;
-  border: 0;
 }
 
-/* Checkboxes (services) */
-.quote-form__checkboxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.75rem;
+.quote-form__slider:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 8px;
 }
 
-@media (min-width: 768px) {
-  .quote-form__checkboxes {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .quote-form__checkboxes {
-    grid-template-columns: 1fr;
-  }
-}
-
+/* ----- Services error ----- */
 .quote-form__error {
-  color: #ff6b6b;
-  font-size: 0.875rem;
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: rgba(255, 107, 107, 0.1);
-  border-radius: 6px;
-  border-left: 3px solid #ff6b6b;
+  margin-top: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brass);
 }
 
-/* Frequency: segmented control */
+.quote-form__error::before {
+  content: "— ";
+}
+
+/* ----- Frequency: segmented ruled control ----- */
 .quote-form__frequency {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 0.375rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line-light);
 }
 
 .quote-form__freq-btn {
   position: relative;
-}
-
-.quote-form__freq-btn input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.quote-form__freq-btn span {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 0.75rem;
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.875rem;
-  font-weight: 500;
+  min-height: 3.25rem;
+  padding: 0.6rem 0.5rem;
+  text-align: center;
   cursor: pointer;
-  transition: all 0.25s var(--ease-out);
-  white-space: nowrap;
 }
 
-.quote-form__freq-btn input:checked ~ span {
-  background: var(--aqua);
-  color: var(--navy-950);
-  font-weight: 600;
-  box-shadow: 0 0 0 1px var(--aqua), 0 4px 12px rgba(47, 184, 242, 0.25);
+.quote-form__freq-btn + .quote-form__freq-btn {
+  border-left: 1px solid var(--line-light);
 }
 
-.quote-form__freq-btn:focus-within span {
-  outline: 3px solid var(--aqua);
-  outline-offset: 2px;
+.quote-form__freq-btn span {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--glass) 74%, transparent);
+  transition: color 0.3s var(--ease-out);
 }
 
-/* Contact details inputs */
+.quote-form__freq-btn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--brass);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s var(--ease-out);
+}
+
+.quote-form__freq-btn:hover span {
+  color: var(--glass);
+}
+
+.quote-form__freq-btn:has(input:checked)::after {
+  transform: scaleX(1);
+}
+
+.quote-form__freq-btn:has(input:checked) span {
+  color: var(--brass);
+}
+
+.quote-form__freq-btn:has(input:focus-visible) {
+  outline: 2px solid var(--aqua);
+  outline-offset: -2px;
+}
+
+/* ----- Contact details: hairline underline inputs ----- */
 .quote-form__inputs {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
 }
 
 @media (min-width: 640px) {
-  .quote-form__inputs {
-    grid-template-columns: 1fr 1fr;
-  }
+  .quote-form__inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .quote-form__input {
-  min-height: 44px;
-  padding: 0.75rem 0.5rem 0.75rem 0;
+  width: 100%;
+  min-width: 0;
+  padding: 0.85rem 0 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--line-light);
   border-radius: 0;
   background: transparent;
-  border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  font-size: 1rem;
   font-family: var(--font-ui);
-  transition: all 0.2s;
+  font-size: 1rem;
+  color: var(--glass);
+  transition: border-color 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
 }
 
 .quote-form__input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: color-mix(in srgb, var(--glass) 60%, transparent);
+  opacity: 1;
 }
 
 .quote-form__input:focus {
-  background: transparent;
-  border-bottom-color: var(--aqua);
-  box-shadow: none;
   outline: none;
+  border-bottom-color: var(--brass);
+  box-shadow: 0 1px 0 0 var(--brass);
 }
 
-.quote-form__input:focus::placeholder {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-/* Contact preference radio buttons */
 .quote-form__contact-pref {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
-  margin-top: 1rem;
+  margin-top: 1.4rem;
 }
 
 .quote-form__radio-inline {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   cursor: pointer;
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--glass) 78%, transparent);
 }
 
-.quote-form__radio-inline input {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--aqua);
+.quote-form__radio-inline span::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--glass) 45%, transparent);
+  border-radius: 50%;
+  vertical-align: -1px;
+  transition: background-color 0.3s var(--ease-out), border-color 0.3s var(--ease-out);
+}
+
+.quote-form__radio-inline:has(input:checked) {
+  color: var(--glass);
+}
+
+.quote-form__radio-inline:has(input:checked) span::before {
+  background: var(--brass);
+  border-color: var(--brass);
+  box-shadow: inset 0 0 0 2px var(--navy-950);
+}
+
+.quote-form__radio-inline:has(input:focus-visible) {
+  outline: 2px solid var(--aqua);
+  outline-offset: 4px;
 }
 
 /* ========== Summary panel ========== */
 .quote__summary {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: clamp(1.5rem, 4vw, 2rem);
-  padding: clamp(1.5rem, 4vw, 2.5rem);
-  border-radius: var(--radius-lg);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
+  gap: 1.75rem;
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  background-color: color-mix(in srgb, var(--navy-950) 55%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--line-light),
+    inset 0 1px 0 color-mix(in srgb, var(--glass) 8%, transparent),
+    0 30px 60px -30px color-mix(in srgb, var(--navy-950) 85%, transparent);
   -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: inset 0 0 0 1px var(--line-light), 0 20px 50px -25px rgba(0, 0, 0, 0.6);
+  backdrop-filter: var(--glass-blur);
 }
 
-.quote__estimate {
-  text-align: center;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px dashed rgba(255, 255, 255, 0.2);
+/* Corner ticks, top-left and bottom-right */
+.quote__summary::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--brass), var(--brass)),
+    linear-gradient(var(--brass), var(--brass)),
+    linear-gradient(var(--brass), var(--brass)),
+    linear-gradient(var(--brass), var(--brass));
+  background-size: 28px 1px, 1px 28px, 28px 1px, 1px 28px;
+  background-position: top left, top left, bottom right, bottom right;
+  background-repeat: no-repeat;
+}
+
+@media (min-width: 920px) {
+  .quote__summary {
+    position: sticky;
+    top: calc(var(--nav-h) + 1.5rem);
+  }
+}
+
+.quote__estimate-label,
+.quote__breakdown-title,
+.quote__contact-label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--glass) 70%, transparent);
 }
 
 .quote__estimate-label {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.65);
   margin-bottom: 0.75rem;
-  font-weight: 600;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  font-family: var(--font-mono);
 }
 
+/* Display numerals for the estimate */
 .quote__estimate-price {
-  font-size: clamp(2rem, 6vw, 3rem);
+  font-family: var(--font-display);
   font-weight: 400;
-  color: #fff;
-  font-family: var(--font-mono);
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
+  font-size: clamp(3.25rem, 7vw, 5.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--glass);
 }
 
-.quote__breakdown {
-  padding: 1.5rem 0;
-}
-
+/* Breakdown: ruled rows */
 .quote__breakdown-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.75);
-  margin-bottom: 1rem;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  font-family: var(--font-mono);
-}
-
-.quote__breakdown-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line-light);
 }
 
 .quote__breakdown-list li {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--line-light);
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.8);
-  padding: 0.6rem 0;
-  border-bottom: 1px dashed rgba(240,160,75,.3);
-  font-family: var(--font-ui);
-}
-
-.quote__breakdown-list li:last-child {
-  border-bottom: 2px dashed rgba(240,160,75,.5);
-  padding-bottom: 0.8rem;
-  margin-bottom: 0.5rem;
+  color: color-mix(in srgb, var(--glass) 86%, transparent);
 }
 
 .quote__breakdown-price {
-  font-weight: 500;
-  color: #fff;
   font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--glass);
 }
 
+/* Claims */
 .quote__claims {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  padding: 1.5rem 0;
-  border-top: 1px dashed rgba(240,160,75,.3);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  display: grid;
+  gap: 0.6rem;
 }
 
 .quote__claim {
   display: flex;
-  align-items: flex-start;
   gap: 0.75rem;
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.5;
+  font-size: 0.92rem;
+  color: color-mix(in srgb, var(--glass) 82%, transparent);
 }
 
 .quote__claim-icon {
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(240,160,75,.2);
   color: var(--brass);
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-top: 2px;
-  flex-shrink: 0;
+  font-family: var(--font-mono);
 }
 
+/* CTAs */
 .quote__ctas {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 0.75rem;
 }
 
-.quote__cta-whatsapp {
-  background: #25D366;
-  color: var(--navy-950);
-}
-
-.quote__cta-whatsapp:hover {
-  background: #20ba5a;
-  transform: translateY(-2px);
-}
-
-.quote__cta-call {
-  min-height: 52px;
-  padding: 0.9rem 1.6rem;
-  color: rgba(255, 255, 255, 0.9);
-}
-
 .quote__disclaimer {
+  margin: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-light);
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
-  text-align: center;
   line-height: 1.5;
+  color: color-mix(in srgb, var(--glass) 66%, transparent);
 }
 
-/* ========== Contact strip ========== */
+/* ========== Contact strip: ruled cells, not floating cards ========== */
 .quote__contact-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: clamp(2rem, 8vw, 3rem);
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--line-light);
 }
 
-.quote__contact-card {
-  padding: 1.5rem 1.25rem;
-  text-align: center;
-  border-radius: var(--radius);
+@media (min-width: 720px) {
+  .quote__contact-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.quote .quote__contact-strip .quote__contact-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1.35rem 1.5rem;
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--navy-950) 40%, transparent);
+  box-shadow: none;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  transition: background-color 0.45s var(--ease-out);
+}
+
+.quote .quote__contact-strip .quote__contact-card + .quote__contact-card {
+  border-top: 1px solid var(--line-light);
+}
+
+@media (min-width: 720px) {
+  .quote .quote__contact-strip .quote__contact-card + .quote__contact-card {
+    border-top: 0;
+    border-left: 1px solid var(--line-light);
+  }
+}
+
+/* Interactive cells: tinted surface + brass rule drawn across the foot */
+.quote .quote__contact-strip a.quote__contact-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--brass);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.quote .quote__contact-strip a.quote__contact-card:hover,
+.quote .quote__contact-strip a.quote__contact-card:focus-visible {
+  transform: none;
+  background-color: color-mix(in srgb, var(--aqua) 7%, var(--navy-950));
+  box-shadow: none;
+}
+
+.quote .quote__contact-strip a.quote__contact-card:hover::after,
+.quote .quote__contact-strip a.quote__contact-card:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.quote__contact-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--brass);
+  border: 1px solid color-mix(in srgb, var(--brass) 45%, transparent);
+}
+
+.quote__contact-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .quote__contact-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 0.5rem;
+  display: block;
+  margin-bottom: 0.35rem;
 }
 
 .quote__contact-link,
 .quote__contact-text {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #fff;
-  line-height: 1.4;
-}
-
-.quote__contact-link {
   display: block;
-  transition: color 0.2s;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--glass);
 }
 
-.quote__contact-link:hover {
-  color: var(--aqua);
+.quote .open-badge {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  vertical-align: middle;
 }
 
-/* Service area text */
+/* Area line */
 .quote__area {
-  text-align: center;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: clamp(2rem, 4vw, 2.5rem);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--glass) 66%, transparent);
 }
 
-/* Icon styling in contact cards */
-.quote__contact-icon svg {
-  stroke-width: 1.6;
+.quote__area::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--brass);
 }
 
-/* ========== Mobile: stacked layout ========== */
-@media (max-width: 919px) {
-  .quote__panel {
-    grid-template-columns: 1fr;
-  }
-
-  .quote-form__cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .quote-form__checkboxes {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* ========== Mobile tightening ========== */
+@media (max-width: 639px) {
+  .quote .section-head .h2 { font-size: clamp(2.75rem, 13vw, 3.5rem); }
+  .quote__summary { gap: 1.5rem; }
+  .quote-form__card-inner { min-height: 6rem; padding: 0.9rem; }
 }
 
-@media (max-width: 640px) {
-  .quote .section-head {
-    margin-bottom: 2rem;
-  }
-
-  .quote-form__cards {
-    grid-template-columns: 1fr;
-  }
-
-  .quote-form__checkboxes {
-    grid-template-columns: 1fr;
-  }
-
-  .quote-form__card-inner,
-  .quote-form__radio-card .quote-form__card-inner,
-  .quote-form__checkbox-card .quote-form__card-inner {
-    min-height: 72px;
-    padding: 0.875rem 0.75rem;
-  }
-
-  .quote__summary {
-    padding: 1.5rem 1.25rem;
-  }
-
-  .quote__contact-strip {
-    grid-template-columns: 1fr;
+/* ========== Reduced motion ========== */
+@media (prefers-reduced-motion: reduce) {
+  .quote *,
+  .quote *::before,
+  .quote *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }
 
-/* ========== Motion: reduced ========== */
-.reduced-motion .quote__estimate-price {
-  animation: none;
+.reduced-motion .quote *,
+.reduced-motion .quote *::before,
+.reduced-motion .quote *::after {
+  transition: none !important;
+  animation: none !important;
 }
-
-.reduced-motion .quote-form__radio-card .quote-form__card-inner,
-.reduced-motion .quote-form__checkbox-card .quote-form__card-inner {
-  transition: none;
-}
-
-.reduced-motion .quote__cta-whatsapp:hover {
-  transform: none;
-}
-
-/* ==========================================================================
-   Integration polish (PM pass): one premium glass console, dark summary
-   ========================================================================== */
-.quote__panel {
-  padding: clamp(1.25rem, 3vw, 2.25rem);
-  border-radius: calc(var(--radius-lg) + 6px);
-  background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.02));
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 40px 90px -40px rgba(0,0,0,.7);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-}
-@media (min-width: 920px) {
-  .quote__panel { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
-  .quote__summary { position: sticky; top: calc(var(--nav-h) + 1.5rem); }
-}
-.quote__summary {
-  position: relative; overflow: hidden;
-  background: linear-gradient(180deg, rgba(23,32,70,.92), rgba(6,18,31,.96));
-  box-shadow: inset 0 0 0 1px rgba(47,184,242,.25), 0 30px 60px -30px rgba(0,0,0,.8);
-}
-.quote__summary::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--grad-brass);
-}
-.quote__estimate-label {
-  color: rgba(255,255,255,.65); letter-spacing: .12em; text-transform: uppercase;
-  font-size: .75rem; font-weight: 600; font-family: var(--font-mono);
-}
-.quote__estimate-price {
-  font-size: clamp(2.6rem, 5vw, 3.6rem); font-weight: 400; color: #fff;
-  font-family: var(--font-mono); font-variant-numeric: tabular-nums; line-height: 1.05;
-}
-.quote__breakdown-list li { border-bottom: 2px dashed rgba(240,160,75,.25); padding: 0.6rem 0; }
-.quote__breakdown-price { color: #fff; font-weight: 500; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-
-/* Option cards: dark at rest, aqua tint when chosen */
-.quote-form__radio-card .quote-form__card-inner,
-.quote-form__checkbox-card .quote-form__card-inner {
-  background: rgba(255,255,255,.04); border: 1.5px solid rgba(255,255,255,.12);
-}
-.quote-form__radio-card:hover .quote-form__card-inner,
-.quote-form__checkbox-card:hover .quote-form__card-inner { border-color: rgba(47,184,242,.5); background: rgba(47,184,242,.06); }
-.quote-form__radio-card input:checked ~ .quote-form__card-inner,
-.quote-form__checkbox-card input:checked ~ .quote-form__card-inner {
-  background: linear-gradient(160deg, rgba(47,184,242,.22), rgba(47,184,242,.08));
-  border-color: var(--aqua); color: #fff; transform: none;
-  box-shadow: 0 0 0 4px rgba(47,184,242,.15), 0 12px 30px -14px var(--aqua-glow);
-}
-.quote-form__radio-card input:checked ~ .quote-form__card-inner .quote-form__icon,
-.quote-form__checkbox-card input:checked ~ .quote-form__card-inner svg { color: var(--aqua); stroke: var(--aqua); }
-.quote-form__radio-card:focus-within .quote-form__card-inner,
-.quote-form__checkbox-card:focus-within .quote-form__card-inner { outline: none; }
-.quote-form__radio-card input:focus-visible ~ .quote-form__card-inner,
-.quote-form__checkbox-card input:focus-visible ~ .quote-form__card-inner { outline: 3px solid var(--aqua); outline-offset: 2px; }
-.quote-form__checkboxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
-@media (max-width: 420px) { .quote-form__checkboxes { grid-template-columns: 1fr; } }
-.quote-form__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 640px) { .quote-form__cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-
-/* Contact link cards (PM pass) */
-.quote__contact-card { display: flex; align-items: center; gap: 1rem; text-decoration: none; color: inherit; transition: transform .4s var(--ease-out), box-shadow .4s; }
-a.quote__contact-card:hover { transform: translateY(-4px); box-shadow: inset 0 0 0 1px rgba(47,184,242,.4), var(--shadow-lift); }
-.quote__contact-icon { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: rgba(47,184,242,.12); color: var(--aqua); }
-.quote__contact-icon svg { width: 24px; height: 24px; }
-.quote__contact-label { display: block; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: rgba(255,255,255,.6); margin-bottom: .15rem; }
-.quote__contact-link, .quote__contact-text { display: block; font-weight: 600; font-size: 1.05rem; color: #fff; }
-.quote__contact-card { text-align: left; padding: 1.4rem 1.5rem; }
-.quote__contact-strip { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-@media (min-width: 920px) { .quote__summary { position: sticky; } }

@@ -153,7 +153,47 @@
     document.querySelectorAll('[data-year]').forEach(el => { el.textContent = new Date().getFullYear(); });
   }
 
+  /* ---------- Cookie consent: third-party embeds (Google Maps) load only after "Accept" ---------- */
+  const CONSENT_KEY = 'lwc-consent';
+  function getConsent() { try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; } }
+  function setConsent(v) { try { localStorage.setItem(CONSENT_KEY, v); } catch (e) { /* storage blocked: choice lasts this page view */ } }
+
+  function loadEmbeds() {
+    document.querySelectorAll('iframe[data-consent-src]').forEach(f => { if (!f.src) f.src = f.dataset.consentSrc; });
+    document.querySelectorAll('[data-consent-placeholder]').forEach(el => { el.hidden = true; });
+  }
+
+  function setupConsent() {
+    const choice = getConsent();
+    if (choice === 'accepted') { loadEmbeds(); return; }
+    document.querySelectorAll('[data-consent-accept]').forEach(b => b.addEventListener('click', () => {
+      setConsent('accepted'); loadEmbeds();
+      document.querySelector('.consent-banner')?.remove();
+    }));
+    if (choice === 'declined') return;
+
+    const banner = document.createElement('div');
+    banner.className = 'consent-banner';
+    banner.setAttribute('role', 'region');
+    banner.setAttribute('aria-label', 'Cookie choices');
+    banner.innerHTML =
+      '<p>This site sets no tracking cookies of its own. The Google map may set cookies if you load it. ' +
+      '<a href="privacy-policy.html#cookies">Privacy policy</a></p>' +
+      '<div class="consent-banner__actions">' +
+      '<button type="button" class="btn btn--ghost" data-consent="declined">No thanks</button>' +
+      '<button type="button" class="btn btn--brass" data-consent="accepted">Accept</button></div>';
+    banner.addEventListener('click', e => {
+      const b = e.target.closest('[data-consent]');
+      if (!b) return;
+      setConsent(b.dataset.consent);
+      if (b.dataset.consent === 'accepted') loadEmbeds();
+      banner.remove();
+    });
+    document.body.appendChild(banner);
+  }
+
   function init() {
+    setupConsent();
     setupContactLinks();
     setupNav();
     setupOpenNow();
