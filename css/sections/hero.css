@@ -188,3 +188,11 @@
 .hero__cathedral path, .hero__castle path { vector-effect: non-scaling-stroke; }
 .nav__actions .open-badge { white-space: nowrap; }
 @media (max-width: 1400px) { .nav__actions .open-badge { display: none; } }
+
+/* Union Jack: a gentle wave from the pole side; still under reduced motion */
+.hero__flag { transform-box: fill-box; }
+.hero__castle .hero__flag path { vector-effect: none; paint-order: normal; }
+.hero__flag > g { transform-origin: 0 50%; transform-box: fill-box; animation: hero-flag 3.2s ease-in-out infinite alternate; }
+@keyframes hero-flag { from { transform: skewY(-3deg) scaleX(.97); } to { transform: skewY(3deg) scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .hero__flag > g { animation: none; } }
+.reduced-motion .hero__flag > g { animation: none; }

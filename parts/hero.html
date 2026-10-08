@@ -44,7 +44,19 @@
           <path d="M760 380V302H774V380ZM788 380V302H802V380ZM772 380V318H790V380Z"/>
           <path d="M760 302v-4h2.5v4zM765 302v-4h2.5v4zM770 302v-4h2.5v4zM788 302v-4h2.5v4zM793 302v-4h2.5v4zM798 302v-4h2.5v4z"/>
           </g></g><use href="#castle-shape" fill="url(#hero-shade)"/>
-          <path d="M700 250v-14" stroke="#7A4E33" stroke-width="1.5"/><path d="M701 236h10l-3 3 3 3h-10z" fill="#F0A04B"/>
+          <path d="M700 250v-21" stroke="#5A4A3C" stroke-width="1.2"/>
+          <!-- Union Jack on the Observatory Tower flagpole (60x30 flag, scaled) -->
+          <g class="hero__flag" transform="translate(700.6 230) scale(.42)">
+            <clipPath id="uj-clip"><path d="M0 0h60v30H0z"/></clipPath>
+            <clipPath id="uj-half"><path d="M30 15h30v15zM30 15V30H0zM30 15H0V0zM30 15V0h30z"/></clipPath>
+            <g clip-path="url(#uj-clip)">
+              <path d="M0 0v30h60V0z" fill="#012169"/>
+              <path d="M0 0l60 30m0-30L0 30" stroke="#fff" stroke-width="6"/>
+              <path d="M0 0l60 30m0-30L0 30" clip-path="url(#uj-half)" stroke="#C8102E" stroke-width="4"/>
+              <path d="M30 0v30M0 15h60" stroke="#fff" stroke-width="10"/>
+              <path d="M30 0v30M0 15h60" stroke="#C8102E" stroke-width="6"/>
+            </g>
+          </g>
         </g>
         <g fill="#9A6440" opacity=".45"><path d="M775 380v-12a6 6 0 0 1 12 0v12z"/><path d="M698 300a2 2 0 0 1 4 0v10h-4zM698 322a2 2 0 0 1 4 0v10h-4z"/></g>
         <!-- LINCOLN CATHEDRAL west front (from Castle Hill): image screen with blind arcading and three Norman recesses, gable with the great west window, twin west towers and the taller central tower behind -->
