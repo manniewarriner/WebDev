@@ -379,3 +379,5 @@ html { scrollbar-color: rgba(23,32,70,.35) transparent; }
   padding: 1.5rem; text-align: center; background: var(--glass); color: var(--navy-900); font-size: .92rem;
 }
 .consent-placeholder[hidden] { display: none; }
+/* keep the "Open in Google Maps" bar usable above the placeholder */
+.consent-placeholder ~ .areas__map-bar { position: relative; z-index: 2; }
