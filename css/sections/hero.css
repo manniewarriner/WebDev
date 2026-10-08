@@ -184,7 +184,8 @@
 @media (max-width: 720px) { .hero .hero-title { font-size: clamp(2.5rem, 11vw, 3.2rem); } }
 
 /* sunlit stone needs a crisp edge against the warm sky */
-.hero__castle, .hero__cathedral { stroke: #A8703F; stroke-width: 1; stroke-linejoin: round; paint-order: stroke; }
+/* Solid masonry: no per-shape outlines (they read as line drawing); one soft edge around each building instead */
+.hero__castle, .hero__cathedral { stroke: none; filter: drop-shadow(0 0 .5px rgba(110,70,40,.75)) drop-shadow(1.5px 1px 1.5px rgba(90,55,30,.25)); }
 .hero__cathedral path, .hero__castle path { vector-effect: non-scaling-stroke; }
 .nav__actions .open-badge { white-space: nowrap; }
 @media (max-width: 1400px) { .nav__actions .open-badge { display: none; } }
