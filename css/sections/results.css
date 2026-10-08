@@ -197,3 +197,18 @@
   font-size: clamp(1.6rem, 3.6vw, 2.75rem); letter-spacing: -.02em; line-height: 1.1; color: var(--glass);
 }
 .landmarks .landmarks__sparkle { font-family: var(--font-ui); font-style: normal; font-size: .42em; color: var(--brass); margin: 0 .25rem; vertical-align: middle; }
+
+/* Figure plate: hairline frame with brass corner ticks around the arch */
+.landmarks__art { position: relative; padding: clamp(1.5rem, 3vw, 2.25rem) clamp(1.25rem, 3vw, 2rem) 1.1rem; border: 1px solid color-mix(in srgb, var(--brass) 28%, transparent); }
+.landmarks__art::before,
+.landmarks__art::after {
+  content: ""; position: absolute; width: 18px; height: 18px; pointer-events: none;
+  border: 1px solid var(--brass);
+}
+.landmarks__art::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.landmarks__art::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* Reduced motion: honour the page-level class as well as the media query */
+.reduced-motion .landmarks__marquee-track,
+.reduced-motion .landmarks__sparkle,
+.reduced-motion .landmarks__glint { animation: none; }
