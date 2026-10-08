@@ -539,6 +539,10 @@
           <pattern id="r-litter" width="200" height="200" patternUnits="userSpaceOnUse">
             <image href="assets/img/tex/leafy_grass.webp" width="200" height="200" preserveAspectRatio="none"/>
           </pattern>
+          <clipPath id="r-panes"><path d="M290 74h420v214H290zM290 316h420v214H290z"/></clipPath>
+          <!-- View through the glass: Bailgate looking to the cathedral.
+               PLACEHOLDER: photo © 2022 Luc V. de Zeeuw, used for preview only. Licence it or replace with the client's own photo before launch. -->
+          <filter id="r-depth"><feGaussianBlur stdDeviation="1.1"/></filter>
           <filter id="r-grime" x="0" y="0" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency=".018 .03" numOctaves="4" seed="8"/>
             <feColorMatrix values="0 0 0 0 .32  0 0 0 0 .29  0 0 0 0 .22  0 0 0 1.6 -.55"/>
@@ -556,16 +560,17 @@
 
       <!-- WINDOWS scene -->
       <div class="results__scene is-active" data-scene="windows">
-        <svg class="results__layer results__after" viewBox="0 0 1000 625" preserveAspectRatio="xMidYMid slice" role="img" aria-label="After: clean window with a white uPVC frame and stone sill">
+        <svg class="results__layer results__after" viewBox="0 0 1000 625" preserveAspectRatio="xMidYMid slice" role="img" aria-label="After: clean window with a clear view of Bailgate and the cathedral towers">
           <rect width="1000" height="625" fill="url(#r-brick)"/>
           <rect width="1000" height="625" fill="url(#r-shade)"/>
           <rect x="268" y="52" width="464" height="500" rx="3" fill="#ECEAE4" filter="url(#r-matte)"/>
           <rect x="268" y="52" width="464" height="500" rx="3" fill="url(#r-bevel-v)"/>
           <g>
-            <rect x="290" y="74" width="420" height="214" fill="url(#r-sky)"/>
-            <rect x="290" y="316" width="420" height="214" fill="url(#r-sky)"/>
+            <g clip-path="url(#r-panes)">
+              <image href="assets/img/photo/bailgate.webp" x="190" y="60" width="620" height="466" preserveAspectRatio="xMidYMid slice" filter="url(#r-depth)"/>
+              <rect x="290" y="74" width="420" height="456" fill="#BFD3E0" opacity=".08"/>
+            </g>
             <path d="M330 288 470 74h60L390 288zM560 530l140-214h10v40L620 530z" fill="#fff" opacity=".12"/>
-            <path d="M290 230c60-18 120-10 170 4s120 18 250-8v62H290z" fill="#5E9C6E" opacity=".35"/>
           </g>
           <g fill="#ECEAE4" filter="url(#r-matte)"><path d="M492 74h16v214h-16zM492 316h16v214h-16zM290 288h420v28H290z"/></g>
           <path d="M290 288h420v28H290z" fill="url(#r-bevel-h)"/>
@@ -584,8 +589,10 @@
           <rect width="1000" height="625" fill="url(#r-shade)"/>
           <rect width="1000" height="625" filter="url(#r-grime)" opacity=".35"/>
           <rect x="268" y="52" width="464" height="500" rx="3" fill="#D6D0C0" filter="url(#r-matte)"/>
-          <rect x="290" y="74" width="420" height="214" fill="url(#r-dull)"/>
-          <rect x="290" y="316" width="420" height="214" fill="url(#r-dull)"/>
+          <g clip-path="url(#r-panes)">
+            <image href="assets/img/photo/bailgate.webp" x="190" y="60" width="620" height="466" preserveAspectRatio="xMidYMid slice" filter="url(#r-depth)"/>
+            <rect x="290" y="74" width="420" height="456" fill="url(#r-dull)" opacity=".82"/>
+          </g>
           <rect x="290" y="74" width="420" height="456" filter="url(#r-grime)"/>
           <rect x="290" y="74" width="420" height="456" filter="url(#r-speck)"/>
           <rect x="268" y="52" width="464" height="526" fill="url(#r-stain)" style="mix-blend-mode:multiply" opacity=".9"/>

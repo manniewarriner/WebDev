@@ -11,6 +11,7 @@ Search the code for `PLACEHOLDER` to find every spot. Summary:
 - [ ] **Response time**: "usually within the hour" in the quote section.
 - [ ] **Clean schedules**: 4/8-weekly frequency options.
 - [ ] **Privacy policy**: have the client review it.
+- [ ] **Bailgate photo licence**: the view through the results window uses a photo © 2022 Luc V. de Zeeuw (preview only). License it or replace with the client's own photo before launch.
 - [ ] **Photos**: real before/after gutter photos (4K camera) could replace the illustrated slider scenes.
 - [ ] **Bishop's Palace**: confirm permission to name it publicly.
 
