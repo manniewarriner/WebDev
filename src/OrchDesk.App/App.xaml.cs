@@ -50,6 +50,8 @@ public partial class App : Application
         };
 
         var services = new AppServices();
+        var themeIndex = Array.FindIndex(e.Args, a => a.Equals("--theme", StringComparison.OrdinalIgnoreCase));
+        if (themeIndex >= 0 && themeIndex + 1 < e.Args.Length) services.Config.Theme = e.Args[themeIndex + 1];
         ApplyTheme(services.Config.Theme);
         var vm = new MainViewModel(services);
         var window = new MainWindow { DataContext = vm };
