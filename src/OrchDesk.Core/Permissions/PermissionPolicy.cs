@@ -39,6 +39,9 @@ public sealed partial class PermissionPolicy
 
     private PermissionDecision EvaluateAttended(string toolName, JsonObject args)
     {
+        if (args["path"] is JsonValue path && path.TryGetValue<string>(out var suppliedPath) &&
+            (Path.IsPathRooted(suppliedPath) || suppliedPath.Split('/', '\\').Contains("..")))
+            return PermissionDecision.Ask("Absolute or parent path requires review; workspace confinement still applies");
         if (AlwaysAllowedTools.Contains(toolName)) return PermissionDecision.Allow();
         return toolName switch
         {
@@ -79,7 +82,7 @@ public sealed partial class PermissionPolicy
     [GeneratedRegex(@"(^|[\s;&|])(rm|del|erase|rmdir|rd|Remove-Item|format|diskpart|shutdown)(\s|$)|git\s+(reset\s+--hard|clean\s+-[a-z]*f|checkout\s+--\s|branch\s+-D|rebase)|--force\b", RegexOptions.IgnoreCase)]
     private static partial Regex Destructive();
 
-    [GeneratedRegex(@"\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bdotnet\s+(add\s+\S+\s+package|tool\s+install|new\s+install)\b|\b(choco|winget|scoop|apt(-get)?|brew)\s+install\b|\bcargo\s+install\b|\bgo\s+install\b|Install-(Package|Module)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bdotnet\s+(add\s+(\S+\s+)?package|tool\s+install|new\s+install)\b|\b(choco|winget|scoop|apt(-get)?|brew)\s+install\b|\bcargo\s+install\b|\bgo\s+install\b|Install-(Package|Module)", RegexOptions.IgnoreCase)]
     private static partial Regex PackageInstall();
 
     [GeneratedRegex(@"\b(curl|wget|Invoke-WebRequest|Invoke-RestMethod|iwr|irm|ssh|scp|ftp|nc|ncat|telnet|git\s+(clone|fetch|pull)|Start-BitsTransfer)\b", RegexOptions.IgnoreCase)]
@@ -88,6 +91,6 @@ public sealed partial class PermissionPolicy
     [GeneratedRegex(@"(^|\s)(\.\.[\\/]|[A-Za-z]:\\|~[\\/]|/etc/|/usr/|%USERPROFILE%|%APPDATA%|\$env:)", RegexOptions.IgnoreCase)]
     private static partial Regex OutsidePath();
 
-    [GeneratedRegex(@"&&|\|\||[;|`>]|\$\(|&\s|\^")]
+    [GeneratedRegex(@"&&|\|\||[;|`>\r\n]|\$\(|&\s|\^")]
     private static partial Regex Chaining();
 }
