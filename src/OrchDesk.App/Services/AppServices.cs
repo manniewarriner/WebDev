@@ -45,7 +45,7 @@ public sealed class AppServices
         var old = Rotator;
         Rotator = new AccountRotator(ProviderFactory.InRotationOrder(Config, Providers), TimeSpan.FromMinutes(Config.LimitCooldownMinutes));
         foreach (var a in Rotator.Accounts)
-            if (old.Find(a.Provider.Id) is { } prev) { a.LastLimitHit = prev.LastLimitHit; a.LastLimitMessage = prev.LastLimitMessage; a.Health = prev.Health; }
+            if (old.Find(a.Provider.Id) is { } prev) { a.LastLimitHit = prev.LastLimitHit; a.LastLimitMessage = prev.LastLimitMessage; a.Health = prev.Health; a.LastOfflineAt = prev.LastOfflineAt; a.LastChecked = prev.LastChecked; }
         Rebuilt?.Invoke();
     }
 
