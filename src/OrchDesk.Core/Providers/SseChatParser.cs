@@ -12,6 +12,25 @@ namespace OrchDesk.Core.Providers;
 /// </summary>
 public static class SseChatParser
 {
+    public static IEnumerable<ChatEvent> ParseCompletion(string json)
+    {
+        var node = JsonNode.Parse(json);
+        if (node?["error"] is { } error)
+        {
+            yield return new ErrorEvent(error["message"]?.ToString() ?? "Provider error");
+            yield break;
+        }
+        var message = node?["choices"]?[0]?["message"];
+        if (message is null) { yield return new ErrorEvent("Missing completion message."); yield break; }
+        if (message["content"] is JsonValue value && value.TryGetValue<string>(out var text) && text.Length > 0)
+            yield return new TextDelta(text);
+        if (message["tool_calls"] is JsonArray calls)
+            foreach (var call in calls.OfType<JsonObject>())
+                yield return new ToolCallRequested(new ToolCall(call["id"]?.ToString() ?? Guid.NewGuid().ToString("N"),
+                    call["function"]?["name"]?.ToString() ?? "", call["function"]?["arguments"]?.ToString() ?? "{}"));
+        yield return new Done();
+    }
+
     public static async IAsyncEnumerable<ChatEvent> ParseAsync(
         IAsyncEnumerable<string> lines, [EnumeratorCancellation] CancellationToken ct = default)
     {
@@ -37,6 +56,9 @@ public static class SseChatParser
             var delta = node?["choices"]?[0]?["delta"];
             if (delta is null) continue;
 
+            // Reasoning is separate from the answer; never mix thinking into tool arguments or transcript.
+            if (delta["reasoning_content"] is JsonValue reasoning && reasoning.TryGetValue<string>(out var thought) && thought.Length > 0)
+                yield return new StatusUpdate("Thinking?");
             if (delta["content"] is JsonValue content && content.TryGetValue<string>(out var text) && text.Length > 0)
                 yield return new TextDelta(text);
 

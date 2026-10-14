@@ -68,7 +68,7 @@ public sealed class AppConfig
             Providers =
             [
                 new() { Id = "local-pc", DisplayName = "Desktop PC (Qwen)", Kind = ProviderKind.OpenAiCompatible, IsLocal = true,
-                        BaseUrl = "http://127.0.0.1:11434/v1", Model = "qwen2.5-coder:14b" },
+                        BaseUrl = "http://127.0.0.1:1234/v1", Model = "qwen/qwen3.5-9b" },
                 new() { Id = "claude-outlook", DisplayName = "Claude (Outlook)", Kind = ProviderKind.ClaudeCli,
                         Executable = "claude", ClaudeConfigDir = Path.Combine(home, ".claude-outlook"), PermissionMode = "acceptEdits" },
                 new() { Id = "claude-gmail", DisplayName = "Claude (Gmail)", Kind = ProviderKind.ClaudeCli,

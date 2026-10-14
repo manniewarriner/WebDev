@@ -68,6 +68,7 @@
             <!-- Header: folder, mode, model -->
             <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,12">
                 <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Open file" Command="{Binding OpenFileCommand}" Margin="4,0" />
                     <Button DockPanel.Dock="Right" Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
                     <ComboBox DockPanel.Dock="Right" Width="250" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}"
                               DisplayMemberPath="Label" ToolTip="Which model answers. Auto follows the fallback order in Models &amp; accounts." Margin="8,0,0,0" />
@@ -81,6 +82,12 @@
                 </DockPanel>
             </Border>
 
+            <Expander Grid.Row="1" Header="File editor" VerticalAlignment="Top" Panel.ZIndex="2" Background="{DynamicResource SurfaceBrush}">
+                <StackPanel Margin="12">
+                    <DockPanel><Button DockPanel.Dock="Right" Content="Save" Command="{Binding SaveFileCommand}" /><TextBlock Text="{Binding EditorPath}" TextTrimming="CharacterEllipsis" /></DockPanel>
+                    <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" Height="260" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource CodeFont}" />
+                </StackPanel>
+            </Expander>
             <!-- Empty state -->
             <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460"
                         Visibility="{Binding Items.Count, Converter={StaticResource ZeroVisible}}">

@@ -165,6 +165,12 @@ public sealed class OpenAiCompatProvider : IModelProvider
                 yield break;
             }
 
+            if (resp.Content.Headers.ContentType?.MediaType == "application/json")
+            {
+                var json = await resp.Content.ReadAsStringAsync(ct);
+                foreach (var ev in SseChatParser.ParseCompletion(json)) yield return ev;
+                yield break;
+            }
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
             await foreach (var ev in SseChatParser.ParseAsync(ReadLines(reader, ct), ct))

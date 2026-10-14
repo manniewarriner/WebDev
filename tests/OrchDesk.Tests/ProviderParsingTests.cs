@@ -38,6 +38,15 @@ public class ProviderParsingTests
     }
 
     [Fact]
+    public void Nonstreamed_completion_separates_reasoning_and_tools()
+    {
+        var events = SseChatParser.ParseCompletion("""{"choices":[{"message":{"reasoning_content":"private thinking","content":"done","tool_calls":[{"id":"a","function":{"name":"read_file","arguments":"{}"}}]}}]}""").ToList();
+        Assert.Equal("done", events.OfType<TextDelta>().Single().Text);
+        Assert.Equal("read_file", events.OfType<ToolCallRequested>().Single().Call.Name);
+        Assert.IsType<Done>(events.Last());
+    }
+
+    [Fact]
     public void Request_body_round_trips_tool_messages()
     {
         var req = new ChatRequest(
@@ -85,6 +94,7 @@ public class ProviderParsingTests
         Assert.True(env.ContainsKey("ANTHROPIC_API_KEY") && env["ANTHROPIC_API_KEY"] is null);
         Assert.True(env.ContainsKey("ANTHROPIC_AUTH_TOKEN") && env["ANTHROPIC_AUTH_TOKEN"] is null);
 
+        Assert.Null(env["ANTHROPIC_BASE_URL"]);
         var args = p.BuildArgs(new ChatRequest([], [], ReadOnly: true), "sess");
         Assert.Equal(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--resume", "sess"], args);
         Assert.DoesNotContain("--bare", args); // --bare would ignore the subscription login

@@ -31,6 +31,28 @@ public sealed partial class ChatViewModel : ObservableObject
     [ObservableProperty] private ChatMode _mode = ChatMode.Chat;
     [ObservableProperty] private string _activeModel = "";
 
+    [ObservableProperty] private string _editorText = "";
+    [ObservableProperty] private string _editorPath = "";
+    [RelayCommand]
+    private void OpenFile()
+    {
+        if (Workspace is null) return;
+        var dialog = new Microsoft.Win32.OpenFileDialog { InitialDirectory = Workspace };
+        if (dialog.ShowDialog() != true) return;
+        try {
+            var path = OrchDesk.Core.Tools.WorkspacePath.Resolve(Workspace, dialog.FileName);
+            var text = File.ReadAllText(path);
+            EditorPath = path; EditorText = text;
+        } catch (Exception ex) { Items.Add(new ErrorItem(ex.Message)); }
+    }
+    [RelayCommand]
+    private void SaveFile()
+    {
+        if (Workspace is null || string.IsNullOrEmpty(EditorPath)) return;
+        try { File.WriteAllText(OrchDesk.Core.Tools.WorkspacePath.Resolve(Workspace, EditorPath), EditorText); }
+        catch (Exception ex) { Items.Add(new ErrorItem(ex.Message)); }
+    }
+
     public string WorkspaceLabel => Workspace is null ? "Choose a project folder" : Workspace;
 
     /// <summary>Raised whenever content is added so the view can keep the list scrolled to the bottom.</summary>
