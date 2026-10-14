@@ -28,9 +28,11 @@ public sealed partial class PermissionPolicy
 
     /// <summary>Overnight mode: there is nobody to ask, so every "Ask" becomes "Deny".</summary>
     public bool Unattended { get; set; }
+    public bool HostManagedCommits { get; set; }
 
     public PermissionDecision Evaluate(string toolName, JsonObject args)
     {
+        if (HostManagedCommits && toolName is "git_commit" or "git_push") return PermissionDecision.Deny("Overnight host controls commits and never pushes");
         var decision = EvaluateAttended(toolName, args);
         return Unattended && decision.Verdict == Verdict.Ask
             ? PermissionDecision.Deny($"{decision.Reason} (unattended mode: not allowed without a person to approve)")
@@ -39,6 +41,9 @@ public sealed partial class PermissionPolicy
 
     private PermissionDecision EvaluateAttended(string toolName, JsonObject args)
     {
+        if (args["path"] is JsonValue path && path.TryGetValue<string>(out var suppliedPath) &&
+            (Path.IsPathRooted(suppliedPath) || suppliedPath.Split('/', '\\').Contains("..")))
+            return PermissionDecision.Ask("Absolute or parent path requires review; workspace confinement still applies");
         if (AlwaysAllowedTools.Contains(toolName)) return PermissionDecision.Allow();
         return toolName switch
         {
@@ -52,6 +57,7 @@ public sealed partial class PermissionPolicy
     public PermissionDecision EvaluateCommand(string command)
     {
         var cmd = command.Trim();
+        if (HostManagedCommits && Regex.IsMatch(cmd, @"\bgit\s+(commit|push|checkout|switch|reset|add)\b", RegexOptions.IgnoreCase)) return PermissionDecision.Deny("Overnight host controls the branch and commits");
         if (cmd.Length == 0) return PermissionDecision.Deny("Empty command");
 
         // Order matters: risky patterns win even if the command also starts like a test command.
@@ -79,15 +85,15 @@ public sealed partial class PermissionPolicy
     [GeneratedRegex(@"(^|[\s;&|])(rm|del|erase|rmdir|rd|Remove-Item|format|diskpart|shutdown)(\s|$)|git\s+(reset\s+--hard|clean\s+-[a-z]*f|checkout\s+--\s|branch\s+-D|rebase)|--force\b", RegexOptions.IgnoreCase)]
     private static partial Regex Destructive();
 
-    [GeneratedRegex(@"\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bdotnet\s+(add\s+\S+\s+package|tool\s+install|new\s+install)\b|\b(choco|winget|scoop|apt(-get)?|brew)\s+install\b|\bcargo\s+install\b|\bgo\s+install\b|Install-(Package|Module)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bdotnet\s+(add\s+(\S+\s+)?package|tool\s+install|new\s+install)\b|\b(choco|winget|scoop|apt(-get)?|brew)\s+install\b|\bcargo\s+install\b|\bgo\s+install\b|Install-(Package|Module)", RegexOptions.IgnoreCase)]
     private static partial Regex PackageInstall();
 
     [GeneratedRegex(@"\b(curl|wget|Invoke-WebRequest|Invoke-RestMethod|iwr|irm|ssh|scp|ftp|nc|ncat|telnet|git\s+(clone|fetch|pull)|Start-BitsTransfer)\b", RegexOptions.IgnoreCase)]
     private static partial Regex Network();
 
-    [GeneratedRegex(@"(^|\s)(\.\.[\\/]|[A-Za-z]:\\|~[\\/]|/etc/|/usr/|%USERPROFILE%|%APPDATA%|\$env:)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(^|[\s""'=])(\.\.(?:[\\/]|[""'\s]|$)|[A-Za-z]:[\\/]|~[\\/]|\\\\|/etc/|/usr/|%[A-Za-z_][A-Za-z0-9_]*%|\$env:)", RegexOptions.IgnoreCase)]
     private static partial Regex OutsidePath();
 
-    [GeneratedRegex(@"&&|\|\||[;|`>]|\$\(|&\s|\^")]
+    [GeneratedRegex(@"&&|\|\||[;|`><&\r\n]|\$\(|\^")]
     private static partial Regex Chaining();
 }

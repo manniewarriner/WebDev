@@ -21,7 +21,10 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
                     headers["CF-Access-Client-Secret"] = cfSecret;
                 }
                 if (c.BaseUrl?.Contains("opencode.ai", StringComparison.OrdinalIgnoreCase) == true)
+                    {
                     headers["x-opencode-session"] = SessionId;
+                    headers["User-Agent"] = "OrchDesk/0.1";
+                }
                 return new OpenAiCompatProvider(c.Id, c.DisplayName,
                     new OpenAiCompatOptions(c.BaseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers),
                     c.IsLocal, http);
@@ -53,5 +56,6 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
 
     /// <summary>Providers in the configured fallback order (unknown/disabled ids are skipped).</summary>
     public static List<IModelProvider> InRotationOrder(AppConfig config, IReadOnlyList<IModelProvider> all) =>
-        config.RotationOrder.Select(id => all.FirstOrDefault(p => p.Id == id)).OfType<IModelProvider>().ToList();
+        config.RotationOrder.Select(id => all.FirstOrDefault(p => p.Id == id)).OfType<IModelProvider>()
+            .Concat(all).DistinctBy(p => p.Id).ToList();
 }

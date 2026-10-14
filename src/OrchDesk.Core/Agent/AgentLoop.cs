@@ -95,7 +95,9 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
 
                 var (output, isError) = identical >= _options.MaxIdenticalCalls
                     ? ($"You have made this exact call {identical} times in a row. Stop repeating it; try a different approach or finish.", true)
-                    : await ExecuteToolAsync(call, ctx, ct);
+                    : readOnly && !toolDefs.Any(t => t.Name == call.Name)
+                        ? ("Not allowed in read-only mode.", true)
+                        : await ExecuteToolAsync(call, ctx, ct);
                 messages.Add(ChatMessage.ToolResult(call.Id, call.Name, output));
                 yield return new ToolCallResult(call.Id, call.Name, output, isError);
             }
@@ -104,7 +106,7 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
         yield return new ErrorEvent($"Stopped after {_options.MaxSteps} steps without finishing. Say 'continue' to keep going.");
     }
 
-    private async Task<(string Output, bool IsError)> ExecuteToolAsync(ToolCall call, ToolContext ctx, CancellationToken ct)
+    public async Task<(string Output, bool IsError)> ExecuteToolAsync(ToolCall call, ToolContext ctx, CancellationToken ct)
     {
         var tool = tools.Get(call.Name);
         if (tool is null) return ($"Unknown tool '{call.Name}'. Available: {string.Join(", ", tools.Definitions.Select(t => t.Name))}", true);

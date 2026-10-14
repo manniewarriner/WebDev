@@ -21,6 +21,8 @@ public sealed partial class ProviderEdit : ObservableObject
     }
 
     public ProviderConfig Original { get; }
+    [ObservableProperty] private string _status = "Not tested";
+    [ObservableProperty] private bool _testing;
     [ObservableProperty] private string _id;
     [ObservableProperty] private string _displayName;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsHttp), nameof(IsClaude), nameof(IsCli))] private ProviderKind _kind;
@@ -81,12 +83,20 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _keepPcAwake;
     [ObservableProperty] private bool _pushBranches;
     [ObservableProperty] private string? _error;
+    [ObservableProperty] private string? _savedMessage;
+    [ObservableProperty] private bool _webFetchEnabled;
+    [ObservableProperty] private bool _shutdownWhenDone;
+    [ObservableProperty] private string _webStatus = "Not tested";
+    [ObservableProperty] private string _meshyStatus = "Not tested";
+    public string? NewMeshyKey { get; set; }
 
     public event Action? Saved;
 
     public SettingsViewModel(AppServices services)
     {
         _services = services;
+        _webFetchEnabled = services.Config.WebFetchEnabled;
+        _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         var c = services.Config;
         Providers = new(c.Providers.Select(p => new ProviderEdit(p)));
         Selected = Providers.FirstOrDefault();
@@ -104,6 +114,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         _keepPcAwake = c.Overnight.KeepPcAwake;
         _pushBranches = c.Overnight.PushBranches;
     }
+
+    private OrchDesk.Core.Integrations.ConnectionTester Tester() => new(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(60) }, _services.Secrets);
+    [RelayCommand]
+    private async Task TestConnectionAsync(ProviderEdit? provider)
+    {
+        if (provider is null || provider.Testing) return;
+        provider.Testing = true; provider.Status = "Testing?";
+        try { var result = await Tester().TestAsync(provider.ToConfig(_services.Secrets)); provider.Status = $"{result.Message} ({result.ElapsedMs} ms)"; }
+        finally { provider.Testing = false; }
+    }
+    [RelayCommand]
+    private async Task TestWebAsync() => WebStatus = (await Tester().TestWebAsync(WebFetchEnabled)).Message;
+    [RelayCommand]
+    private async Task TestMeshyAsync() => MeshyStatus = (await Tester().TestMeshyAsync(string.IsNullOrWhiteSpace(NewMeshyKey) ? _services.Config.MeshyApiKeyProtected : _services.Secrets.Protect(NewMeshyKey))).Message;
 
     [RelayCommand]
     private void AddProvider()
@@ -146,6 +170,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
 
         var c = _services.Config;
+        c.WebFetchEnabled = WebFetchEnabled;
+        c.Overnight.ShutdownWhenDone = ShutdownWhenDone;
+        if (!string.IsNullOrWhiteSpace(NewMeshyKey)) c.MeshyApiKeyProtected = _services.Secrets.Protect(NewMeshyKey);
         c.Providers = Providers.Select(p => p.ToConfig(_services.Secrets)).ToList();
         c.RotationOrder = order;
         c.MaxSteps = Math.Clamp(MaxSteps, 1, 200);
@@ -162,6 +189,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         c.Overnight.PushBranches = PushBranches;
         _services.Save();
         Error = null;
+        SavedMessage = "Settings saved. Providers updated live.";
         Saved?.Invoke();
     }
 }

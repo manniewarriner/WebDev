@@ -31,10 +31,39 @@ public class ProviderParsingTests
     }
 
     [Fact]
+    public async Task Sse_assembles_fragmented_names_and_interleaved_calls()
+    {
+        var events = await SseChatParser.ParseAsync(Lines(
+            """data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"a","function":{"name":"write_","arguments":"{"}},{"index":1,"id":"b","function":{"name":"read_file","arguments":"{}"}}]}}]}""",
+            """data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"file","arguments":"}"}}]}}]}""",
+            "data: [DONE]")).ToListAsync();
+        Assert.Equal(new[] { "write_file", "read_file" }, events.OfType<ToolCallRequested>().Select(e => e.Call.Name));
+        Assert.All(events.OfType<ToolCallRequested>(), e => Assert.Equal("{}", e.Call.ArgumentsJson));
+    }
+
+    [Fact]
+    public async Task Sse_usage_chunk_with_empty_choices_is_accepted()
+    {
+        var events = await SseChatParser.ParseAsync(Lines(
+            """data: {"choices":[],"usage":{"completion_tokens":12}}""",
+            "data: [DONE]")).ToListAsync();
+        Assert.IsType<Done>(Assert.Single(events));
+    }
+
+    [Fact]
     public async Task Sse_error_object_becomes_error_event()
     {
         var events = await SseChatParser.ParseAsync(Lines("""data: {"error":{"message":"model not found"}}""")).ToListAsync();
         Assert.Equal("model not found", Assert.IsType<ErrorEvent>(Assert.Single(events)).Message);
+    }
+
+    [Fact]
+    public void Nonstreamed_completion_separates_reasoning_and_tools()
+    {
+        var events = SseChatParser.ParseCompletion("""{"choices":[{"message":{"reasoning_content":"private thinking","content":"done","tool_calls":[{"id":"a","function":{"name":"read_file","arguments":"{}"}}]}}]}""").ToList();
+        Assert.Equal("done", events.OfType<TextDelta>().Single().Text);
+        Assert.Equal("read_file", events.OfType<ToolCallRequested>().Single().Call.Name);
+        Assert.IsType<Done>(events.Last());
     }
 
     [Fact]
@@ -85,6 +114,7 @@ public class ProviderParsingTests
         Assert.True(env.ContainsKey("ANTHROPIC_API_KEY") && env["ANTHROPIC_API_KEY"] is null);
         Assert.True(env.ContainsKey("ANTHROPIC_AUTH_TOKEN") && env["ANTHROPIC_AUTH_TOKEN"] is null);
 
+        Assert.Null(env["ANTHROPIC_BASE_URL"]);
         var args = p.BuildArgs(new ChatRequest([], [], ReadOnly: true), "sess");
         Assert.Equal(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--resume", "sess"], args);
         Assert.DoesNotContain("--bare", args); // --bare would ignore the subscription login

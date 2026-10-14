@@ -127,15 +127,12 @@ public sealed class OvernightRunner
                 failure = test.Output;
             }
 
-            // Commit whatever was produced so nothing is lost, even when tests fail.
+            // Commit only verified changes; never push overnight runs.
             await Git(task.WorktreePath, ct, "add", "-A");
             var status = await Git(task.WorktreePath, ct, "status", "--porcelain");
-            if (status.Output.Trim().Length > 0)
+            if (task.TestsPassed == true && status.Output.Trim().Length > 0)
                 await Git(task.WorktreePath, ct, "commit", "-m", $"OrchDesk overnight: {task.Title}\n\n{task.Prompt}");
             task.DiffStat = (await Git(task.WorktreePath, ct, "--no-pager", "diff", "--stat", $"{baseSha}..HEAD")).Output.Trim();
-
-            if (_cfg.PushBranches && task.TestsPassed != false && task.DiffStat.Length > 0)
-                await PushAsync(task, baseSha, ct);
 
             task.Status = task.TestsPassed == false ? OvernightStatus.Failed
                 : task.DiffStat.Length == 0 ? OvernightStatus.NeedsAttention

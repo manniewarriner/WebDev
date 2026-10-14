@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\orch-app-icon.ico" />
     <ProjectReference Include="..\OrchDesk.Core\OrchDesk.Core.csproj" />
   </ItemGroup>
 

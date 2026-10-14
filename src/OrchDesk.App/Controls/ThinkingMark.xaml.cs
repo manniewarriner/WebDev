@@ -15,7 +15,12 @@ public partial class ThinkingMark : UserControl
 
     private Storyboard? _storyboard;
 
-    public ThinkingMark() => InitializeComponent();
+    public ThinkingMark()
+    {
+        InitializeComponent();
+        Loaded += (_, _) => Update();
+        Unloaded += (_, _) => { _storyboard?.Stop(this); _storyboard = null; };
+    }
 
     public bool IsThinking
     {
@@ -45,6 +50,11 @@ public partial class ThinkingMark : UserControl
         var i = 0;
         foreach (var dot in new[] { Dot1, Dot2, Dot3 })
         {
+            dot.RenderTransform = new System.Windows.Media.TranslateTransform();
+            var bounce = new DoubleAnimation(0, -3, TimeSpan.FromSeconds(0.4)) { AutoReverse = true, BeginTime = TimeSpan.FromMilliseconds(180 * i), RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } };
+            Storyboard.SetTarget(bounce, dot);
+            Storyboard.SetTargetProperty(bounce, new PropertyPath("RenderTransform.Y"));
+            sb.Children.Add(bounce);
             var a = new DoubleAnimationUsingKeyFrames { BeginTime = TimeSpan.FromMilliseconds(180 * i++), Duration = TimeSpan.FromSeconds(1.2) };
             a.KeyFrames.Add(new EasingDoubleKeyFrame(0.15, KeyTime.FromTimeSpan(TimeSpan.Zero)));
             a.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(300)), new SineEase()));

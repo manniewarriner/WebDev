@@ -59,7 +59,9 @@ public sealed class OpenAiCompatProvider : IModelProvider
             using var req = new HttpRequestMessage(HttpMethod.Get, Url("/models"));
             AddHeaders(req);
             using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
-            return resp.IsSuccessStatusCode ? ProviderHealth.Online : ProviderHealth.Offline;
+            // Access login pages can return HTTP 200; they are not a working model endpoint.
+            return resp.IsSuccessStatusCode && resp.Content.Headers.ContentType?.MediaType != "text/html"
+                ? ProviderHealth.Online : ProviderHealth.Offline;
         }
         catch (Exception) when (!ct.IsCancellationRequested)
         {
@@ -165,6 +167,12 @@ public sealed class OpenAiCompatProvider : IModelProvider
                 yield break;
             }
 
+            if (resp.Content.Headers.ContentType?.MediaType == "application/json")
+            {
+                var json = await resp.Content.ReadAsStringAsync(ct);
+                foreach (var ev in SseChatParser.ParseCompletion(json)) yield return ev;
+                yield break;
+            }
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
             await foreach (var ev in SseChatParser.ParseAsync(ReadLines(reader, ct), ct))

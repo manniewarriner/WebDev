@@ -58,12 +58,17 @@ public sealed class ToolRegistry
     public ITool? Get(string name) => _tools.GetValueOrDefault(name);
     public IReadOnlyList<ToolDef> Definitions => _tools.Values.Select(t => new ToolDef(t.Name, t.Description, t.Parameters)).ToList();
 
-    public static ToolRegistry CreateDefault() => new ToolRegistry()
+    public static ToolRegistry CreateDefault(bool webFetchEnabled = true)
+    {
+        var registry = new ToolRegistry()
         .Add(new ListFilesTool()).Add(new ReadFileTool()).Add(new SearchTool())
         .Add(new EditFileTool()).Add(new WriteFileTool()).Add(new DeleteFileTool())
         .Add(new RunCommandTool())
         .Add(new GitTool("git_status", "Show git status (short format) of the project.", ["status", "--short", "--branch"]))
         .Add(new GitDiffTool()).Add(new GitCommitTool())
         .Add(new GitTool("git_push", "Push the current branch to its remote. Always requires user approval.", ["push", "-u", "origin", "HEAD"]))
-        .Add(new WebFetchTool());
+        ;
+        if (webFetchEnabled) registry.Add(new WebFetchTool());
+        return registry;
+    }
 }

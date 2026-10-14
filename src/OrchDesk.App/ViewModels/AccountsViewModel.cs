@@ -78,12 +78,16 @@ public sealed partial class AccountsViewModel : ObservableObject
         _ = CheckNowAsync();
     }
 
+    private AccountRotator? _subscribed;
+
     private void Reload()
     {
         Rows.Clear();
         var i = 1;
         foreach (var a in _services.Rotator.Accounts) Rows.Add(new AccountRow(a, _services.Rotator, i++));
-        _services.Rotator.Changed += RefreshAll;
+        if (_subscribed is not null) _subscribed.Changed -= RefreshAll;
+        _subscribed = _services.Rotator;
+        _subscribed.Changed += RefreshAll;
         RefreshAll();
     }
 
