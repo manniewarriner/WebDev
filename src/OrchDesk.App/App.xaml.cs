@@ -9,7 +9,38 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        var sdkFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
+        if (System.IO.File.Exists(System.IO.Path.Combine(sdkFolder, "dotnet.exe"))) Environment.SetEnvironmentVariable("PATH", sdkFolder + System.IO.Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
 
+
+        if (e.Args.Contains("--overnight-goal", StringComparer.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            string? Arg(string name) { var i = Array.FindIndex(e.Args, a => a.Equals(name, StringComparison.OrdinalIgnoreCase)); return i >= 0 && i + 1 < e.Args.Length && !e.Args[i + 1].StartsWith("--") ? e.Args[i + 1] : null; }
+            try {
+                var goal = Arg("--overnight-goal") ?? throw new ArgumentException("Goal required");
+                var workspace = System.IO.Path.GetFullPath(Arg("--workspace") ?? throw new ArgumentException("Workspace required"));
+                if (!System.IO.Directory.Exists(workspace)) throw new ArgumentException("Workspace missing");
+                var until = TimeOnly.ParseExact(Arg("--until") ?? "08:00", "HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+                var deadline = DateTime.Today.Add(until.ToTimeSpan()); if (deadline <= DateTime.Now) deadline = deadline.AddDays(1);
+                var store = new OrchDesk.Core.Config.ConfigStore(); var config = store.Load();
+                using var http = new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+                var providers = new OrchDesk.Core.Config.ProviderFactory(new OrchDesk.Core.Config.DpapiSecretProtector(), http).CreateAll(config);
+                var run = new OrchDesk.Core.Overnight.OvernightRun {
+                    Goal = goal, Workspace = workspace, Deadline = new DateTimeOffset(deadline),
+                    ManagerId = Arg("--manager") ?? config.Supervisor.PlannerProviderId,
+                    WorkerIds = (Arg("--workers") ?? config.Supervisor.WorkerProviderId).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList(),
+                    MaxRounds = Math.Clamp(int.Parse(Arg("--max-rounds") ?? config.Supervisor.MaxRounds.ToString()), 1, 100),
+                    MaxSteps = config.MaxSteps, TestCommand = config.Supervisor.TestCommand,
+                    ShutdownWhenDone = e.Args.Contains("--shutdown-when-done", StringComparer.OrdinalIgnoreCase)
+                };
+                var policy = new OrchDesk.Core.Permissions.PermissionPolicy(); policy.ExtraAllowedCommandPrefixes.AddRange(config.ExtraAllowedCommands);
+                var runner = new OrchDesk.Core.Overnight.OvernightRoundRunner(System.IO.Path.Combine(store.Directory, "runs"), OrchDesk.Core.Tools.ToolRegistry.CreateDefault(config.WebFetchEnabled), policy);
+                await runner.RunAsync(run, providers, CancellationToken.None);
+                Shutdown(run.Status == "Completed" ? 0 : 1);
+            } catch { Shutdown(2); }
+            return;
+        }
 
         if (e.Args.Contains("--smoketest", StringComparer.OrdinalIgnoreCase))
         {

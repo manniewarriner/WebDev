@@ -150,25 +150,26 @@ public sealed partial class ChatViewModel : ObservableObject
         var run = existing ?? new OrchDesk.Core.Overnight.OvernightRun {
             Goal = goal, Workspace = Workspace!, ManagerId = manager.Id,
             TestCommand = _services.Config.Supervisor.TestCommand, MaxSteps = _services.Config.MaxSteps,
+            WorkerIds = [_services.Config.Supervisor.WorkerProviderId], MaxRounds = _services.Config.Supervisor.MaxRounds, ShutdownWhenDone = _services.Config.Overnight.ShutdownWhenDone,
             Deadline = DateTimeOffset.UtcNow.AddMinutes(_services.Config.Overnight.MaxMinutesPerTask)
         };
-        var skill = new OrchDesk.Core.Overnight.OvernightSkill(RunsDirectory, _services.Tools, _services.CreatePolicy());
+        var skill = new OrchDesk.Core.Overnight.OvernightRoundRunner(RunsDirectory, _services.Tools, _services.CreatePolicy());
         skill.Progress += Render;
         Items.Add(new StatusItem("Overnight run ? manager " + manager.DisplayName));
-        var summary = await skill.RunAsync(run, manager, ct);
+        var summary = await skill.RunAsync(run, _services.Providers, ct);
         var item = new AssistantItem(manager.DisplayName); item.Append(summary); Items.Add(item);
     }
 
     public async Task ResumeOvernightAsync()
     {
         if (!Directory.Exists(RunsDirectory)) return;
-        foreach (var path in Directory.GetFiles(RunsDirectory, "*.json"))
+        foreach (var path in Directory.GetFiles(RunsDirectory, "checkpoint.json", SearchOption.AllDirectories))
         {
             try {
                 var run = System.Text.Json.JsonSerializer.Deserialize<OrchDesk.Core.Overnight.OvernightRun>(File.ReadAllText(path));
                 if (run is null) continue;
                 if (run.Status != "Running") {
-                    var report = Path.ChangeExtension(path, ".md");
+                    var report = Path.Combine(Path.GetDirectoryName(path)!, "morning-summary.md");
                     if (File.Exists(report)) Items.Add(new StatusItem(File.ReadAllText(report)));
                     continue;
                 }

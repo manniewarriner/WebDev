@@ -14,6 +14,10 @@ public sealed class OvernightRun
     public string Goal { get; set; } = "";
     public string Workspace { get; set; } = "";
     public string ManagerId { get; set; } = "";
+    public List<string> WorkerIds { get; set; } = [];
+    public int MaxRounds { get; set; } = 4;
+    public int Round { get; set; }
+    public bool ShutdownWhenDone { get; set; }
     public string TestCommand { get; set; } = "dotnet test";
     public DateTimeOffset Deadline { get; set; } = DateTimeOffset.UtcNow.AddHours(8);
     public int MaxSteps { get; set; } = 40;

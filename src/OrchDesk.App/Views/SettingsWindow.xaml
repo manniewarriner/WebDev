@@ -115,6 +115,8 @@
                     <CheckBox Content="Shutdown PC when done (120 second delay)" IsChecked="{Binding ShutdownWhenDone}" Margin="0,12" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Test command" />
                     <TextBox Text="{Binding TestCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Worker model ID" /><TextBox Text="{Binding WorkerId}" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Maximum rounds" /><TextBox Text="{Binding MaxRounds}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Cost router tiers, cheapest first (model IDs)" />
                     <TextBox Text="{Binding CostTiers, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                 </StackPanel>
