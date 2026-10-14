@@ -88,9 +88,9 @@ public sealed partial class PermissionPolicy
     [GeneratedRegex(@"\b(curl|wget|Invoke-WebRequest|Invoke-RestMethod|iwr|irm|ssh|scp|ftp|nc|ncat|telnet|git\s+(clone|fetch|pull)|Start-BitsTransfer)\b", RegexOptions.IgnoreCase)]
     private static partial Regex Network();
 
-    [GeneratedRegex(@"(^|\s)(\.\.[\\/]|[A-Za-z]:\\|~[\\/]|/etc/|/usr/|%USERPROFILE%|%APPDATA%|\$env:)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(^|[\s""'=])(\.\.(?:[\\/]|[""'\s]|$)|[A-Za-z]:[\\/]|~[\\/]|\\\\|/etc/|/usr/|%[A-Za-z_][A-Za-z0-9_]*%|\$env:)", RegexOptions.IgnoreCase)]
     private static partial Regex OutsidePath();
 
-    [GeneratedRegex(@"&&|\|\||[;|`>\r\n]|\$\(|&\s|\^")]
+    [GeneratedRegex(@"&&|\|\||[;|`><&\r\n]|\$\(|\^")]
     private static partial Regex Chaining();
 }

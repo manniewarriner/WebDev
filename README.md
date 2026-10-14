@@ -89,3 +89,9 @@ The full report is in `docs/research/`. The main suggestions are:
 - add a shadow-git checkpoint before each run so it can be undone;
 - drive OpenCode through `opencode serve` and Codex through `codex app-server` to get richer events;
 - optionally add MCP tools via the official C# SDK.
+
+## Headless verification
+
+Run `OrchDesk.exe --selftest <folder> [--provider local-pc]`. No window is opened. The default checks LM Studio at `http://127.0.0.1:1234/v1` with `qwen/qwen3.5-9b`; other provider IDs use enabled OpenAI-compatible settings. Each check writes pass/fail and a fixed detail to `<folder>\selftest.json`. Exit codes: 0 all passed, 1 a check failed, 2 invalid setup. Provider responses and secrets are never included in the report.
+
+The checks cover a real model reply, model-driven create/edit tools in a unique subfolder, file read/edit/save, delete approval, account health and simulated rotation, a real supervisor verification command with fake planner/worker, and a live GET of example.com. Existing hello.txt is preserved. `web_fetch` reads at most 200,000 bytes, refuses private DNS/IP addresses and redirects, and fences returned data as untrusted.
