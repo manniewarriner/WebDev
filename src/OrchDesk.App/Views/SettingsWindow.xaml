@@ -11,7 +11,7 @@
                     <Button Content="Cancel" IsCancel="True" Style="{StaticResource GhostButton}" Margin="0,0,8,0" />
                     <Button Content="Save settings" Command="{Binding SaveCommand}" Style="{StaticResource AccentButton}" IsDefault="True" />
                 </StackPanel>
-                <TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <StackPanel><TextBlock Text="{Binding SavedMessage}" Foreground="{DynamicResource TextBrush}" /><TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>
             </DockPanel>
         </Border>
 

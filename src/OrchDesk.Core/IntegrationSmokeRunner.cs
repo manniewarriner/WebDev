@@ -26,16 +26,17 @@ public static class IntegrationSmokeRunner
                 var workspace = Path.Combine(directory, c.Id.Replace('/', '_').Replace('\\', '_') + "-" + Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(workspace);
                 var provider = factory.Create(c)!;
-                var loop = new AgentLoop(ToolRegistry.CreateDefault(false), new PermissionGate(new PermissionPolicy(), null), new AgentLoopOptions { MaxSteps = 6 });
-                bool failed = false, text = false, tool = false;
-                var messages = new List<ChatMessage> { ChatMessage.System(AgentLoop.DefaultSystemPrompt), ChatMessage.User("Use your file tool to create smoke.txt containing exactly ORCHDESK_OK, then read it back using your file tool and report its contents. Do not run commands.") };
+                var loop = new AgentLoop(new ToolRegistry().Add(new WriteFileTool()).Add(new ReadFileTool()), new PermissionGate(new PermissionPolicy(), null), new AgentLoopOptions { MaxSteps = 6 });
+                bool failed = false, text = false, wrote = false, read = false;
+                var messages = new List<ChatMessage> { ChatMessage.System("You are a connection smoke test. Use the requested file tools, then report the file contents. Do not run commands."), ChatMessage.User("Use your file tool to create smoke.txt containing exactly ORCHDESK_OK, then read it back using your file tool and report its contents. Do not run commands.") };
                 await foreach (var ev in loop.RunAsync(provider, messages, new ToolContext(workspace), timeout.Token)) {
                     failed |= ev is ErrorEvent or ProviderUnavailable or UsageLimitHit;
                     text |= ev is TextDelta { Text.Length: > 0 };
-                    tool |= ev is ToolCallResult { IsError: false };
+                    wrote |= ev is ToolCallResult { Name: "write_file", IsError: false };
+                    read |= ev is ToolCallResult { Name: "read_file", IsError: false };
                 }
                 var file = Path.Combine(workspace, "smoke.txt");
-                var pass = !failed && text && (tool || provider.IsAgentic) && File.Exists(file) && (await File.ReadAllTextAsync(file, timeout.Token)).Trim() == "ORCHDESK_OK";
+                var pass = !failed && text && ((wrote && read) || provider.IsAgentic) && File.Exists(file) && (await File.ReadAllTextAsync(file, timeout.Token)).Trim() == "ORCHDESK_OK";
                 results.Add(new(c.Id, pass ? "pass" : "fail", pass ? "Connection, chat and file tool round trip passed" : "Chat/tool round trip failed"));
             } catch (Exception) { results.Add(new(c.Id, "fail", "Provider failed or timed out")); }
             await File.WriteAllTextAsync(Path.Combine(directory, "smoketest.json"), JsonSerializer.Serialize(results, ConfigStore.Json), CancellationToken.None);

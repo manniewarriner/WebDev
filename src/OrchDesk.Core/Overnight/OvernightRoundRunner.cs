@@ -30,7 +30,11 @@ public sealed class OvernightRoundRunner(string directory, ToolRegistry tools, P
             var branch = await Git(run.Workspace, deadline.Token, "symbolic-ref", "--short", "HEAD");
             var clean = await Git(run.Workspace, deadline.Token, "status", "--porcelain");
             if (branch.ExitCode != 0 || clean.ExitCode != 0 || (run.Round == 0 && !string.IsNullOrWhiteSpace(clean.Output))) throw new InvalidOperationException("Overnight requires a clean working tree on a branch; checkpoint retained.");
-            var originalBranch = branch.Output.Trim();
+            run.Branch ??= branch.Output.Trim();
+            var originalBranch = run.Branch;
+            if (branch.Output.Trim() != originalBranch) throw new InvalidOperationException("Branch changed since checkpoint; resume refused");
+            if (run.InFlight is not null) throw new InvalidOperationException("Interrupted tool action requires review before resuming");
+            Save();
             var gate = new PermissionGate(policy, (request, _) => { run.Approvals.Add(request); Save(); return Task.FromResult(ApprovalAnswer.Deny); });
             policy.HostManagedCommits = true;
             var loop = new AgentLoop(tools, gate, new AgentLoopOptions { MaxSteps = run.MaxSteps });
@@ -48,6 +52,8 @@ public sealed class OvernightRoundRunner(string directory, ToolRegistry tools, P
                     Emit(new StatusUpdate("Worker " + worker.Id));
                     var text = new StringBuilder();
                     await foreach (var ev in loop.RunAsync(worker, [ChatMessage.System(AgentLoop.DefaultSystemPrompt + " Never commit, switch branches or push. Work only on this round's instructions. Do not touch CRM code or Claude profile files."), ChatMessage.User(run.Goal + "\nRound plan:\n" + plan)], new ToolContext(run.Workspace), deadline.Token)) {
+                        if (ev is ToolCallRequested call) { run.InFlight = call.Call; Save(); }
+                        if (ev is ToolCallResult) { run.InFlight = null; Save(); }
                         Emit(ev); if (ev is TextDelta d) text.Append(d.Text);
                         if (ev is ErrorEvent or ProviderUnavailable or UsageLimitHit) throw new InvalidOperationException("Worker unavailable");
                     }
@@ -76,7 +82,17 @@ public sealed class OvernightRoundRunner(string directory, ToolRegistry tools, P
                     if (commit.ExitCode != 0) throw new InvalidOperationException("Commit failed");
                     Emit(new StatusUpdate("Green round committed to " + originalBranch));
                 } else if (diff.ExitCode != 0) throw new InvalidOperationException("Diff failed");
-                run.Status = run.Approvals.Count == 0 ? "Completed" : "Needs morning approval"; Save(); break;
+                Emit(new StatusUpdate("Manager reviewing goal completion"));
+                var review = new StringBuilder();
+                await foreach (var ev in loop.RunAsync(manager, [ChatMessage.System("Inspect the workspace against the goal using read tools. Reply GOAL_COMPLETE only if the entire goal is implemented. Otherwise explain remaining work."), ChatMessage.User(run.Goal + "\nWorker summary:\n" + run.Summary)], new ToolContext(run.Workspace), deadline.Token, readOnly: true)) {
+                    Emit(ev); if (ev is TextDelta delta) review.Append(delta.Text);
+                    if (ev is ErrorEvent or UsageLimitHit or ProviderUnavailable) throw new InvalidOperationException("Manager review unavailable");
+                }
+                run.Summary += "\nManager review: " + review;
+                if (review.ToString().Trim().StartsWith("GOAL_COMPLETE", StringComparison.Ordinal)) {
+                    run.Status = run.Approvals.Count == 0 ? "Completed" : "Needs morning approval"; Save(); break;
+                }
+                Save();
             }
             if (run.Status == "Running") run.Status = "Round budget reached";
         } catch (OperationCanceledException) { run.Status = ct.IsCancellationRequested ? "Paused" : "Deadline reached"; }

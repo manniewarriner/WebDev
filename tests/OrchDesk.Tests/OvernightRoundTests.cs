@@ -20,7 +20,7 @@ public class OvernightRoundTests
         await Git(repo.Path, "init", "-b", "work"); await Git(repo.Path, "config", "user.email", "test@example.com"); await Git(repo.Path, "config", "user.name", "Test");
         repo.File("initial.txt", "initial"); await Git(repo.Path, "add", "-A"); await Git(repo.Path, "commit", "-m", "initial");
         var before = (await Git(repo.Path, "rev-parse", "HEAD")).Output;
-        var manager = new FakeProvider("manager", _ => FakeProvider.Say("Write a result file"));
+        var manager = new FakeProvider("manager", _ => FakeProvider.Say("Write a result file"), _ => FakeProvider.Say("GOAL_COMPLETE"));
         var worker = new FakeProvider("worker", _ => FakeProvider.Call("write_file", "{\"path\":\"result.txt\",\"content\":\"done\"}"), _ => FakeProvider.Say("Done"));
         var verify = new Verification(green);
         var runner = new OvernightRoundRunner(runs.Path, ToolRegistry.CreateDefault(false).Add(verify), new PermissionPolicy());

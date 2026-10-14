@@ -16,6 +16,7 @@ public sealed class OvernightRun
     public string ManagerId { get; set; } = "";
     public List<string> WorkerIds { get; set; } = [];
     public int MaxRounds { get; set; } = 4;
+    public string? Branch { get; set; }
     public int Round { get; set; }
     public bool ShutdownWhenDone { get; set; }
     public string TestCommand { get; set; } = "dotnet test";

@@ -21,7 +21,10 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
                     headers["CF-Access-Client-Secret"] = cfSecret;
                 }
                 if (c.BaseUrl?.Contains("opencode.ai", StringComparison.OrdinalIgnoreCase) == true)
+                    {
                     headers["x-opencode-session"] = SessionId;
+                    headers["User-Agent"] = "OrchDesk/0.1";
+                }
                 return new OpenAiCompatProvider(c.Id, c.DisplayName,
                     new OpenAiCompatOptions(c.BaseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers),
                     c.IsLocal, http);

@@ -30,6 +30,7 @@ public sealed partial class ChatViewModel : ObservableObject
     [ObservableProperty] private ProviderOption? _selectedProvider;
     [ObservableProperty] private ChatMode _mode = ChatMode.Chat;
     [ObservableProperty] private string _activeModel = "";
+    [ObservableProperty] private bool _shutdownWhenDone;
 
     [ObservableProperty] private string _editorText = "";
     [ObservableProperty] private string _editorPath = "";
@@ -61,6 +62,7 @@ public sealed partial class ChatViewModel : ObservableObject
     public ChatViewModel(AppServices services)
     {
         _services = services;
+        _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         _services.Rebuilt += ReloadProviders;
         ReloadProviders();
         if (services.Config.LastWorkspace is { } ws && Directory.Exists(ws)) Workspace = ws;
@@ -150,7 +152,7 @@ public sealed partial class ChatViewModel : ObservableObject
         var run = existing ?? new OrchDesk.Core.Overnight.OvernightRun {
             Goal = goal, Workspace = Workspace!, ManagerId = manager.Id,
             TestCommand = _services.Config.Supervisor.TestCommand, MaxSteps = _services.Config.MaxSteps,
-            WorkerIds = [_services.Config.Supervisor.WorkerProviderId], MaxRounds = _services.Config.Supervisor.MaxRounds, ShutdownWhenDone = _services.Config.Overnight.ShutdownWhenDone,
+            WorkerIds = [_services.Config.Supervisor.WorkerProviderId], MaxRounds = _services.Config.Supervisor.MaxRounds, ShutdownWhenDone = ShutdownWhenDone,
             Deadline = DateTimeOffset.UtcNow.AddMinutes(_services.Config.Overnight.MaxMinutesPerTask)
         };
         var skill = new OrchDesk.Core.Overnight.OvernightRoundRunner(RunsDirectory, _services.Tools, _services.CreatePolicy());

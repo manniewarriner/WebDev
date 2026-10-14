@@ -72,7 +72,7 @@ public sealed class AppConfig
             [
                 new() { Id = "local-pc", DisplayName = "Desktop PC (Qwen)", Kind = ProviderKind.OpenAiCompatible, IsLocal = true,
                         BaseUrl = "http://127.0.0.1:1234/v1", Model = "qwen/qwen3.5-9b" },
-                new() { Id = "local-gemma", DisplayName = "LM Studio (Gemma)", Kind = ProviderKind.OpenAiCompatible, IsLocal = true, BaseUrl = "http://127.0.0.1:1234/v1", Model = "google/gemma-4-12b-qat" },
+                new() { Id = "local-pc-gemma", DisplayName = "LM Studio (Gemma)", Kind = ProviderKind.OpenAiCompatible, IsLocal = true, BaseUrl = "http://127.0.0.1:1234/v1", Model = "google/gemma-4-12b-qat" },
                 new() { Id = "remote-pc", DisplayName = "Remote PC (orch-relay)", Kind = ProviderKind.OpenAiCompatible, BaseUrl = "", Model = "qwen/qwen3.5-9b", Enabled = false },
                 new() { Id = "ollama", DisplayName = "Ollama local", Kind = ProviderKind.OpenAiCompatible, IsLocal = true, BaseUrl = "http://127.0.0.1:11434/v1", Model = "", Enabled = false },
                 new() { Id = "claude-outlook", DisplayName = "Claude (Outlook)", Kind = ProviderKind.ClaudeCli,
@@ -80,7 +80,7 @@ public sealed class AppConfig
                 new() { Id = "claude-gmail", DisplayName = "Claude (Gmail)", Kind = ProviderKind.ClaudeCli,
                         Executable = "claude", ClaudeConfigDir = Path.Combine(home, ".claude-gmail"), PermissionMode = "acceptEdits" },
                 new() { Id = "opencode-go", DisplayName = "OpenCode Go", Kind = ProviderKind.OpenAiCompatible,
-                        BaseUrl = "https://opencode.ai/zen/go/v1", Model = "glm-5.2" },
+                        BaseUrl = "https://opencode.ai/inference/go/v1", Model = "glm-5.2" },
                 new() { Id = "opencode-cli", DisplayName = "OpenCode CLI", Kind = ProviderKind.OpenCodeCli, Executable = "opencode", Enabled = false },
                 new() { Id = "codex", DisplayName = "Codex CLI", Kind = ProviderKind.CodexCli, Executable = "codex", Enabled = false },
             ],
@@ -120,7 +120,15 @@ public sealed class ConfigStore(string? directory = null) : IDisposable
     public AppConfig Load()
     {
         if (!File.Exists(FilePath)) return AppConfig.CreateDefault();
-        try { return JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Json) ?? AppConfig.CreateDefault(); }
+        try {
+            var config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Json) ?? AppConfig.CreateDefault();
+            // Add newly supported cards to existing installations without overwriting owner settings.
+            foreach (var provider in AppConfig.CreateDefault().Providers)
+                if (!config.Providers.Any(p => p.Id == provider.Id)) config.Providers.Add(provider);
+            foreach (var provider in config.Providers)
+                if (provider.Id == "opencode-go" && provider.BaseUrl?.TrimEnd('/') == "https://opencode.ai/zen/go/v1") provider.BaseUrl = "https://opencode.ai/inference/go/v1";
+            return config;
+        }
         catch (JsonException)
         {
             File.Copy(FilePath, FilePath + ".broken", overwrite: true); // keep the bad file for inspection

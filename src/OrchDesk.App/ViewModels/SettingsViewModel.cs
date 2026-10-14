@@ -83,6 +83,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _keepPcAwake;
     [ObservableProperty] private bool _pushBranches;
     [ObservableProperty] private string? _error;
+    [ObservableProperty] private string? _savedMessage;
     [ObservableProperty] private bool _webFetchEnabled;
     [ObservableProperty] private bool _shutdownWhenDone;
     [ObservableProperty] private string _webStatus = "Not tested";
@@ -188,6 +189,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         c.Overnight.PushBranches = PushBranches;
         _services.Save();
         Error = null;
+        SavedMessage = "Settings saved. Providers updated live.";
         Saved?.Invoke();
     }
 }
