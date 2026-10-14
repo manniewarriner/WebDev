@@ -131,7 +131,11 @@ public sealed class CostRouter(AgentLoop loop)
             }
             if (skip) continue;
 
-            var test = await ProcessRunner.RunAsync(ProcessRunner.Shell(testCommand, ctx.WorkspaceRoot), TestTimeout, ct);
+            var execution = await loop.ExecuteToolAsync(new ToolCall($"test-{tier.Id}", "run_command",
+                System.Text.Json.JsonSerializer.Serialize(new { command = testCommand })),
+                new ToolContext(workspace) { DefaultCommandTimeout = TestTimeout }, ct);
+            if (execution.IsError) { yield return new ErrorEvent(execution.Output); yield break; }
+            var test = new CommandResult(execution.Output.StartsWith("Exit code: 0\n", StringComparison.Ordinal) ? 0 : 1, execution.Output, false);
             yield return new ToolCallResult($"test-{tier.Id}", "tests", ProcessRunner.Format(test), test.ExitCode != 0);
             if (test.ExitCode == 0)
             {

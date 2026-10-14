@@ -28,7 +28,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
     public Task<ProviderHealth> CheckHealthAsync(CancellationToken ct)
     {
         if (CliRunner.FindOnPath(options.Executable) is null) return Task.FromResult(ProviderHealth.NotConfigured);
-        if (!Directory.Exists(options.ConfigDir)) return Task.FromResult(ProviderHealth.NotConfigured);
+        if (string.IsNullOrWhiteSpace(options.ConfigDir)) return Task.FromResult(ProviderHealth.NotConfigured);
         return Task.FromResult(ProviderHealth.Online);
     }
 

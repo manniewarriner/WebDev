@@ -20,7 +20,7 @@ public static class SseChatParser
             yield return new ErrorEvent(error["message"]?.ToString() ?? "Provider error");
             yield break;
         }
-        var message = node?["choices"]?[0]?["message"];
+        var message = (node?["choices"] as JsonArray)?.FirstOrDefault()?["message"];
         if (message is null) { yield return new ErrorEvent("Missing completion message."); yield break; }
         if (message["content"] is JsonValue value && value.TryGetValue<string>(out var text) && text.Length > 0)
             yield return new TextDelta(text);
@@ -34,6 +34,7 @@ public static class SseChatParser
     public static async IAsyncEnumerable<ChatEvent> ParseAsync(
         IAsyncEnumerable<string> lines, [EnumeratorCancellation] CancellationToken ct = default)
     {
+        var thinkingShown = false;
         var calls = new SortedDictionary<int, (string Id, string Name, StringBuilder Args)>();
 
         await foreach (var raw in lines.WithCancellation(ct))
@@ -53,12 +54,15 @@ public static class SseChatParser
                 yield break;
             }
 
-            var delta = node?["choices"]?[0]?["delta"];
+            var delta = (node?["choices"] as JsonArray)?.FirstOrDefault()?["delta"];
             if (delta is null) continue;
 
             // Reasoning is separate from the answer; never mix thinking into tool arguments or transcript.
-            if (delta["reasoning_content"] is JsonValue reasoning && reasoning.TryGetValue<string>(out var thought) && thought.Length > 0)
-                yield return new StatusUpdate("Thinking?");
+            if (delta["reasoning_content"] is JsonValue reasoning && reasoning.TryGetValue<string>(out var thought) && thought.Length > 0 && !thinkingShown)
+            {
+                thinkingShown = true;
+                yield return new StatusUpdate("Thinking...");
+            }
             if (delta["content"] is JsonValue content && content.TryGetValue<string>(out var text) && text.Length > 0)
                 yield return new TextDelta(text);
 
@@ -74,7 +78,7 @@ public static class SseChatParser
                     var name = tc["function"]?["name"]?.GetValue<string>();
                     var args = tc["function"]?["arguments"]?.GetValue<string>();
                     if (!string.IsNullOrEmpty(id)) acc.Id = id;
-                    if (!string.IsNullOrEmpty(name)) acc.Name = name;
+                    if (!string.IsNullOrEmpty(name)) acc.Name += name;
                     if (args is not null) acc.Args.Append(args);
                     calls[index] = acc;
                 }

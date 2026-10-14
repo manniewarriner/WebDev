@@ -108,6 +108,9 @@ public sealed class SearchTool : ITool
         {
             ct.ThrowIfCancellationRequested();
             if (globRx is not null && !globRx.IsMatch(Path.GetFileName(file))) continue;
+            // Search must not follow file symlinks into an outside folder.
+            try { WorkspacePath.Resolve(ctx.WorkspaceRoot, file); }
+            catch (PathOutsideWorkspaceException) { continue; }
             var info = new FileInfo(file);
             if (info.Length > 1_000_000 || FileWalk.LooksBinary(file)) continue;
             var n = 0;

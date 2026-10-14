@@ -29,8 +29,19 @@ public static class CliRunner
             StandardOutputEncoding = System.Text.Encoding.UTF8,
             StandardErrorEncoding = System.Text.Encoding.UTF8,
         };
+        var arguments = args.ToList();
+        if (OperatingSystem.IsWindows() && Path.GetExtension(fileName).ToLowerInvariant() is ".cmd" or ".bat")
+        {
+            // npm CLIs use batch shims. Prompts stay on stdin and are never parsed by cmd.
+            var values = new[] { fileName }.Concat(arguments).ToList();
+            if (values.Any(v => v.IndexOfAny(['"', '%', '!', '^', '&', '|', '<', '>', '\r', '\n']) >= 0))
+                throw new ArgumentException("Unsafe character in CLI executable or option");
+            psi.FileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
+            psi.Arguments = "/d /s /c \"" + string.Join(" ", values.Select(v => "\"" + v + "\"")) + "\"";
+        }
+        else foreach (var a in arguments) psi.ArgumentList.Add(a);
         // ArgumentList quotes each argument safely, so prompts with spaces/quotes can't break the command line.
-        foreach (var a in args) psi.ArgumentList.Add(a);
+
         if (env is not null)
         {
             foreach (var (k, v) in env)

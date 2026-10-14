@@ -28,9 +28,11 @@ public sealed partial class PermissionPolicy
 
     /// <summary>Overnight mode: there is nobody to ask, so every "Ask" becomes "Deny".</summary>
     public bool Unattended { get; set; }
+    public bool HostManagedCommits { get; set; }
 
     public PermissionDecision Evaluate(string toolName, JsonObject args)
     {
+        if (HostManagedCommits && toolName is "git_commit" or "git_push") return PermissionDecision.Deny("Overnight host controls commits and never pushes");
         var decision = EvaluateAttended(toolName, args);
         return Unattended && decision.Verdict == Verdict.Ask
             ? PermissionDecision.Deny($"{decision.Reason} (unattended mode: not allowed without a person to approve)")
@@ -55,6 +57,7 @@ public sealed partial class PermissionPolicy
     public PermissionDecision EvaluateCommand(string command)
     {
         var cmd = command.Trim();
+        if (HostManagedCommits && Regex.IsMatch(cmd, @"\bgit\s+(commit|push|checkout|switch|reset|add)\b", RegexOptions.IgnoreCase)) return PermissionDecision.Deny("Overnight host controls the branch and commits");
         if (cmd.Length == 0) return PermissionDecision.Deny("Empty command");
 
         // Order matters: risky patterns win even if the command also starts like a test command.
@@ -88,9 +91,9 @@ public sealed partial class PermissionPolicy
     [GeneratedRegex(@"\b(curl|wget|Invoke-WebRequest|Invoke-RestMethod|iwr|irm|ssh|scp|ftp|nc|ncat|telnet|git\s+(clone|fetch|pull)|Start-BitsTransfer)\b", RegexOptions.IgnoreCase)]
     private static partial Regex Network();
 
-    [GeneratedRegex(@"(^|\s)(\.\.[\\/]|[A-Za-z]:\\|~[\\/]|/etc/|/usr/|%USERPROFILE%|%APPDATA%|\$env:)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(^|[\s""'=])(\.\.(?:[\\/]|[""'\s]|$)|[A-Za-z]:[\\/]|~[\\/]|\\\\|/etc/|/usr/|%[A-Za-z_][A-Za-z0-9_]*%|\$env:)", RegexOptions.IgnoreCase)]
     private static partial Regex OutsidePath();
 
-    [GeneratedRegex(@"&&|\|\||[;|`>\r\n]|\$\(|&\s|\^")]
+    [GeneratedRegex(@"&&|\|\||[;|`><&\r\n]|\$\(|\^")]
     private static partial Regex Chaining();
 }
