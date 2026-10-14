@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+
+# Never commit secrets or local config
+config.json
+*.secrets.json
+.env
+*.pfx
