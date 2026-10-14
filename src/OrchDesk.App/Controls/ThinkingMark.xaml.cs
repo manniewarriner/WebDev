@@ -15,7 +15,12 @@ public partial class ThinkingMark : UserControl
 
     private Storyboard? _storyboard;
 
-    public ThinkingMark() => InitializeComponent();
+    public ThinkingMark()
+    {
+        InitializeComponent();
+        Loaded += (_, _) => Update();
+        Unloaded += (_, _) => { _storyboard?.Stop(this); _storyboard = null; };
+    }
 
     public bool IsThinking
     {
