@@ -27,6 +27,7 @@ public sealed class Supervisor(AgentLoop loop)
         string task, IModelProvider planner, IModelProvider worker, string testCommand, string workspace,
         [EnumeratorCancellation] CancellationToken ct)
     {
+        Result = null;
         var ctx = new ToolContext(workspace);
         var plannerMessages = new List<ChatMessage>
         {
@@ -57,11 +58,16 @@ public sealed class Supervisor(AgentLoop loop)
             await foreach (var ev in loop.RunAsync(worker, workerMessages, ctx, ct))
             {
                 yield return ev;
-                if (ev is UsageLimitHit or ProviderUnavailable) yield break;
+                if (ev is ErrorEvent or UsageLimitHit or ProviderUnavailable) yield break;
             }
 
             yield return new StatusUpdate($"Running tests: {testCommand}");
-            var test = await ProcessRunner.RunAsync(ProcessRunner.Shell(testCommand, ctx.WorkspaceRoot), TestTimeout, ct);
+            var approval = await loop.ExecuteToolAsync(new ToolCall($"test-{round}", "run_command",
+                System.Text.Json.JsonSerializer.Serialize(new { command = testCommand })),
+                new ToolContext(workspace) { DefaultCommandTimeout = TestTimeout }, ct);
+            if (approval.IsError) { yield return new ErrorEvent(approval.Output); yield break; }
+            // run_command reports the exit code; preserve failed output for the review round.
+            var test = new CommandResult(approval.Output.StartsWith("Exit code: 0\n", StringComparison.Ordinal) ? 0 : 1, approval.Output, false);
             lastOutput = test.Output;
             yield return new ToolCallResult($"test-{round}", "tests", ProcessRunner.Format(test), test.ExitCode != 0);
             if (test.ExitCode == 0)
