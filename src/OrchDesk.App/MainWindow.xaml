@@ -1,0 +1,380 @@
+<Window x:Class="OrchDesk.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:OrchDesk.App.ViewModels"
+        xmlns:ctl="clr-namespace:OrchDesk.App.Controls"
+        xmlns:core="clr-namespace:OrchDesk.Core.Overnight;assembly=OrchDesk.Core"
+        Title="OrchDesk" Width="1180" Height="780" MinWidth="760" MinHeight="520"
+        Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
+        FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="212" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ───────── Left rail ───────── -->
+        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="0,18,0,14">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="18,0,0,22">
+                    <ctl:ThinkingMark IsThinking="{Binding Chat.IsBusy}" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Top" Text="OrchDesk" Margin="20,-14,0,24" FontFamily="{StaticResource DisplayFont}"
+                           FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="18,0">
+                    <TextBlock Text="Answering now" Style="{StaticResource Muted}" />
+                    <TextBlock Text="{Binding Accounts.ActiveName}" Style="{StaticResource Body}" Margin="0,2,0,14" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}" Margin="-8,0,4,0" />
+                        <Button Command="{Binding ToggleThemeCommand}" Style="{StaticResource GhostButton}" ToolTip="Switch light/dark">
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Light theme" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDark}" Value="False">
+                                                <Setter Property="Text" Value="Dark theme" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel>
+                    <RadioButton Style="{StaticResource NavButton}" Content="Chat" GroupName="nav"
+                                 IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Chat}" />
+                    <RadioButton Style="{StaticResource NavButton}" Content="Overnight queue" GroupName="nav"
+                                 IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Overnight}" />
+                    <RadioButton Style="{StaticResource NavButton}" Content="Models &amp; accounts" GroupName="nav"
+                                 IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Accounts}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ───────── Chat page ───────── -->
+        <Grid Grid.Column="1" DataContext="{Binding Chat}"
+              Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Chat}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header: folder, mode, model -->
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,12">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
+                    <ComboBox DockPanel.Dock="Right" Width="250" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}"
+                              DisplayMemberPath="Label" ToolTip="Which model answers. Auto follows the fallback order in Models &amp; accounts." Margin="8,0,0,0" />
+                    <ComboBox DockPanel.Dock="Right" Width="120" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}"
+                              ToolTip="Chat: one model. Supervisor: Claude plans and reviews, a cheaper model codes. CostRouter: cheapest first, step up on failing tests." />
+                    <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
+                            HorizontalContentAlignment="Left" ToolTip="Change project folder">
+                        <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="12.5"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" />
+                    </Button>
+                </DockPanel>
+            </Border>
+
+            <!-- Empty state -->
+            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460"
+                        Visibility="{Binding Items.Count, Converter={StaticResource ZeroVisible}}">
+                <TextBlock Style="{StaticResource Heading}" Text="What should we build?" Margin="0,0,0,10" />
+                <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="21"
+                           Text="Pick a project folder, then describe the change. OrchDesk reads, edits and tests the code there, and asks you before deleting files, installing packages or pushing." />
+                <Button Content="Choose a folder" Command="{Binding PickFolderCommand}" HorizontalAlignment="Left" Margin="0,18,0,0" />
+            </StackPanel>
+
+            <!-- Conversation -->
+            <ScrollViewer x:Name="ChatScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,8">
+                <ItemsControl ItemsSource="{Binding Items}" MaxWidth="820" Margin="28,12" Focusable="False">
+                    <ItemsControl.Resources>
+                        <DataTemplate DataType="{x:Type vm:UserItem}">
+                            <Border Background="{DynamicResource UserBubbleBrush}" CornerRadius="12,12,3,12" Padding="14,10"
+                                    HorizontalAlignment="Right" MaxWidth="600" Margin="80,14,0,6">
+                                <TextBox Style="{StaticResource MessageText}" Text="{Binding Text, Mode=OneWay}" />
+                            </Border>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="{x:Type vm:AssistantItem}">
+                            <StackPanel Margin="0,10,40,6">
+                                <TextBlock Text="{Binding ModelName}" Style="{StaticResource Muted}" Margin="0,0,0,3" />
+                                <TextBox Style="{StaticResource MessageText}" Text="{Binding Text, Mode=OneWay}" />
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Tool calls are a quiet trace: one line with a peach rule; click to see output. -->
+                        <DataTemplate DataType="{x:Type vm:ToolItem}">
+                            <StackPanel Margin="0,1">
+                                <Button Command="{Binding ToggleCommand}" Cursor="Hand" HorizontalAlignment="Left" ToolTip="Show output">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Rule" BorderBrush="{DynamicResource PeachBrush}" BorderThickness="2,0,0,0" Padding="10,3" Background="Transparent">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                                    <Setter TargetName="Rule" Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <TextBlock FontSize="13" Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxWidth="740">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Button>
+                                <Border Visibility="{Binding IsExpanded, Converter={StaticResource BoolVisible}}" Margin="12,4,0,8"
+                                        Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="10,8">
+                                    <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+                                        <TextBox Style="{StaticResource CodeText}" Text="{Binding Output, Mode=OneWay}" />
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <DataTemplate DataType="{x:Type vm:StatusItem}">
+                            <TextBlock Text="{Binding Text}" Style="{StaticResource Muted}" Margin="0,8,0,4" FontStyle="Italic" />
+                        </DataTemplate>
+
+                        <DataTemplate DataType="{x:Type vm:ErrorItem}">
+                            <Border BorderBrush="{DynamicResource DangerBrush}" BorderThickness="2,0,0,0" Padding="10,4" Margin="0,8">
+                                <TextBox Style="{StaticResource MessageText}" Text="{Binding Text, Mode=OneWay}" Foreground="{DynamicResource DangerBrush}" />
+                            </Border>
+                        </DataTemplate>
+
+                        <!-- The only boxed element in the chat: it needs a decision. -->
+                        <DataTemplate DataType="{x:Type vm:ApprovalItem}">
+                            <Border BorderThickness="1.5" CornerRadius="10" Padding="16,14" Margin="0,12" Background="{DynamicResource RaisedBrush}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPending}" Value="False">
+                                                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <TextBlock Text="Needs your OK" FontWeight="SemiBold" Style="{StaticResource Body}" />
+                                    <TextBlock Text="{Binding Reason}" Style="{StaticResource Muted}" Margin="0,2,0,8" />
+                                    <TextBox Style="{StaticResource CodeText}" Foreground="{DynamicResource TextBrush}" FontSize="13" Text="{Binding Summary, Mode=OneWay}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0" Visibility="{Binding IsPending, Converter={StaticResource BoolVisible}}">
+                                        <Button Content="Approve" Command="{Binding ApproveCommand}" Style="{StaticResource AccentButton}" />
+                                        <Button Content="Approve for this session" Command="{Binding ApproveAlwaysCommand}" Margin="8,0,0,0" />
+                                        <Button Content="Deny" Command="{Binding DenyCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Decision}" Style="{StaticResource Muted}" Margin="0,10,0,0"
+                                               Visibility="{Binding Decision, Converter={StaticResource HasValue}}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.Resources>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Composer -->
+            <Border Grid.Row="2" Padding="28,10,28,18">
+                <Grid MaxWidth="820">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="Composer" Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                             TextWrapping="Wrap" MinHeight="46" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="12,10"
+                             PreviewKeyDown="Composer_PreviewKeyDown" AutomationProperties.Name="Message"
+                             ToolTip="Enter to send · Shift+Enter for a new line" />
+                    <Grid Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Bottom">
+                        <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource AccentButton}" MinWidth="76" Height="40"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" />
+                        <Button Content="Stop" Command="{Binding StopCommand}" MinWidth="76" Height="40"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}}" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ───────── Overnight page ───────── -->
+        <Grid Grid.Column="1" DataContext="{Binding Overnight}" Margin="32,26,32,20"
+              Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Overnight}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" />
+                <ColumnDefinition Width="32" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Heading}" Text="Overnight queue" />
+                    <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,8" LineHeight="19"
+                               Text="Each task runs on its own branch in a separate worktree, so your checkout is untouched. Nothing risky runs unattended; it's skipped and listed in the morning report." />
+
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="What should be done?" />
+                    <TextBox Text="{Binding NewPrompt, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="110"
+                             VerticalScrollBarVisibility="Auto" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Short title (optional)" />
+                    <TextBox Text="{Binding NewTitle, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Project folder" />
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Change" Command="{Binding PickFolderCommand}" Margin="8,0,0,0" />
+                        <TextBox Text="{Binding NewWorkspace, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" FontSize="12" />
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Test command (checks the work)" />
+                    <TextBox Text="{Binding NewTestCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" FontSize="12" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="How to run it" />
+                    <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding NewMode}" />
+                    <Button Content="Add to queue" Command="{Binding AddCommand}" HorizontalAlignment="Left" Margin="0,16,0,0" />
+
+                    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="0,26,0,0" Padding="0,18,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Body}" FontWeight="SemiBold" Text="Nightly schedule" />
+                            <TextBlock Style="{StaticResource Muted}" Text="{Binding ScheduleText}" Margin="0,4,0,8" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}" Width="70" FontFamily="{StaticResource CodeFont}"
+                                         AutomationProperties.Name="Start time" />
+                                <Button Content="Schedule nightly" Command="{Binding ScheduleNightlyCommand}" Margin="8,0,0,0" />
+                                <Button Content="Remove" Command="{Binding UnscheduleCommand}" Style="{StaticResource GhostButton}" Margin="4,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="2*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
+                    <Button Content="Run queue now" Command="{Binding RunNowCommand}" Style="{StaticResource AccentButton}" />
+                    <Button Content="Stop" Command="{Binding StopCommand}" Margin="8,0,0,0" />
+                    <Button Content="Open morning report" Command="{Binding OpenReportCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
+                    <Button Content="Clear finished" Command="{Binding ClearFinishedCommand}" Style="{StaticResource GhostButton}" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Style="{StaticResource Muted}" Text="The queue is empty. Add a task on the left; it will wait here until tonight or until you press Run queue now."
+                           Visibility="{Binding Tasks.Count, Converter={StaticResource ZeroVisible}}" MaxWidth="420" HorizontalAlignment="Left" />
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Tasks}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type core:OvernightTask}">
+                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,10">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                                            <Button Content="Run again" Style="{StaticResource GhostButton}"
+                                                    Command="{Binding DataContext.RequeueCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                                            <Button Content="Remove" Style="{StaticResource GhostButton}"
+                                                    Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                                        </StackPanel>
+                                        <TextBlock DockPanel.Dock="Left" Width="112" Text="{Binding Status}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Top">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Succeeded"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Failed"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="NeedsAttention"><Setter Property="Foreground" Value="{DynamicResource WarnBrush}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Running"><Setter Property="Foreground" Value="{DynamicResource PeachBrush}" /></DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource Body}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Workspace}" Style="{StaticResource Muted}" FontFamily="{StaticResource CodeFont}" FontSize="11.5" />
+                                            <TextBlock Text="{Binding Branch}" Style="{StaticResource Muted}" FontFamily="{StaticResource CodeFont}" FontSize="11.5"
+                                                       Visibility="{Binding Branch, Converter={StaticResource HasValue}}" />
+                                            <TextBlock Text="{Binding Error}" Style="{StaticResource Muted}" Foreground="{DynamicResource DangerBrush}"
+                                                       Visibility="{Binding Error, Converter={StaticResource HasValue}}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <TextBlock Grid.Row="2" Style="{StaticResource FieldLabel}" Text="Live log" Margin="0,16,0,6" />
+                <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="10,8">
+                    <ListBox x:Name="LogList" ItemsSource="{Binding Log}" Background="Transparent" BorderThickness="0"
+                             Foreground="{DynamicResource MutedBrush}" FontFamily="{StaticResource CodeFont}" FontSize="11.5"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ───────── Accounts page ───────── -->
+        <ScrollViewer Grid.Column="1" DataContext="{Binding Accounts}" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Accounts}">
+            <StackPanel Margin="32,26,32,20" MaxWidth="760" HorizontalAlignment="Left">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Check now" Command="{Binding CheckNowCommand}" VerticalAlignment="Center" />
+                    <TextBlock Style="{StaticResource Heading}" Text="Models &amp; accounts" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,18" LineHeight="19"
+                           Text="In Auto mode OrchDesk tries these in order. When your PC is off or an account hits its limit, it moves to the next one and comes back later. Change the order in Settings." />
+
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:AccountRow}">
+                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,14">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Text="{Binding Position}" Width="34" FontFamily="{StaticResource DisplayFont}"
+                                               FontSize="20" Foreground="{DynamicResource PeachBrush}" VerticalAlignment="Top" />
+                                    <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" MinWidth="200">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Ellipse Width="8" Height="8" Margin="0,0,7,0" VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Tone}" Value="ok"><Setter Property="Fill" Value="{DynamicResource SuccessBrush}" /></DataTrigger>
+                                                            <DataTrigger Binding="{Binding Tone}" Value="warn"><Setter Property="Fill" Value="{DynamicResource WarnBrush}" /></DataTrigger>
+                                                            <DataTrigger Binding="{Binding Tone}" Value="bad"><Setter Property="Fill" Value="{DynamicResource DangerBrush}" /></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock Text="{Binding HealthText}" Style="{StaticResource Body}" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding LimitText}" Style="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,3,0,0"
+                                                   Visibility="{Binding HasLimit, Converter={StaticResource BoolVisible}}" />
+                                        <Button Content="Clear limit" Command="{Binding ClearLimitCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"
+                                                Visibility="{Binding HasLimit, Converter={StaticResource BoolVisible}}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="SemiBold" FontSize="15" />
+                                        <TextBlock Text="{Binding Kind}" Style="{StaticResource Muted}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
