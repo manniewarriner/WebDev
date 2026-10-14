@@ -1,0 +1,136 @@
+<Window x:Class="OrchDesk.App.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Name="Root" Title="OrchDesk settings" Width="940" Height="720" MinWidth="760"
+        Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
+        FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterOwner">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,12">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Cancel" IsCancel="True" Style="{StaticResource GhostButton}" Margin="0,0,8,0" />
+                    <Button Content="Save settings" Command="{Binding SaveCommand}" Style="{StaticResource AccentButton}" IsDefault="True" />
+                </StackPanel>
+                <TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </DockPanel>
+        </Border>
+
+        <TabControl Background="Transparent" BorderThickness="0" Padding="0" Margin="16,12,16,0">
+            <TabItem Header="Models">
+                <Grid Margin="8,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button Content="Add model" Command="{Binding AddProviderCommand}" />
+                            <Button Content="Remove" Command="{Binding RemoveProviderCommand}" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding Providers}" SelectedItem="{Binding Selected}" Background="{DynamicResource SurfaceBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}" Foreground="{DynamicResource TextBrush}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="4,6">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Id}" Foreground="{DynamicResource MutedBrush}" FontFamily="{StaticResource CodeFont}" FontSize="11" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" DataContext="{Binding Selected}">
+                        <StackPanel x:Name="Editor" Margin="0,0,12,12">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Name" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="ID (used in the fallback order)" />
+                            <TextBox Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Type" />
+                            <ComboBox ItemsSource="{Binding DataContext.Kinds, ElementName=Root}" SelectedItem="{Binding Kind}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,20,0" />
+                                <CheckBox Content="Runs on my PC (skip when the PC is off)" IsChecked="{Binding IsLocal}" />
+                            </StackPanel>
+
+                            <StackPanel Visibility="{Binding IsHttp, Converter={StaticResource BoolVisible}}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Base URL (OpenAI-compatible, ends in /v1)" />
+                                <TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Model" />
+                                <TextBox Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="API key" />
+                                <PasswordBox x:Name="ApiKeyBox" PasswordChanged="ApiKey_Changed" />
+                                <TextBlock Text="{Binding KeyState}" Style="{StaticResource Muted}" Margin="0,3,0,0" />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Cloudflare Access client ID (only for the remote PC relay)" />
+                                <PasswordBox x:Name="CfIdBox" PasswordChanged="CfId_Changed" />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Cloudflare Access client secret" />
+                                <PasswordBox x:Name="CfSecretBox" PasswordChanged="CfSecret_Changed" />
+                            </StackPanel>
+
+                            <StackPanel Visibility="{Binding IsCli, Converter={StaticResource BoolVisible}}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Program (on PATH, or a full path)" />
+                                <TextBox Text="{Binding Executable, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Model (optional)" />
+                                <TextBox Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                            </StackPanel>
+
+                            <StackPanel Visibility="{Binding IsClaude, Converter={StaticResource BoolVisible}}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Claude profile folder (CLAUDE_CONFIG_DIR)" />
+                                <TextBox Text="{Binding ClaudeConfigDir, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                                <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" LineHeight="18"
+                                           Text="Log in once per profile in a terminal: set CLAUDE_CONFIG_DIR to this folder, run claude, then /login. OrchDesk removes ANTHROPIC_API_KEY when it starts Claude, so it always uses the subscription." />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="Claude permission mode" />
+                                <ComboBox ItemsSource="{Binding DataContext.PermissionModes, ElementName=Root}" SelectedItem="{Binding PermissionMode}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Fallback &amp; safety">
+                <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Fallback order (model IDs, first is preferred)" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding RotationOrder, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Minutes to rest an account after it hits a usage limit" />
+                    <TextBox Text="{Binding LimitCooldownMinutes}" Width="100" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Maximum tool steps per message" />
+                    <TextBox Text="{Binding MaxSteps}" Width="100" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Extra commands that may run without asking (one per line, matched by prefix)" />
+                    <TextBox Text="{Binding ExtraAllowedCommands, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="90"
+                             FontFamily="{StaticResource CodeFont}" VerticalScrollBarVisibility="Auto" />
+                    <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" LineHeight="18"
+                               Text="Always allowed: reading and editing inside the project folder, builds and tests, git status/diff/commit. Always asks: deleting, installing packages, network commands, git push, anything chained with &amp;&amp; or ;." />
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Supervisor">
+                <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
+                    <TextBlock Style="{StaticResource Muted}" LineHeight="18"
+                               Text="Supervisor mode: the planner (usually Claude) plans and reviews, the worker (your PC or OpenCode) does the coding, and OrchDesk runs the tests between rounds." />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Planner model ID" />
+                    <TextBox Text="{Binding PlannerId, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Worker model ID" />
+                    <TextBox Text="{Binding WorkerId, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Test command" />
+                    <TextBox Text="{Binding TestCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Maximum rounds" />
+                    <TextBox Text="{Binding MaxRounds}" Width="100" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Cost router tiers, cheapest first (model IDs)" />
+                    <TextBox Text="{Binding CostTiers, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Overnight">
+                <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Time limit per task (minutes)" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding MaxMinutesPerTask}" Width="100" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Attempts per task when tests fail" />
+                    <TextBox Text="{Binding MaxAttemptsPerTask}" Width="100" HorizontalAlignment="Left" />
+                    <CheckBox Content="Keep the PC awake while the queue runs" IsChecked="{Binding KeepPcAwake}" Margin="0,16,0,0" />
+                    <CheckBox Content="Push finished branches (orchdesk/* only, after a secret scan)" IsChecked="{Binding PushBranches}" Margin="0,10,0,0" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

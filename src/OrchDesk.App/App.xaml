@@ -1,0 +1,20 @@
+<Application x:Class="OrchDesk.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OrchDesk.App"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Index 0 is the colour theme; App.ApplyTheme swaps it. -->
+                <ResourceDictionary Source="Themes/Dark.xaml" />
+                <ResourceDictionary Source="Themes/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <local:PageEqualsConverter x:Key="PageEquals" />
+            <local:PageVisibilityConverter x:Key="PageVisible" />
+            <local:BoolVisibilityConverter x:Key="BoolVisible" />
+            <local:HasValueVisibilityConverter x:Key="HasValue" />
+            <local:ZeroVisibilityConverter x:Key="ZeroVisible" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
