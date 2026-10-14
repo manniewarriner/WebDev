@@ -71,10 +71,16 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Grid Background="Transparent" Height="38">
+                    <Grid Background="Transparent" Height="40">
                         <Rectangle x:Name="Bar" Width="3" HorizontalAlignment="Left" Margin="0,8" RadiusX="1.5" RadiusY="1.5"
                                    Fill="{DynamicResource AccentBrush}" Visibility="Hidden" />
-                        <ContentPresenter Margin="18,0,0,0" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Margin="16,0,8,0" VerticalAlignment="Center">
+                            <Path Data="{TemplateBinding Tag}" Width="16" Height="16" Stretch="Uniform"
+                                  Stroke="{TemplateBinding Foreground}" StrokeThickness="1.5"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Margin="0,0,8,0" IsHitTestVisible="False" />
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </StackPanel>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
