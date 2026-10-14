@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
@@ -22,7 +23,27 @@ public sealed partial class WebFetchTool : ITool
         if (uri.IsLoopback || (IPAddress.TryParse(uri.Host, out var ip) && IsPrivate(ip)))
             throw new ToolException("Fetching local or private-network addresses is not allowed.");
 
-        using var resp = await ctx.Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseProxy = false,
+            ConnectCallback = async (connection, token) =>
+            {
+                var addresses = await Dns.GetHostAddressesAsync(connection.DnsEndPoint.Host, token);
+                if (addresses.Length == 0 || addresses.Any(IsPrivate))
+                    throw new ToolException("Fetching local or private-network addresses is not allowed.");
+                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                try {
+                    await socket.ConnectAsync(addresses, connection.DnsEndPoint.Port, token);
+                    return new NetworkStream(socket, ownsSocket: true);
+                } catch { socket.Dispose(); throw; }
+            }
+        };
+        using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+        using var resp = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
+        if ((int)resp.StatusCode is >= 300 and < 400)
+            throw new ToolException("Redirects are refused; fetch the destination URL explicitly.");
+        resp.EnsureSuccessStatusCode();
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
         var buffer = new byte[MaxBytes];
         int read = 0, n;
@@ -42,11 +63,23 @@ public sealed partial class WebFetchTool : ITool
         return Spaces().Replace(s, " ").Replace(" \n", "\n").Trim();
     }
 
-    private static bool IsPrivate(IPAddress ip)
+    public static bool IsPrivate(IPAddress ip)
     {
         if (IPAddress.IsLoopback(ip)) return true;
-        var b = ip.MapToIPv4().GetAddressBytes();
-        return b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168) || (b[0] == 169 && b[1] == 254);
+        if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+        if (ip.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            var bytes = ip.GetAddressBytes();
+            // Only global unicast 2000::/3; excludes local, multicast and transition ranges.
+            return (bytes[0] & 0xe0) != 0x20 || (bytes[0] == 0x20 && bytes[1] == 0x02) ||
+                   bytes.Take(4).SequenceEqual(new byte[] { 0x20, 0x01, 0, 0 });
+        }
+        var b = ip.GetAddressBytes();
+        return b[0] is 0 or 10 or 127 || b[0] >= 224 ||
+            (b[0] == 100 && b[1] is >= 64 and <= 127) ||
+            (b[0] == 172 && b[1] is >= 16 and <= 31) ||
+            (b[0] == 192 && b[1] == 168) || (b[0] == 169 && b[1] == 254);
+
     }
 
     [GeneratedRegex(@"<(script|style)[^>]*>.*?</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
