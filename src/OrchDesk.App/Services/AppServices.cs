@@ -20,7 +20,7 @@ public sealed class AppServices
 
     public ConfigStore Store { get; } = new();
     public ISecretProtector Secrets { get; } = new DpapiSecretProtector();
-    public ToolRegistry Tools { get; } = ToolRegistry.CreateDefault();
+    public ToolRegistry Tools { get; private set; } = ToolRegistry.CreateDefault();
     public AppConfig Config { get; private set; }
     public IReadOnlyList<IModelProvider> Providers { get; private set; } = [];
     public AccountRotator Rotator { get; private set; } = new([]);
@@ -35,10 +35,15 @@ public sealed class AppServices
         Queue = new OvernightQueueStore(Path.Combine(Store.Directory, "overnight"));
         ReportsDir = Path.Combine(Store.Directory, "reports");
         Rebuild();
+        Store.Changed += () => System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => {
+            try { Config = Store.Load(); Rebuild(); } catch (IOException) { }
+        }));
+        Store.Watch();
     }
 
     public void Rebuild()
     {
+        Tools = ToolRegistry.CreateDefault(Config.WebFetchEnabled);
         var factory = new ProviderFactory(Secrets, Http);
         Providers = factory.CreateAll(Config);
         // Keep limit history across rebuilds so a settings change doesn't forget a provider is cooling down.

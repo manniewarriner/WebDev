@@ -16,33 +16,16 @@
         </Border>
 
         <TabControl Background="Transparent" BorderThickness="0" Padding="0" Margin="16,12,16,0">
-            <TabItem Header="Models">
-                <Grid Margin="8,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="230" />
-                        <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-                            <Button Content="Add model" Command="{Binding AddProviderCommand}" />
-                            <Button Content="Remove" Command="{Binding RemoveProviderCommand}" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
-                        </StackPanel>
-                        <ListBox ItemsSource="{Binding Providers}" SelectedItem="{Binding Selected}" Background="{DynamicResource SurfaceBrush}"
-                                 BorderBrush="{DynamicResource BorderBrush}" Foreground="{DynamicResource TextBrush}">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="4,6">
-                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Id}" Foreground="{DynamicResource MutedBrush}" FontFamily="{StaticResource CodeFont}" FontSize="11" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </DockPanel>
-
-                    <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" DataContext="{Binding Selected}">
-                        <StackPanel x:Name="Editor" Margin="0,0,12,12">
+            <TabItem Header="Integrations">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8,12">
+                        <TextBlock Text="Integrations" FontSize="24" FontWeight="SemiBold" />
+                        <TextBlock Text="Enter service details, test the connection, then save. Secrets are encrypted for this Windows user." TextWrapping="Wrap" Margin="0,8,0,16" />
+                        <ItemsControl ItemsSource="{Binding Providers}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="18" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <DockPanel><Border DockPanel.Dock="Right" Background="{DynamicResource BaseBrush}" CornerRadius="10" Padding="8,4"><TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="320" /></Border><TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="SemiBold" /></DockPanel>
                             <TextBlock Style="{StaticResource FieldLabel}" Text="Name" Margin="0,0,0,4" />
                             <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource FieldLabel}" Text="ID (used in the fallback order)" />
@@ -60,12 +43,12 @@
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Model" />
                                 <TextBox Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="API key" />
-                                <PasswordBox x:Name="ApiKeyBox" PasswordChanged="ApiKey_Changed" />
+                                <PasswordBox Tag="ApiKey" PasswordChanged="ApiKey_Changed" />
                                 <TextBlock Text="{Binding KeyState}" Style="{StaticResource Muted}" Margin="0,3,0,0" />
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Cloudflare Access client ID (only for the remote PC relay)" />
-                                <PasswordBox x:Name="CfIdBox" PasswordChanged="CfId_Changed" />
+                                <PasswordBox Tag="CfId" PasswordChanged="CfId_Changed" />
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Cloudflare Access client secret" />
-                                <PasswordBox x:Name="CfSecretBox" PasswordChanged="CfSecret_Changed" />
+                                <PasswordBox Tag="CfSecret" PasswordChanged="CfSecret_Changed" />
                             </StackPanel>
 
                             <StackPanel Visibility="{Binding IsCli, Converter={StaticResource BoolVisible}}">
@@ -83,9 +66,30 @@
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Claude permission mode" />
                                 <ComboBox ItemsSource="{Binding DataContext.PermissionModes, ElementName=Root}" SelectedItem="{Binding PermissionMode}" />
                             </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                            <Button Content="Test connection" Command="{Binding DataContext.TestConnectionCommand, ElementName=Root}" CommandParameter="{Binding}" />
+                                            <Button Content="Save" Command="{Binding DataContext.SaveCommand, ElementName=Root}" Margin="8,0,0,0" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="Add model" Command="{Binding AddProviderCommand}" HorizontalAlignment="Left" />
+                        <Border Background="{DynamicResource SurfaceBrush}" Padding="18" Margin="0,16"><StackPanel>
+                            <TextBlock Text="Web fetch ? GET https://example.com" FontWeight="SemiBold" />
+                            <CheckBox Content="Enabled" IsChecked="{Binding WebFetchEnabled}" Margin="0,8" />
+                            <TextBlock Text="{Binding WebStatus}" /><Button Content="Test connection" Command="{Binding TestWebCommand}" HorizontalAlignment="Left" />
+                            <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
+                        </StackPanel></Border>
+                        <Border Background="{DynamicResource SurfaceBrush}" Padding="18"><StackPanel>
+                            <TextBlock Text="Meshy (optional) ? GET https://api.meshy.ai" FontWeight="SemiBold" />
+                            <TextBlock Text="API key (leave blank to keep saved key)" Margin="0,8" /><PasswordBox PasswordChanged="Meshy_Changed" />
+                            <TextBlock Text="{Binding MeshyStatus}" /><Button Content="Test connection" Command="{Binding TestMeshyCommand}" HorizontalAlignment="Left" />
+                            <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
+                        </StackPanel></Border>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <TabItem Header="Fallback &amp; safety">
@@ -108,6 +112,7 @@
                 <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
                     <TextBlock Style="{StaticResource Muted}" LineHeight="18"
                                Text="Use /overnight in chat. Your selected API model plans, works and tests. Approvals are queued for morning." />
+                    <CheckBox Content="Shutdown PC when done (120 second delay)" IsChecked="{Binding ShutdownWhenDone}" Margin="0,12" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Test command" />
                     <TextBox Text="{Binding TestCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Cost router tiers, cheapest first (model IDs)" />

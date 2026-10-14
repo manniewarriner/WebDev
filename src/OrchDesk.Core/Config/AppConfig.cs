@@ -44,10 +44,13 @@ public sealed class OvernightConfig
     public int MaxAttemptsPerTask { get; set; } = 3;
     public bool KeepPcAwake { get; set; } = true;
     public bool PushBranches { get; set; }
+    public bool ShutdownWhenDone { get; set; }
 }
 
 public sealed class AppConfig
 {
+    public bool WebFetchEnabled { get; set; } = true;
+    public string? MeshyApiKeyProtected { get; set; }
     public List<ProviderConfig> Providers { get; set; } = [];
     /// <summary>Fallback order used by "Auto" mode.</summary>
     public List<string> RotationOrder { get; set; } = [];
@@ -69,6 +72,9 @@ public sealed class AppConfig
             [
                 new() { Id = "local-pc", DisplayName = "Desktop PC (Qwen)", Kind = ProviderKind.OpenAiCompatible, IsLocal = true,
                         BaseUrl = "http://127.0.0.1:1234/v1", Model = "qwen/qwen3.5-9b" },
+                new() { Id = "local-gemma", DisplayName = "LM Studio (Gemma)", Kind = ProviderKind.OpenAiCompatible, IsLocal = true, BaseUrl = "http://127.0.0.1:1234/v1", Model = "google/gemma-4-12b-qat" },
+                new() { Id = "remote-pc", DisplayName = "Remote PC (orch-relay)", Kind = ProviderKind.OpenAiCompatible, BaseUrl = "", Model = "qwen/qwen3.5-9b", Enabled = false },
+                new() { Id = "ollama", DisplayName = "Ollama local", Kind = ProviderKind.OpenAiCompatible, IsLocal = true, BaseUrl = "http://127.0.0.1:11434/v1", Model = "", Enabled = false },
                 new() { Id = "claude-outlook", DisplayName = "Claude (Outlook)", Kind = ProviderKind.ClaudeCli,
                         Executable = "claude", ClaudeConfigDir = Path.Combine(home, ".claude-outlook"), PermissionMode = "acceptEdits" },
                 new() { Id = "claude-gmail", DisplayName = "Claude (Gmail)", Kind = ProviderKind.ClaudeCli,
@@ -84,7 +90,7 @@ public sealed class AppConfig
 }
 
 /// <summary>Loads/saves %APPDATA%\OrchDesk\config.json. Secrets inside are already DPAPI-protected strings.</summary>
-public sealed class ConfigStore(string? directory = null)
+public sealed class ConfigStore(string? directory = null) : IDisposable
 {
     public static readonly JsonSerializerOptions Json = new()
     {
@@ -96,6 +102,20 @@ public sealed class ConfigStore(string? directory = null)
     public string Directory { get; } = directory ??
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrchDesk");
     public string FilePath => Path.Combine(Directory, "config.json");
+
+    private FileSystemWatcher? _watcher;
+    public event Action? Changed;
+    public void Watch()
+    {
+        if (_watcher is not null) return;
+        System.IO.Directory.CreateDirectory(Directory);
+        _watcher = new FileSystemWatcher(Directory, "config.json") { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName };
+        _watcher.Changed += (_, _) => Changed?.Invoke();
+        _watcher.Created += (_, _) => Changed?.Invoke();
+        _watcher.Renamed += (_, _) => Changed?.Invoke();
+        _watcher.EnableRaisingEvents = true;
+    }
+    public void Dispose() => _watcher?.Dispose();
 
     public AppConfig Load()
     {
@@ -114,5 +134,6 @@ public sealed class ConfigStore(string? directory = null)
         var tmp = FilePath + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(config, Json));
         File.Move(tmp, FilePath, overwrite: true); // atomic replace: a crash never leaves half a file
+        Changed?.Invoke();
     }
 }

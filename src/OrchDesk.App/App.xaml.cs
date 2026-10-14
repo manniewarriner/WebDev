@@ -11,6 +11,18 @@ public partial class App : Application
         base.OnStartup(e);
 
 
+        if (e.Args.Contains("--smoketest", StringComparer.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var store = new OrchDesk.Core.Config.ConfigStore();
+            using var http = new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+            try {
+                var results = await OrchDesk.Core.Verification.IntegrationSmokeRunner.RunAsync(store.Load(), new OrchDesk.Core.Config.DpapiSecretProtector(), http, System.IO.Path.Combine(store.Directory, "smoketest"));
+                Shutdown(results.Any(r => r.Status == "fail") ? 1 : 0);
+            } catch { Shutdown(2); }
+            return;
+        }
+
         if (e.Args.Contains("--selftest", StringComparer.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
