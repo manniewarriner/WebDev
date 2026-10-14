@@ -56,6 +56,31 @@ public partial class App : Application
         MainWindow = window;
         window.Show();
 
+        var screenshotIndex = Array.FindIndex(e.Args, a => a.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
+        if (screenshotIndex >= 0)
+        {
+            if (screenshotIndex + 1 >= e.Args.Length || e.Args[screenshotIndex + 1].StartsWith("--")) { Shutdown(2); return; }
+            try
+            {
+                await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                window.UpdateLayout();
+                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(window);
+                var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                    (int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY),
+                    dpi.PixelsPerInchX, dpi.PixelsPerInchY, System.Windows.Media.PixelFormats.Pbgra32);
+                bitmap.Render(window);
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                var path = System.IO.Path.GetFullPath(e.Args[screenshotIndex + 1]);
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+                using var stream = System.IO.File.Create(path);
+                encoder.Save(stream);
+                Shutdown(0);
+            }
+            catch { Shutdown(2); }
+            return;
+        }
+
         // Started by the nightly scheduled task: open on the Overnight page and work through the queue.
         if (e.Args.Contains("--overnight", StringComparer.OrdinalIgnoreCase))
         {
