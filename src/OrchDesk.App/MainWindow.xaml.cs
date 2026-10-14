@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Input;
 using OrchDesk.App.ViewModels;
@@ -17,10 +16,6 @@ public partial class MainWindow : Window
             vm.Chat.ContentAdded += () =>
             {
                 if (ChatScroll.VerticalOffset >= ChatScroll.ScrollableHeight - 80) ChatScroll.ScrollToEnd();
-            };
-            ((INotifyCollectionChanged)vm.Overnight.Log).CollectionChanged += (_, _) =>
-            {
-                if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[^1]);
             };
         };
         Loaded += (_, _) => Composer.Focus();

@@ -10,7 +10,6 @@ public sealed partial class MainViewModel : ObservableObject
     public AppServices Services { get; }
     public ChatViewModel Chat { get; }
     public AccountsViewModel Accounts { get; }
-    public OvernightViewModel Overnight { get; }
 
     [ObservableProperty] private string _page = "Chat";
 
@@ -19,7 +18,6 @@ public sealed partial class MainViewModel : ObservableObject
         Services = services;
         Chat = new ChatViewModel(services);
         Accounts = new AccountsViewModel(services);
-        Overnight = new OvernightViewModel(services);
     }
 
     public bool IsDark => Services.Config.Theme != "Light";

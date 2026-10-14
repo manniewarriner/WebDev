@@ -48,8 +48,6 @@
                 <StackPanel>
                     <RadioButton Style="{StaticResource NavButton}" Content="Chat" GroupName="nav"
                                  IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Chat}" />
-                    <RadioButton Style="{StaticResource NavButton}" Content="Overnight queue" GroupName="nav"
-                                 IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Overnight}" />
                     <RadioButton Style="{StaticResource NavButton}" Content="Models &amp; accounts" GroupName="nav"
                                  IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Accounts}" />
                 </StackPanel>
@@ -68,12 +66,13 @@
             <!-- Header: folder, mode, model -->
             <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,12">
                 <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Overnight run" Command="{Binding OvernightSkillCommand}" Margin="8,0" />
                     <Button DockPanel.Dock="Right" Content="Open file" Command="{Binding OpenFileCommand}" Margin="4,0" />
                     <Button DockPanel.Dock="Right" Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
                     <ComboBox DockPanel.Dock="Right" Width="250" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}"
                               DisplayMemberPath="Label" ToolTip="Which model answers. Auto follows the fallback order in Models &amp; accounts." Margin="8,0,0,0" />
                     <ComboBox DockPanel.Dock="Right" Width="120" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}"
-                              ToolTip="Chat: one model. Supervisor: Claude plans and reviews, a cheaper model codes. CostRouter: cheapest first, step up on failing tests." />
+                              ToolTip="Chat or cost routing. Use Overnight run for unattended work." />
                     <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
                             HorizontalContentAlignment="Left" ToolTip="Change project folder">
                         <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="12.5"
@@ -219,121 +218,6 @@
         </Grid>
 
         <!-- ───────── Overnight page ───────── -->
-        <Grid Grid.Column="1" DataContext="{Binding Overnight}" Margin="32,26,32,20"
-              Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Overnight}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="340" />
-                <ColumnDefinition Width="32" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Heading}" Text="Overnight queue" />
-                    <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,8" LineHeight="19"
-                               Text="Each task runs on its own branch in a separate worktree, so your checkout is untouched. Nothing risky runs unattended; it's skipped and listed in the morning report." />
-
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="What should be done?" />
-                    <TextBox Text="{Binding NewPrompt, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="110"
-                             VerticalScrollBarVisibility="Auto" />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Short title (optional)" />
-                    <TextBox Text="{Binding NewTitle, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Project folder" />
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="Change" Command="{Binding PickFolderCommand}" Margin="8,0,0,0" />
-                        <TextBox Text="{Binding NewWorkspace, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" FontSize="12" />
-                    </DockPanel>
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Test command (checks the work)" />
-                    <TextBox Text="{Binding NewTestCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" FontSize="12" />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="How to run it" />
-                    <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding NewMode}" />
-                    <Button Content="Add to queue" Command="{Binding AddCommand}" HorizontalAlignment="Left" Margin="0,16,0,0" />
-
-                    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="0,26,0,0" Padding="0,18,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Body}" FontWeight="SemiBold" Text="Nightly schedule" />
-                            <TextBlock Style="{StaticResource Muted}" Text="{Binding ScheduleText}" Margin="0,4,0,8" />
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}" Width="70" FontFamily="{StaticResource CodeFont}"
-                                         AutomationProperties.Name="Start time" />
-                                <Button Content="Schedule nightly" Command="{Binding ScheduleNightlyCommand}" Margin="8,0,0,0" />
-                                <Button Content="Remove" Command="{Binding UnscheduleCommand}" Style="{StaticResource GhostButton}" Margin="4,0,0,0" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
-
-            <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="2*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
-                    <Button Content="Run queue now" Command="{Binding RunNowCommand}" Style="{StaticResource AccentButton}" />
-                    <Button Content="Stop" Command="{Binding StopCommand}" Margin="8,0,0,0" />
-                    <Button Content="Open morning report" Command="{Binding OpenReportCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
-                    <Button Content="Clear finished" Command="{Binding ClearFinishedCommand}" Style="{StaticResource GhostButton}" />
-                </StackPanel>
-
-                <TextBlock Grid.Row="1" Style="{StaticResource Muted}" Text="The queue is empty. Add a task on the left; it will wait here until tonight or until you press Run queue now."
-                           Visibility="{Binding Tasks.Count, Converter={StaticResource ZeroVisible}}" MaxWidth="420" HorizontalAlignment="Left" />
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Tasks}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type core:OvernightTask}">
-                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,10">
-                                    <DockPanel>
-                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                                            <Button Content="Run again" Style="{StaticResource GhostButton}"
-                                                    Command="{Binding DataContext.RequeueCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
-                                            <Button Content="Remove" Style="{StaticResource GhostButton}"
-                                                    Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
-                                        </StackPanel>
-                                        <TextBlock DockPanel.Dock="Left" Width="112" Text="{Binding Status}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Top">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Status}" Value="Succeeded"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" /></DataTrigger>
-                                                        <DataTrigger Binding="{Binding Status}" Value="Failed"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}" /></DataTrigger>
-                                                        <DataTrigger Binding="{Binding Status}" Value="NeedsAttention"><Setter Property="Foreground" Value="{DynamicResource WarnBrush}" /></DataTrigger>
-                                                        <DataTrigger Binding="{Binding Status}" Value="Running"><Setter Property="Foreground" Value="{DynamicResource PeachBrush}" /></DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Title}" Style="{StaticResource Body}" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding Workspace}" Style="{StaticResource Muted}" FontFamily="{StaticResource CodeFont}" FontSize="11.5" />
-                                            <TextBlock Text="{Binding Branch}" Style="{StaticResource Muted}" FontFamily="{StaticResource CodeFont}" FontSize="11.5"
-                                                       Visibility="{Binding Branch, Converter={StaticResource HasValue}}" />
-                                            <TextBlock Text="{Binding Error}" Style="{StaticResource Muted}" Foreground="{DynamicResource DangerBrush}"
-                                                       Visibility="{Binding Error, Converter={StaticResource HasValue}}" />
-                                        </StackPanel>
-                                    </DockPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-
-                <TextBlock Grid.Row="2" Style="{StaticResource FieldLabel}" Text="Live log" Margin="0,16,0,6" />
-                <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="10,8">
-                    <ListBox x:Name="LogList" ItemsSource="{Binding Log}" Background="Transparent" BorderThickness="0"
-                             Foreground="{DynamicResource MutedBrush}" FontFamily="{StaticResource CodeFont}" FontSize="11.5"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Border>
-            </Grid>
-        </Grid>
-
-        <!-- ───────── Accounts page ───────── -->
         <ScrollViewer Grid.Column="1" DataContext="{Binding Accounts}" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Accounts}">
             <StackPanel Margin="32,26,32,20" MaxWidth="760" HorizontalAlignment="Left">

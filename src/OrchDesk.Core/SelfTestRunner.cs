@@ -83,13 +83,14 @@ public static class SelfTestRunner
             rotator.ClearLimit(provider.Id);
             return pass;
         }, "A simulated limit rotates to fake-worker; cooldown can be cleared.");
-        await Check("supervisor_round", async () => {
-            var supervisorPolicy = new PermissionPolicy();
-            supervisorPolicy.ExtraAllowedCommandPrefixes.Add("echo selftest");
-            var supervisor = new Supervisor(new AgentLoop(tools, new PermissionGate(supervisorPolicy, null))) { MaxRounds = 1 };
-            await foreach (var ev in supervisor.RunAsync("Verification only; make no edits.", new VerificationProvider("fake-planner"), new VerificationProvider("fake-worker"), "echo selftest", folder, ct)) { }
-            return supervisor.Result is { Passed: true, Rounds: 1 };
-        }, "One supervisor round with fake planner and worker ran a real verification command.");
+        await Check("overnight_run", async () => {
+            var overnightPolicy = new PermissionPolicy();
+            overnightPolicy.ExtraAllowedCommandPrefixes.Add("echo selftest");
+            var skill = new OrchDesk.Core.Overnight.OvernightSkill(Path.Combine(folder, "runs"), tools, overnightPolicy);
+            var run = new OrchDesk.Core.Overnight.OvernightRun { Goal = "Verification only", Workspace = folder, ManagerId = "fake-manager", MaxSteps = 1, TestCommand = "echo selftest" };
+            await skill.RunAsync(run, new VerificationProvider("fake-manager"), ct);
+            return run.TestsPassed && File.Exists(skill.PathFor(run.Id));
+        }, "Tiny overnight run saved a checkpoint and ran verification.");
         await Check("web_fetch", async () => {
             var output = fetch is null ? await new WebFetchTool().ExecuteAsync(new JsonObject { ["url"] = "https://example.com" }, ctx, ct) : await fetch(ctx, ct);
             return output.Contains("<untrusted_web_content") && output.Contains("Example Domain");

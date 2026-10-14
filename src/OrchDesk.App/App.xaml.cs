@@ -81,12 +81,9 @@ public partial class App : Application
             return;
         }
 
-        // Started by the nightly scheduled task: open on the Overnight page and work through the queue.
-        if (e.Args.Contains("--overnight", StringComparer.OrdinalIgnoreCase))
-        {
-            vm.Page = "Overnight";
-            _ = vm.Overnight.RunNowAsync();
-        }
+        _ = vm.Chat.ResumeOvernightAsync();
+
+
     }
 
     public static void ApplyTheme(string theme)

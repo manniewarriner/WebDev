@@ -11,8 +11,8 @@ using OrchDesk.Core.Permissions;
 
 namespace OrchDesk.App.ViewModels;
 
-public sealed record ProviderOption(string? Id, string Label);
-public enum ChatMode { Chat, Supervisor, CostRouter }
+public sealed record ProviderOption(string? Id, string Label) { public override string ToString() => Label; }
+public enum ChatMode { Chat, CostRouter }
 
 public sealed partial class ChatViewModel : ObservableObject
 {
@@ -22,7 +22,7 @@ public sealed partial class ChatViewModel : ObservableObject
 
     public ObservableCollection<ChatItem> Items { get; } = [];
     public ObservableCollection<ProviderOption> ProviderOptions { get; } = [];
-    public IReadOnlyList<ChatMode> Modes { get; } = [ChatMode.Chat, ChatMode.Supervisor, ChatMode.CostRouter];
+    public IReadOnlyList<ChatMode> Modes { get; } = [ChatMode.Chat, ChatMode.CostRouter];
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand))] private string _input = "";
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand)), NotifyPropertyChangedFor(nameof(WorkspaceLabel))] private string? _workspace;
@@ -113,7 +113,9 @@ public sealed partial class ChatViewModel : ObservableObject
 
         try
         {
-            await foreach (var ev in StartRun(text, _cts.Token)) Render(ev);
+            if (text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase))
+                await RunOvernightAsync(text[11..].Trim(), _cts.Token);
+            else await foreach (var ev in StartRun(text, _cts.Token)) Render(ev);
         }
         catch (OperationCanceledException)
         {
@@ -132,6 +134,50 @@ public sealed partial class ChatViewModel : ObservableObject
             _cts.Dispose();
             _cts = null;
             ContentAdded?.Invoke();
+        }
+    }
+
+    [RelayCommand]
+    private void OvernightSkill() => Input = "/overnight " + Input;
+
+    private string RunsDirectory => Path.Combine(_services.Store.Directory, "runs");
+    private async Task RunOvernightAsync(string goal, CancellationToken ct, OrchDesk.Core.Overnight.OvernightRun? existing = null)
+    {
+        var id = existing?.ManagerId ?? SelectedProvider?.Id;
+        var manager = id is null ? _services.Providers.FirstOrDefault(p => !p.IsAgentic) : _services.Providers.FirstOrDefault(p => p.Id == id);
+        if (manager is null) throw new InvalidOperationException("Configure an API manager model for overnight runs.");
+        ActiveModel = manager.DisplayName;
+        var run = existing ?? new OrchDesk.Core.Overnight.OvernightRun {
+            Goal = goal, Workspace = Workspace!, ManagerId = manager.Id,
+            TestCommand = _services.Config.Supervisor.TestCommand, MaxSteps = _services.Config.MaxSteps,
+            Deadline = DateTimeOffset.UtcNow.AddMinutes(_services.Config.Overnight.MaxMinutesPerTask)
+        };
+        var skill = new OrchDesk.Core.Overnight.OvernightSkill(RunsDirectory, _services.Tools, _services.CreatePolicy());
+        skill.Progress += Render;
+        Items.Add(new StatusItem("Overnight run ? manager " + manager.DisplayName));
+        var summary = await skill.RunAsync(run, manager, ct);
+        var item = new AssistantItem(manager.DisplayName); item.Append(summary); Items.Add(item);
+    }
+
+    public async Task ResumeOvernightAsync()
+    {
+        if (!Directory.Exists(RunsDirectory)) return;
+        foreach (var path in Directory.GetFiles(RunsDirectory, "*.json"))
+        {
+            try {
+                var run = System.Text.Json.JsonSerializer.Deserialize<OrchDesk.Core.Overnight.OvernightRun>(File.ReadAllText(path));
+                if (run is null) continue;
+                if (run.Status != "Running") {
+                    var report = Path.ChangeExtension(path, ".md");
+                    if (File.Exists(report)) Items.Add(new StatusItem(File.ReadAllText(report)));
+                    continue;
+                }
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+                await RunOvernightAsync(run.Goal, _cts.Token, run);
+            }
+            catch (Exception) { Items.Add(new ErrorItem("Overnight checkpoint retained; manager could not resume.")); }
+            finally { IsBusy = false; _cts?.Dispose(); _cts = null; }
         }
     }
 
@@ -157,13 +203,6 @@ public sealed partial class ChatViewModel : ObservableObject
 
         switch (Mode)
         {
-            case ChatMode.Supervisor:
-                var planner = rotator.Find(sup.PlannerProviderId);
-                var worker = rotator.Find(sup.WorkerProviderId) is { } w && rotator.IsUsable(w) ? w.Provider : rotator.Current();
-                if (planner is null || worker is null)
-                    return One(new ErrorEvent($"Supervisor needs planner '{sup.PlannerProviderId}' and a worker model. Set them in Settings."));
-                return new Supervisor(loop) { MaxRounds = sup.MaxRounds }.RunAsync(text, planner.Provider, worker, sup.TestCommand, Workspace!, ct);
-
             case ChatMode.CostRouter:
                 var tiers = sup.CostTiers.Select(id => rotator.Find(id)).Where(a => a is not null && rotator.IsUsable(a)).Select(a => a!.Provider).ToList();
                 if (tiers.Count == 0) return One(new ErrorEvent("No cost-router tiers are available. Check Settings → Supervisor."));

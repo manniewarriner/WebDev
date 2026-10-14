@@ -93,6 +93,8 @@ public class AuditTests
         var report = await SelfTestRunner.RunAsync(dir.Path, provider, fetch: (_, _) => Task.FromResult("<untrusted_web_content>Example Domain</untrusted_web_content>"));
         Assert.True(report.Passed);
         Assert.Equal(8, report.Items.Count);
+        Assert.Contains(report.Items, i => i.Name == "overnight_run" && i.Pass);
+        Assert.DoesNotContain(report.Items, i => i.Name.Contains("supervisor"));
         var json = File.ReadAllText(Path.Combine(dir.Path, "selftest.json"));
         Assert.DoesNotContain("secret-value", json);
     }

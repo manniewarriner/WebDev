@@ -20,15 +20,13 @@ It runs as one `OrchDesk.exe`, with no installer and no admin rights, so it work
 ## Modes
 
 - **Chat:** one model, with streaming replies. Each tool call shows as a one-line trace you can click to see its output.
-- **Supervisor:** Claude plans and reviews but doesn't edit. A cheaper model (your PC or OpenCode) writes the code. OrchDesk runs the tests between rounds and sends failures back for a review-and-fix pass, up to N rounds.
-- **Cost router:** tries the cheapest model first, checks the result with the tests, and moves up a tier only if they fail.
-- **Overnight queue:** add tasks during the day and they run unattended at night.
-  - Each task gets its own git worktree and an `orchdesk/<date>/<id>` branch, so your checkout and `main` are never touched.
-  - Models rotate on usage limits or when the PC is offline.
-  - OrchDesk runs the tests itself and retries failures, then commits the result on the task's branch.
-  - Pushing is optional, only for `orchdesk/*` branches, and only after a secret scan.
-  - A Markdown morning report summarises everything.
-  - **Schedule nightly** registers a Windows scheduled task that wakes the PC and starts `OrchDesk.exe --overnight`.
+- **Cost router:** tries the cheapest model first, checks tests and moves up a tier when needed.
+- **Overnight run skill:** choose an API manager in chat, then enter `/overnight <goal>` or click **Overnight run** to prepare the command. The manager plans and uses the agent tools step by step. OrchDesk independently runs the configured test command and feeds failures back until completion, the step budget or the deadline. CLI providers cannot be overnight managers because their tools bypass the host approval queue.
+  - JSON checkpoints and Markdown morning summaries live in `%APPDATA%\OrchDesk\runs\`. Active runs resume on restart with the same manager and conversation history; summaries reappear in chat.
+  - Approval requests are persisted for morning review while safe work continues. Actions interrupted during execution are queued for inspection rather than replayed.
+  - Runs work in the selected project folder. Set the test command and time limit in Settings and the step budget under General.
+
+Capture the UI before or after changes with `OrchDesk.exe --screenshot artifacts/main.png`. Add `--theme Dark` or `--theme Light` to capture either palette without saving a theme preference. The app renders the main window to PNG and exits without starting overnight work.
 
 ## Safety
 
@@ -46,7 +44,7 @@ It runs as one `OrchDesk.exe`, with no installer and no admin rights, so it work
   - paths outside the folder;
   - commands chained with `&&`, `;`, `|` or `>`;
   - any other shell command.
-- In overnight mode nobody is there to approve, so anything that would ask is refused and noted in the report.
+- In overnight mode nobody is there to approve, so anything that would ask is queued for morning review.
 - Commands have timeouts and their output is capped. If a model repeats the exact same tool call three times in a row, OrchDesk stops the loop.
 - `web_fetch` is GET-only, capped at 200 KB, refuses local and private addresses, and labels the page content as untrusted data.
 - API keys are stored in `%APPDATA%\OrchDesk\config.json`, encrypted with Windows DPAPI for your Windows user. They are never written to the repo.
@@ -60,7 +58,7 @@ Anthropic's terms allow running your own unmodified `claude` program with your o
 
 ```
 src/OrchDesk.Core/     providers, agent loop, tools, permissions, rotation, supervisor, overnight runner (no UI)
-src/OrchDesk.App/      WPF app: chat, overnight queue, models & accounts, settings, themes
+src/OrchDesk.App/      WPF app: chat with overnight skill, models & accounts, settings, themes
 tests/OrchDesk.Tests/  xUnit tests (tools, path safety, permissions, agent loop, failover, parsers)
 docs/                  original plan and the integration research report
 ```
@@ -94,4 +92,4 @@ The full report is in `docs/research/`. The main suggestions are:
 
 Run `OrchDesk.exe --selftest <folder> [--provider local-pc]`. No window is opened. The default checks LM Studio at `http://127.0.0.1:1234/v1` with `qwen/qwen3.5-9b`; other provider IDs use enabled OpenAI-compatible settings. Each check writes pass/fail and a fixed detail to `<folder>\selftest.json`. Exit codes: 0 all passed, 1 a check failed, 2 invalid setup. Provider responses and secrets are never included in the report.
 
-The checks cover a real model reply, model-driven create/edit tools in a unique subfolder, file read/edit/save, delete approval, account health and simulated rotation, a real supervisor verification command with fake planner/worker, and a live GET of example.com. Existing hello.txt is preserved. `web_fetch` reads at most 200,000 bytes, refuses private DNS/IP addresses and redirects, and fences returned data as untrusted.
+The checks cover a real model reply, model-driven create/edit tools in a unique subfolder, file read/edit/save, delete approval, account health and simulated rotation, a bounded overnight run with a fake manager, saved checkpoint and real verification command, and a live GET of example.com. Existing hello.txt is preserved. `web_fetch` reads at most 200,000 bytes, refuses private DNS/IP addresses and redirects, and fences returned data as untrusted.

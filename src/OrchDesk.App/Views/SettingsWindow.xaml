@@ -104,31 +104,22 @@
                 </StackPanel>
             </TabItem>
 
-            <TabItem Header="Supervisor">
+            <TabItem Header="Overnight run">
                 <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
                     <TextBlock Style="{StaticResource Muted}" LineHeight="18"
-                               Text="Supervisor mode: the planner (usually Claude) plans and reviews, the worker (your PC or OpenCode) does the coding, and OrchDesk runs the tests between rounds." />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Planner model ID" />
-                    <TextBox Text="{Binding PlannerId, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Worker model ID" />
-                    <TextBox Text="{Binding WorkerId, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
+                               Text="Use /overnight in chat. Your selected API model plans, works and tests. Approvals are queued for morning." />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Test command" />
                     <TextBox Text="{Binding TestCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Maximum rounds" />
-                    <TextBox Text="{Binding MaxRounds}" Width="100" HorizontalAlignment="Left" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Cost router tiers, cheapest first (model IDs)" />
                     <TextBox Text="{Binding CostTiers, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                 </StackPanel>
             </TabItem>
 
-            <TabItem Header="Overnight">
+            <TabItem Header="Run limits">
                 <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Time limit per task (minutes)" Margin="0,0,0,4" />
                     <TextBox Text="{Binding MaxMinutesPerTask}" Width="100" HorizontalAlignment="Left" />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Attempts per task when tests fail" />
-                    <TextBox Text="{Binding MaxAttemptsPerTask}" Width="100" HorizontalAlignment="Left" />
-                    <CheckBox Content="Keep the PC awake while the queue runs" IsChecked="{Binding KeepPcAwake}" Margin="0,16,0,0" />
-                    <CheckBox Content="Push finished branches (orchdesk/* only, after a secret scan)" IsChecked="{Binding PushBranches}" Margin="0,10,0,0" />
+                    <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0" Text="The step budget is set under General. Runs checkpoint automatically; risky actions are queued for morning review." />
                 </StackPanel>
             </TabItem>
         </TabControl>
