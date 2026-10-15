@@ -74,14 +74,20 @@
                     <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" ToolTip="Change project folder" Margin="-8,0,0,8">
                         <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="13" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="720" />
                     </Button>
-                    <WrapPanel>
-                        <ComboBox Width="240" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}" DisplayMemberPath="Label" ToolTip="Choose your chat or overnight manager model" Margin="0,0,8,8" />
-                        <ComboBox Width="112" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" ToolTip="Chat or cost routing" Margin="0,0,8,8" />
-                        <Button Content="Overnight run" Command="{Binding OvernightSkillCommand}" Margin="0,0,8,8" />
-                        <CheckBox Content="Shutdown PC when done" IsChecked="{Binding ShutdownWhenDone}" ToolTip="For /overnight runs only; shutdown follows the morning summary with a 120 second delay" Margin="0,0,16,8" VerticalAlignment="Center" />
-                        <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="0,0,8,8" />
-                        <Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="0,0,0,8" />
-                    </WrapPanel>
+                    <StackPanel Orientation="Vertical">
+                        <!-- Row 1: Provider, Modes, Open file, New chat -->
+                        <WrapPanel>
+                            <ComboBox Width="240" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}" DisplayMemberPath="Label" ToolTip="Choose your chat or overnight manager model" Margin="0,0,8,8" />
+                            <ComboBox Width="112" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" ToolTip="Chat or cost routing" Margin="0,0,8,8" />
+                            <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="0,0,8,8" />
+                            <Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="0,0,8,8" />
+                        </WrapPanel>
+                        <!-- Row 2: Overnight run, Shutdown PC -->
+                        <WrapPanel>
+                            <Button Content="Overnight run" Command="{Binding OvernightSkillCommand}" Margin="0,0,8,8" />
+                            <CheckBox Content="Shutdown PC when done" IsChecked="{Binding ShutdownWhenDone}" ToolTip="For /overnight runs only; shutdown follows the morning summary with a 120 second delay" Margin="0,0,8,8" VerticalAlignment="Center" />
+                        </WrapPanel>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
