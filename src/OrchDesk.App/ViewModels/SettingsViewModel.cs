@@ -11,6 +11,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AppServices _services;
 
     public ObservableCollection<ProviderEdit> Providers { get; }
+    public IEnumerable<ProviderEdit> PrimaryIntegrations => ClaudeProfiles.Concat(OpenCodeProfiles);
     public IEnumerable<ProviderEdit> ClaudeProfiles => Providers.Where(p => p.Id is "claude-gmail" or "claude-outlook");
     public IEnumerable<ProviderEdit> OpenCodeProfiles => Providers.Where(p => p.Id == "opencode-go");
     public IEnumerable<ProviderEdit> OtherProviders => Providers.Except(ClaudeProfiles).Except(OpenCodeProfiles);

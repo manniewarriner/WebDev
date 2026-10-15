@@ -1,0 +1,5 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+<DropShadowEffect x:Key="Shadow.Card" BlurRadius="24" ShadowDepth="8" Opacity="0.35" Color="{DynamicResource ShadowColor}" />
+<DropShadowEffect x:Key="Shadow.Focus" BlurRadius="3" ShadowDepth="0" Opacity="0.25" Color="{DynamicResource AccentColor}" />
+<BlurEffect x:Key="Blur.Overlay" Radius="12" RenderingBias="Performance" />
+</ResourceDictionary>

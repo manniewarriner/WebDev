@@ -30,12 +30,14 @@ public sealed class AppServices
     public event Action? Rebuilt;
 
     public bool IsScreenshot { get; }
+    public bool UseDemo { get; }
+    public Task StartupSync { get; private set; } = Task.CompletedTask;
 
-    public AppServices(bool screenshot = false, ConfigStore? store = null)
+    public AppServices(bool screenshot = false, ConfigStore? store = null, bool? demo = null)
     {
         Store = store ?? new();
         IsScreenshot = screenshot;
-        var useFixtures = screenshot && (store is null || !File.Exists(Store.FilePath));
+        var useFixtures = UseDemo = screenshot && (demo ?? store is null);
         Config = useFixtures ? AppConfig.CreateDefault() : Store.Load();
         if (useFixtures)
         {
@@ -52,20 +54,20 @@ public sealed class AppServices
         Queue = new OvernightQueueStore(Path.Combine(Store.Directory, "overnight"));
         ReportsDir = Path.Combine(Store.Directory, "reports");
         Rebuild();
-        if (screenshot) return;
+        if (screenshot) { if (!UseDemo) StartupSync = SyncModelsAsync(); return; }
         Store.Changed += () => System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => {
             try { Config = Store.Load(); Rebuild(); } catch (IOException) { }
         }));
         Store.Watch();
-        _ = SyncModelsAsync();
+        StartupSync = SyncModelsAsync();
     }
 
     private async Task SyncModelsAsync()
     {
         var config = Config;
         var sync = new OrchDesk.Core.Integrations.IntegrationModelSync(Http, Secrets, new OrchDesk.Core.Integrations.ClaudeAuthRunner());
-        var results = await Task.WhenAll(config.Providers.Where(p => p.Enabled && p.Kind == ProviderKind.OpenAiCompatible).Select(p => sync.RunAsync(p)));
-        if (ReferenceEquals(config, Config) && results.Any(r => r.Ok)) Save();
+        var results = await OrchDesk.Core.Integrations.StartupModelSync.RunAsync(config, sync);
+        if (ReferenceEquals(config, Config) && results.Any(r => r.Status == "pass")) Save();
     }
 
     public void Rebuild()

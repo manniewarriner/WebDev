@@ -17,7 +17,9 @@ public class OvernightRoundTests
     public async Task CommitsOnlyGreenRoundToCurrentBranch(bool green)
     {
         using var repo = new TempDir(); using var runs = new TempDir();
-        await Git(repo.Path, "init", "-b", "work"); await Git(repo.Path, "config", "user.email", "test@example.com"); await Git(repo.Path, "config", "user.name", "Test");
+        await Git(repo.Path, "init", "-b", "work");
+        // Isolate Git from the signed-in user?s inaccessible global ignore file in sandboxed runs.
+        repo.File(".git/test-ignore", ""); await Git(repo.Path, "config", "core.excludesFile", Path.Combine(repo.Path, ".git", "test-ignore")); await Git(repo.Path, "config", "user.email", "test@example.com"); await Git(repo.Path, "config", "user.name", "Test");
         repo.File("initial.txt", "initial"); await Git(repo.Path, "add", "-A"); await Git(repo.Path, "commit", "-m", "initial");
         var before = (await Git(repo.Path, "rev-parse", "HEAD")).Output;
         var manager = new FakeProvider("manager", _ => FakeProvider.Say("Write a result file"), _ => FakeProvider.Say("GOAL_COMPLETE"));
@@ -45,7 +47,9 @@ public class OvernightRoundTests
     public async Task ManagerReviewRequiresStandaloneCompletionToken(string reviewText, string expectedStatus)
     {
         using var repo = new TempDir(); using var runs = new TempDir();
-        await Git(repo.Path, "init", "-b", "work"); await Git(repo.Path, "config", "user.email", "test@example.com"); await Git(repo.Path, "config", "user.name", "Test");
+        await Git(repo.Path, "init", "-b", "work");
+        // Isolate Git from the signed-in user?s inaccessible global ignore file in sandboxed runs.
+        repo.File(".git/test-ignore", ""); await Git(repo.Path, "config", "core.excludesFile", Path.Combine(repo.Path, ".git", "test-ignore")); await Git(repo.Path, "config", "user.email", "test@example.com"); await Git(repo.Path, "config", "user.name", "Test");
         repo.File("initial.txt", "initial"); await Git(repo.Path, "add", "-A"); await Git(repo.Path, "commit", "-m", "initial");
         var manager = new FakeProvider("manager", _ => FakeProvider.Say("Write a result file"), _ => FakeProvider.Say(reviewText));
         var worker = new FakeProvider("worker", _ => FakeProvider.Call("write_file", "{\"path\":\"result.txt\",\"content\":\"done\"}"), _ => FakeProvider.Say("Done"));

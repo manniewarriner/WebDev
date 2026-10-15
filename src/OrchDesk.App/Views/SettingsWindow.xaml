@@ -2,84 +2,52 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:ctl="clr-namespace:OrchDesk.App.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Name="Root" Title="OrchDesk settings" Width="1000" Height="860" MinWidth="760"
+        x:Name="Root" Title="OrchDesk settings" Width="1180" Height="780" MinWidth="1024" MinHeight="680"
         Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
         Icon="/Assets/orch-app-icon.ico" FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterOwner">
     <Window.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></Window.Resources>
     <DockPanel>
-        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,12">
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_1_0_0}" Padding="{StaticResource Inset.24_12}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Cancel" IsCancel="True" Style="{StaticResource GhostButton}" Margin="0,0,8,0" />
+                    <Button Content="Cancel" IsCancel="True" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.0_0_8_0}" />
                     <Button Content="Save settings" Command="{Binding SaveCommand}" Style="{StaticResource AccentButton}" IsDefault="True" />
                 </StackPanel>
-                <StackPanel><TextBlock Text="{Binding SavedMessage}" Foreground="{DynamicResource TextBrush}" /><TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>
+                <StackPanel><TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>
             </DockPanel>
         </Border>
 
-        <TabControl x:Name="SettingsTabs" SelectedIndex="0" Background="Transparent" BorderThickness="0" Padding="0" Margin="32,24,32,0">
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="{StaticResource Inset.24_16}" Visibility="{Binding SavedMessage, Converter={StaticResource HasValue}}"><TextBlock Text="{Binding SavedMessage}" Foreground="{DynamicResource SuccessBrush}"/></Border>
+        <TabControl MaxWidth="880" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" x:Name="SettingsTabs" SelectedIndex="0" Background="Transparent" BorderThickness="{StaticResource Inset.0}" Padding="{StaticResource Inset.0}" Margin="{StaticResource Inset.32_24_32_0}">
             <TabItem Header="Integrations">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="8,12">
-                        <TextBlock Text="Integrations" FontFamily="{StaticResource DisplayFont}" FontSize="28" FontWeight="SemiBold" />
-                        <TextBlock Style="{StaticResource Muted}" Text="Connect your accounts and choose the models you work with." TextWrapping="Wrap" Margin="0,8,0,16" />
-                        <TextBlock Text="AI providers" FontFamily="{StaticResource DisplayFont}" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,16" />
-                        <ItemsControl ItemsSource="{Binding ClaudeProfiles}"><ItemsControl.ItemTemplate><DataTemplate>
-                            <Border Style="{StaticResource IntegrationCard}"><StackPanel>
-                                <DockPanel>
-                                    <Border DockPanel.Dock="Right" Style="{StaticResource ConnectionPill}"><TextBlock Text="{Binding ConnectionState}" FontSize="12" /></Border>
-                                    <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="12" Background="{DynamicResource RaisedBrush}" Margin="0,0,16,0"><ctl:ProviderLogo Provider="{Binding}" Width="28" Height="28" /></Border>
-                                    <StackPanel><TextBlock Text="{Binding FriendlyName}" FontFamily="{StaticResource DisplayFont}" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="{Binding Subtitle}" Style="{StaticResource Muted}" Margin="0,5,0,0" /></StackPanel>
-                                </DockPanel>
-                                <Grid Margin="58,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding SyncSummary}" Style="{StaticResource Muted}" /></StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-<Button Content="Connect" Style="{StaticResource AccentButton}" Visibility="{Binding IsConnected, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" Command="{Binding DataContext.ConnectIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" />
-<Button Content="Manage" Visibility="{Binding IsConnected, Converter={StaticResource BoolVisible}}" Command="{Binding ManageCommand}" />
-<Button Content="Disconnect" Margin="8,0,0,0" Visibility="{Binding IsConnected, Converter={StaticResource BoolVisible}}" Command="{Binding DataContext.DisconnectIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" /></StackPanel>
-                                </Grid>
-                                <Expander IsExpanded="{Binding DetailsExpanded}" Header="Connection details" Style="{StaticResource ConnectionDetails}" Margin="46,0,0,0"><StackPanel Margin="12,8,0,0"><CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,0,8" />
-                                    <StackPanel Visibility="{Binding IsClaude, Converter={StaticResource BoolVisible}}"><TextBlock Text="Subscription profile folder" Style="{StaticResource FieldLabel}" /><TextBox Text="{Binding ClaudeConfigDir, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
-                                    <StackPanel Visibility="{Binding IsHttp, Converter={StaticResource BoolVisible}}"><TextBlock Text="Endpoint" Style="{StaticResource FieldLabel}" /><TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" /><TextBlock Text="API key" Style="{StaticResource FieldLabel}" /><PasswordBox PasswordChanged="ApiKey_Changed" /><TextBlock Text="{Binding KeyState}" Style="{StaticResource Muted}" Margin="0,4" /></StackPanel>
-                                    <StackPanel Orientation="Horizontal"><Button Content="Test" Command="{Binding DataContext.TestIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" /><Button Content="Sync" Margin="8,0" Command="{Binding DataContext.SyncIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" /></StackPanel><TextBlock Text="{Binding Status}" Style="{StaticResource Muted}" Margin="0,8" TextWrapping="Wrap" />
-                                </StackPanel></Expander>
-                            </StackPanel></Border>
-                        </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-                        <ItemsControl ItemsSource="{Binding OpenCodeProfiles}"><ItemsControl.ItemTemplate><DataTemplate>
-                            <Border Style="{StaticResource IntegrationCard}"><StackPanel>
-                                <DockPanel>
-                                    <Border DockPanel.Dock="Right" Style="{StaticResource ConnectionPill}"><TextBlock Text="{Binding ConnectionState}" FontSize="12" /></Border>
-                                    <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="12" Background="{DynamicResource RaisedBrush}" Margin="0,0,16,0"><ctl:ProviderLogo Provider="{Binding}" Width="28" Height="28" /></Border>
-                                    <StackPanel><TextBlock Text="{Binding FriendlyName}" FontFamily="{StaticResource DisplayFont}" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="{Binding Subtitle}" Style="{StaticResource Muted}" Margin="0,5,0,0" /></StackPanel>
-                                </DockPanel>
-                                <Grid Margin="58,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding SyncSummary}" Style="{StaticResource Muted}" /></StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-<Button Content="Connect" Style="{StaticResource AccentButton}" Visibility="{Binding IsConnected, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" Command="{Binding DataContext.ConnectIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" />
-<Button Content="Manage" Visibility="{Binding IsConnected, Converter={StaticResource BoolVisible}}" Command="{Binding ManageCommand}" />
-<Button Content="Disconnect" Margin="8,0,0,0" Visibility="{Binding IsConnected, Converter={StaticResource BoolVisible}}" Command="{Binding DataContext.DisconnectIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" /></StackPanel>
-                                </Grid>
-                                <Expander IsExpanded="{Binding DetailsExpanded}" Header="Connection details" Style="{StaticResource ConnectionDetails}" Margin="46,0,0,0"><StackPanel Margin="12,8,0,0"><CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,0,8" />
-                                    <StackPanel Visibility="{Binding IsClaude, Converter={StaticResource BoolVisible}}"><TextBlock Text="Subscription profile folder" Style="{StaticResource FieldLabel}" /><TextBox Text="{Binding ClaudeConfigDir, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
-                                    <StackPanel Visibility="{Binding IsHttp, Converter={StaticResource BoolVisible}}"><TextBlock Text="Endpoint" Style="{StaticResource FieldLabel}" /><TextBox Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" /><TextBlock Text="API key" Style="{StaticResource FieldLabel}" /><PasswordBox PasswordChanged="ApiKey_Changed" /><TextBlock Text="{Binding KeyState}" Style="{StaticResource Muted}" Margin="0,4" /></StackPanel>
-                                    <StackPanel Orientation="Horizontal"><Button Content="Test" Command="{Binding DataContext.TestIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" /><Button Content="Sync" Margin="8,0" Command="{Binding DataContext.SyncIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" /></StackPanel><TextBlock Text="{Binding Status}" Style="{StaticResource Muted}" Margin="0,8" TextWrapping="Wrap" />
-                                </StackPanel></Expander>
-                            </StackPanel></Border>
-                        </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-                        <TextBlock Text="Advanced" FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold" Margin="0,20,0,16" />
+                    <StackPanel Margin="{StaticResource Inset.8_12}">
+                        <TextBlock Text="Integrations" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.24}" FontWeight="SemiBold" />
+                        <TextBlock Style="{StaticResource Muted}" Text="Connect your accounts and choose the models you work with." TextWrapping="Wrap" Margin="{StaticResource Inset.0_8_0_16}" />
+                        <TextBlock Text="AI providers" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.18}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_8_0_16}" />
+                        <ItemsControl ItemsSource="{Binding PrimaryIntegrations}">
+ <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+ <ItemsControl.ItemTemplate><DataTemplate><Border Style="{StaticResource Card}" Margin="{StaticResource Inset.0_0_12_12}"><StackPanel>
+  <DockPanel><Border DockPanel.Dock="Right" Style="{StaticResource ConnectionPill}"><TextBlock Text="{Binding ConnectionState}" FontSize="{StaticResource Metric.11}"/></Border><ctl:ProviderLogo Provider="{Binding}" Width="{StaticResource Metric.32}" Height="{StaticResource Metric.32}" HorizontalAlignment="Left"/></DockPanel>
+  <TextBlock Text="{Binding FriendlyName}" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.18}" Margin="{StaticResource Inset.0_20_0_8}"/>
+  <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Muted}" MinHeight="{StaticResource Metric.40}"/>
+  <ctl:SkeletonRows Visibility="{Binding Testing, Converter={StaticResource BoolVisible}}"/><TextBlock Text="{Binding SyncSummary}" Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_16_0_8}"/>
+  <WrapPanel><Button Content="Connect / manage" Click="ConnectProvider" Tag="{Binding}"/><Button Content="Sync" Command="{Binding DataContext.SyncIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" Margin="{StaticResource Inset.8_0_0_0}"/><Button Content="Disconnect" Command="{Binding DataContext.DisconnectIntegrationCommand, ElementName=Root}" CommandParameter="{Binding}" Visibility="{Binding IsConnected, Converter={StaticResource BoolVisible}}" Margin="{StaticResource Inset.8_0_0_0}"/></WrapPanel>
+ </StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <TextBlock Text="Advanced" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.18}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_20_0_16}" />
                         <ItemsControl ItemsSource="{Binding OtherProviders}">
                             <ItemsControl.ItemTemplate><DataTemplate>
-                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="18" Margin="0,0,0,16">
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.1}" CornerRadius="{StaticResource Round.8}" Padding="{StaticResource Inset.18}" Margin="{StaticResource Inset.0_0_0_16}">
                                     <StackPanel>
-                                        <DockPanel><ctl:ProviderLogo DockPanel.Dock="Left" Provider="{Binding}" Margin="0,0,12,0" /><Border DockPanel.Dock="Right" Background="{DynamicResource BaseBrush}" CornerRadius="10" Padding="8,4"><TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="320" /></Border><TextBlock Text="{Binding FriendlyName}" FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold" /></DockPanel>
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Name" Margin="0,0,0,4" />
+                                        <DockPanel><ctl:ProviderLogo DockPanel.Dock="Left" Provider="{Binding}" Margin="{StaticResource Inset.0_0_12_0}" /><Border DockPanel.Dock="Right" Background="{DynamicResource BaseBrush}" CornerRadius="{StaticResource Round.10}" Padding="{StaticResource Inset.8_4}"><TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="{StaticResource Metric.320}" /></Border><TextBlock Text="{Binding FriendlyName}" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.18}" FontWeight="SemiBold" /></DockPanel>
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Name" Margin="{StaticResource Inset.0_0_0_4}" />
                             <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource FieldLabel}" Text="ID (used in the fallback order)" />
                             <TextBox Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                             <TextBlock Style="{StaticResource FieldLabel}" Text="Type" />
                             <ComboBox ItemsSource="{Binding DataContext.Kinds, ElementName=Root}" SelectedItem="{Binding Kind}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,20,0" />
+                            <StackPanel Orientation="Horizontal" Margin="{StaticResource Inset.0_12_0_0}">
+                                <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="{StaticResource Inset.0_0_20_0}" />
                                 <CheckBox Content="Runs on my PC (skip when the PC is off)" IsChecked="{Binding IsLocal}" />
                             </StackPanel>
 
@@ -90,7 +58,7 @@
                                 <TextBox Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="API key" />
                                 <PasswordBox Tag="ApiKey" PasswordChanged="ApiKey_Changed" />
-                                <TextBlock Text="{Binding KeyState}" Style="{StaticResource Muted}" Margin="0,3,0,0" />
+                                <TextBlock Text="{Binding KeyState}" Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_3_0_0}" />
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Cloudflare Access client ID (only for the remote PC relay)" />
                                 <PasswordBox Tag="CfId" PasswordChanged="CfId_Changed" />
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Cloudflare Access client secret" />
@@ -107,30 +75,30 @@
                             <StackPanel Visibility="{Binding IsClaude, Converter={StaticResource BoolVisible}}">
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Claude profile folder (CLAUDE_CONFIG_DIR)" />
                                 <TextBox Text="{Binding ClaudeConfigDir, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
-                                <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" LineHeight="18"
+                                <TextBlock Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_4_0_0}" LineHeight="{StaticResource Metric.18}"
                                            Text="Log in once per profile in a terminal: set CLAUDE_CONFIG_DIR to this folder, run claude, then /login. OrchDesk removes ANTHROPIC_API_KEY when it starts Claude, so it always uses the subscription." />
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="Claude permission mode" />
                                 <ComboBox ItemsSource="{Binding DataContext.PermissionModes, ElementName=Root}" SelectedItem="{Binding PermissionMode}" />
                             </StackPanel>
 
-                                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                        <StackPanel Orientation="Horizontal" Margin="{StaticResource Inset.0_16_0_0}">
                                             <Button Content="Connect / Sync" Command="{Binding DataContext.TestConnectionCommand, ElementName=Root}" CommandParameter="{Binding}" />
-                                            <Button Content="Save" Command="{Binding DataContext.SaveCommand, ElementName=Root}" Margin="8,0,0,0" />
+                                            <Button Content="Save" Command="{Binding DataContext.SaveCommand, ElementName=Root}" Margin="{StaticResource Inset.8_0_0_0}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <Button Content="Add model" Command="{Binding AddProviderCommand}" HorizontalAlignment="Left" />
-                        <Border Background="{DynamicResource SurfaceBrush}" Padding="18" Margin="0,16"><StackPanel>
+                        <Border Background="{DynamicResource SurfaceBrush}" Padding="{StaticResource Inset.18}" Margin="{StaticResource Inset.0_16}"><StackPanel>
                             <TextBlock Text="Web fetch ? GET https://example.com" FontWeight="SemiBold" />
-                            <CheckBox Content="Enabled" IsChecked="{Binding WebFetchEnabled}" Margin="0,8" />
+                            <CheckBox Content="Enabled" IsChecked="{Binding WebFetchEnabled}" Margin="{StaticResource Inset.0_8}" />
                             <TextBlock Text="{Binding WebStatus}" /><Button Content="Test connection" Command="{Binding TestWebCommand}" HorizontalAlignment="Left" />
                             <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
                         </StackPanel></Border>
-                        <Border Background="{DynamicResource SurfaceBrush}" Padding="18"><StackPanel>
+                        <Border Background="{DynamicResource SurfaceBrush}" Padding="{StaticResource Inset.18}"><StackPanel>
                             <TextBlock Text="Meshy (optional) ? GET https://api.meshy.ai" FontWeight="SemiBold" />
-                            <TextBlock Text="API key (leave blank to keep saved key)" Margin="0,8" /><PasswordBox PasswordChanged="Meshy_Changed" />
+                            <TextBlock Text="API key (leave blank to keep saved key)" Margin="{StaticResource Inset.0_8}" /><PasswordBox PasswordChanged="Meshy_Changed" />
                             <TextBlock Text="{Binding MeshyStatus}" /><Button Content="Test connection" Command="{Binding TestMeshyCommand}" HorizontalAlignment="Left" />
                             <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
                         </StackPanel></Border>
@@ -138,44 +106,44 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Appearance"><StackPanel Margin="16"><TextBlock Text="Profile" Style="{StaticResource Heading}"/><TextBlock Text="Display name" Margin="0,16,0,6"/><TextBox Text="{Binding DisplayName}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="240"/><TextBlock Text="Initials" Margin="0,12,0,6"/><TextBox Text="{Binding Initials}" MaxLength="3" Width="100" HorizontalAlignment="Left"/><Button Content="Change picture" Click="ChangePicture" HorizontalAlignment="Left" Margin="0,12,0,24"/><TextBlock Text="Motion" Style="{StaticResource Heading}" /><CheckBox Content="Reduce motion" IsThreeState="True" IsChecked="{Binding ReduceMotion}" Margin="0,20,0,8" /><TextBlock Text="Indeterminate follows Windows animation settings. Checked reduces motion; unchecked enables it." TextWrapping="Wrap" MaxWidth="520" Style="{StaticResource Muted}" /><Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Margin="0,20,0,0" /></StackPanel></TabItem>
+            <TabItem Header="Appearance"><StackPanel Margin="{StaticResource Inset.16}"><TextBlock Text="Profile" Style="{StaticResource Heading}"/><TextBlock Text="Display name" Margin="{StaticResource Inset.0_16_0_6}"/><TextBox Text="{Binding DisplayName}" MaxWidth="{StaticResource Metric.320}" HorizontalAlignment="Left" MinWidth="{StaticResource Metric.240}"/><TextBlock Text="Initials" Margin="{StaticResource Inset.0_12_0_6}"/><TextBox Text="{Binding Initials}" MaxLength="3" Width="{StaticResource Metric.100}" HorizontalAlignment="Left"/><Button Content="Change picture" Click="ChangePicture" HorizontalAlignment="Left" Margin="{StaticResource Inset.0_12_0_24}"/><TextBlock Text="Motion" Style="{StaticResource Heading}" /><CheckBox Content="Reduce motion" IsThreeState="True" IsChecked="{Binding ReduceMotion}" Margin="{StaticResource Inset.0_20_0_8}" /><TextBlock Text="Indeterminate follows Windows animation settings. Checked reduces motion; unchecked enables it." TextWrapping="Wrap" MaxWidth="{StaticResource Metric.520}" Style="{StaticResource Muted}" /><Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Margin="{StaticResource Inset.0_20_0_0}" /></StackPanel></TabItem>
             <TabItem Header="Fallback &amp; safety">
-                <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Fallback order (model IDs, first is preferred)" Margin="0,0,0,4" />
+                <Border Style="{StaticResource Card}" Margin="{StaticResource Inset.8_12}" HorizontalAlignment="Stretch" VerticalAlignment="Top"><StackPanel><TextBlock Text="Fallback &amp; safety" Style="{StaticResource Heading}"/><TextBlock Text="Choose how work continues when an account reaches its limit." Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_8_0_24}"/>
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Fallback order (model IDs, first is preferred)" Margin="{StaticResource Inset.0_0_0_4}" />
                     <TextBox Text="{Binding RotationOrder, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Minutes to rest an account after it hits a usage limit" />
-                    <TextBox Text="{Binding LimitCooldownMinutes}" Width="100" HorizontalAlignment="Left" />
+                    <TextBox Text="{Binding LimitCooldownMinutes}" Width="{StaticResource Metric.100}" HorizontalAlignment="Left" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Maximum tool steps per message" />
-                    <TextBox Text="{Binding MaxSteps}" Width="100" HorizontalAlignment="Left" />
+                    <TextBox Text="{Binding MaxSteps}" Width="{StaticResource Metric.100}" HorizontalAlignment="Left" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Extra commands that may run without asking (one per line, matched by prefix)" />
-                    <TextBox Text="{Binding ExtraAllowedCommands, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="90"
+                    <TextBox Text="{Binding ExtraAllowedCommands, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="{StaticResource Metric.90}"
                              FontFamily="{StaticResource CodeFont}" VerticalScrollBarVisibility="Auto" />
-                    <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" LineHeight="18"
+                    <TextBlock Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_6_0_0}" LineHeight="{StaticResource Metric.18}"
                                Text="Always allowed: reading and editing inside the project folder, builds and tests, git status/diff/commit. Always asks: deleting, installing packages, network commands, git push, anything chained with &amp;&amp; or ;." />
-                </StackPanel>
-            </TabItem>
+                </StackPanel></Border>
+</TabItem>
 
             <TabItem Header="Overnight run">
-                <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
-                    <TextBlock Style="{StaticResource Muted}" LineHeight="18"
+                <Border Style="{StaticResource Card}" Margin="{StaticResource Inset.8_12}" HorizontalAlignment="Stretch" VerticalAlignment="Top"><StackPanel><TextBlock Text="Overnight run" Style="{StaticResource Heading}"/><TextBlock Text="Set a clear budget for the work that happens while you rest." Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_8_0_24}"/>
+                    <TextBlock Style="{StaticResource Muted}" LineHeight="{StaticResource Metric.18}"
                                Text="Use /overnight in chat. Your selected API model plans, works and tests. Approvals are queued for morning." />
-                    <CheckBox Content="Shutdown PC when done (120 second delay)" IsChecked="{Binding ShutdownWhenDone}" Margin="0,12" />
+                    <CheckBox Content="Shutdown PC when done (120 second delay)" IsChecked="{Binding ShutdownWhenDone}" Margin="{StaticResource Inset.0_12}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Test command" />
                     <TextBox Text="{Binding TestCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Worker model ID" /><TextBox Text="{Binding WorkerId}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Maximum rounds" /><TextBox Text="{Binding MaxRounds}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Cost router tiers, cheapest first (model IDs)" />
                     <TextBox Text="{Binding CostTiers, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
-                </StackPanel>
-            </TabItem>
+                </StackPanel></Border>
+</TabItem>
 
             <TabItem Header="Run limits">
-                <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Time limit per task (minutes)" Margin="0,0,0,4" />
-                    <TextBox Text="{Binding MaxMinutesPerTask}" Width="100" HorizontalAlignment="Left" />
-                    <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0" Text="The step budget is set under General. Runs checkpoint automatically; risky actions are queued for morning review." />
-                </StackPanel>
-            </TabItem>
-        <TabItem Header="About"><StackPanel Margin="16"><TextBlock Text="OrchDesk 0.3.0" Style="{StaticResource Heading}"/><TextBlock Text="A workspace for your ideas and models." Style="{StaticResource Muted}" Margin="0,12,0,24"/><Button x:Name="UpdateButton" Content="Check for updates" Click="CheckUpdates" HorizontalAlignment="Left"/><TextBlock Text="Updates are downloaded only after you choose to install." Style="{StaticResource Muted}" Margin="0,12,0,0"/></StackPanel></TabItem></TabControl>
+                <Border Style="{StaticResource Card}" Margin="{StaticResource Inset.8_12}" HorizontalAlignment="Stretch" VerticalAlignment="Top"><StackPanel><TextBlock Text="Run limits" Style="{StaticResource Heading}"/><TextBlock Text="Keep every task within a comfortable time and tool budget." Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_8_0_24}"/>
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Time limit per task (minutes)" Margin="{StaticResource Inset.0_0_0_4}" />
+                    <TextBox Text="{Binding MaxMinutesPerTask}" Width="{StaticResource Metric.100}" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_16_0_0}" Text="The step budget is set under General. Runs checkpoint automatically; risky actions are queued for morning review." />
+                </StackPanel></Border>
+</TabItem>
+        <TabItem Header="About"><StackPanel Margin="{StaticResource Inset.16}"><TextBlock Text="OrchDesk 0.3.0" Style="{StaticResource Heading}"/><TextBlock Text="A workspace for your ideas and models." Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_12_0_24}"/><Button x:Name="UpdateButton" Content="Check for updates" Click="CheckUpdates" HorizontalAlignment="Left"/><TextBlock Text="Updates are downloaded only after you choose to install." Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_12_0_0}"/></StackPanel></TabItem></TabControl>
     </DockPanel>
 </Window>

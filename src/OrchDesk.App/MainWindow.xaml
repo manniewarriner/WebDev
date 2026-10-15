@@ -4,30 +4,32 @@
         xmlns:vm="clr-namespace:OrchDesk.App.ViewModels"
         xmlns:ctl="clr-namespace:OrchDesk.App.Controls"
         xmlns:core="clr-namespace:OrchDesk.Core.Overnight;assembly=OrchDesk.Core"
-        Title="OrchDesk" Width="1180" Height="780" MinWidth="760" MinHeight="520"
+        Title="OrchDesk" Width="{StaticResource Metric.1180}" Height="{StaticResource Metric.780}" MinWidth="{StaticResource Metric.760}" MinHeight="{StaticResource Metric.520}"
         Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
         Icon="Assets/orch-app-icon.ico" UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterScreen">
 
-    <Window.Resources>
+    <Window.Resources><Style x:Key="BentoCard" TargetType="Button">
+<Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Height" Value="104"/><Setter Property="Padding" Value="16"/><Setter Property="Margin" Value="0,0,8,8"/>
+<Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Card" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource Round.12}" Padding="{TemplateBinding Padding}"><Border.RenderTransform><TranslateTransform/></Border.RenderTransform><ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Card" Property="RenderTransform"><Setter.Value><TranslateTransform Y="-2"/></Setter.Value></Setter><Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
         <CollectionViewSource x:Key="GroupedModels" Source="{Binding Chat.ProviderOptions}">
             <CollectionViewSource.GroupDescriptions><PropertyGroupDescription PropertyName="ProviderGroup" /></CollectionViewSource.GroupDescriptions>
         </CollectionViewSource>
     </Window.Resources>
-    <Grid PreviewMouseDown="DismissModelPicker">
+    <Grid x:Name="ShellRoot" PreviewMouseDown="DismissModelPicker">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!-- ───────── Left rail ───────── -->
-        <Border x:Name="Sidebar" Width="224" ClipToBounds="True" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
-            <DockPanel Margin="0,16,0,16">
-                <Button DockPanel.Dock="Top" Content="☰" Click="ToggleSidebar" ToolTip="Collapse or expand sidebar" HorizontalAlignment="Left" Margin="12,0,0,16" Style="{StaticResource GhostButton}" />
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,0,0,32"><Image Source="Assets/orch-app-icon-512.png" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,10,0" /><TextBlock x:Name="SidebarTitle" Text="OrchDesk" VerticalAlignment="Center" FontFamily="{StaticResource DisplayFont}" FontSize="24" /></StackPanel>
+        <Border x:Name="Sidebar" Width="{StaticResource Metric.224}" ClipToBounds="True" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_0_1_0}">
+            <DockPanel Margin="{StaticResource Inset.0_16_0_16}">
+                <Button DockPanel.Dock="Top" Content="☰" Click="ToggleSidebar" ToolTip="Collapse or expand sidebar" HorizontalAlignment="Left" Margin="{StaticResource Inset.12_0_0_16}" Style="{StaticResource GhostButton}" />
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="{StaticResource Inset.20_0_0_32}"><Image Source="Assets/orch-app-icon-512.png" Width="{StaticResource Metric.32}" Height="{StaticResource Metric.32}" RenderOptions.BitmapScalingMode="HighQuality" Margin="{StaticResource Inset.0_0_10_0}" /><TextBlock x:Name="SidebarTitle" Text="OrchDesk" VerticalAlignment="Center" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.24}" /></StackPanel>
 
-                <Button x:Name="AvatarButton" DockPanel.Dock="Bottom" Click="OpenAccountMenu" HorizontalAlignment="Left" Margin="12,12,0,0" Padding="0" Background="Transparent" BorderThickness="0"><Border x:Name="AvatarRing" Width="40" Height="40" CornerRadius="20" BorderThickness="2" BorderBrush="#8A8F98" Padding="3"><Grid><Ellipse x:Name="AvatarImage"/><TextBlock x:Name="AvatarInitials" Text="MW" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" /></Grid></Border></Button>
-                <StackPanel x:Name="RailFooter" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="8,0"><Button Content="◷" ToolTip="Recent chats" Click="ToggleSidebar" Style="{StaticResource GhostButton}"/><Button Content="⚙" ToolTip="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}"/><Button Content="◐" ToolTip="Switch theme" Command="{Binding ToggleThemeCommand}" Style="{StaticResource GhostButton}"/></StackPanel>
-                <StackPanel x:Name="SidebarFooter" DockPanel.Dock="Bottom" Margin="16,0">
+                <Button x:Name="AvatarButton" DockPanel.Dock="Bottom" Click="OpenAccountMenu" HorizontalAlignment="Left" Margin="{StaticResource Inset.12_12_0_0}" Padding="{StaticResource Inset.0}" Background="Transparent" BorderThickness="{StaticResource Inset.0}"><StackPanel Orientation="Horizontal"><Border x:Name="AvatarRing" Width="{StaticResource Metric.40}" Height="{StaticResource Metric.40}" CornerRadius="{StaticResource Round.20}" BorderThickness="{StaticResource Inset.2}" BorderBrush="{DynamicResource MutedBrush}" Padding="{StaticResource Inset.3}"><Grid><Ellipse x:Name="AvatarImage"/><TextBlock x:Name="AvatarInitials" Text="MW" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" /></Grid></Border><StackPanel x:Name="AvatarDetails" VerticalAlignment="Center" Margin="{StaticResource Inset.12_0_0_0}"><TextBlock x:Name="SidebarProfileName" FontWeight="SemiBold" FontSize="{StaticResource Metric.13}"/><TextBlock x:Name="ProfileStatus" FontSize="{StaticResource Metric.11}" Foreground="{DynamicResource MutedBrush}"/></StackPanel></StackPanel></Button>
+                <StackPanel x:Name="RailFooter" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="{StaticResource Inset.8_0}"><Button Content="◷" ToolTip="Recent chats" Click="ToggleSidebar" Style="{StaticResource GhostButton}"/><Button Content="⚙" ToolTip="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}"/><Button Content="◐" ToolTip="Switch theme" Command="{Binding ToggleThemeCommand}" Style="{StaticResource GhostButton}"/></StackPanel>
+                <StackPanel x:Name="SidebarFooter" DockPanel.Dock="Bottom" Margin="{StaticResource Inset.16_0}">
                     <TextBlock>
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Muted}">
@@ -40,36 +42,20 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,16"><ctl:ProviderLogo Provider="{Binding Accounts.ActiveProvider}" Width="18" Height="18" Margin="0,0,8,0" /><TextBlock Text="{Binding Accounts.ActiveName}" Style="{StaticResource Body}" /></StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}" Margin="-8,0,0,0" />
-                        <Button Command="{Binding ToggleThemeCommand}" Style="{StaticResource GhostButton}" ToolTip="Switch light/dark">
-                            <TextBlock>
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Light theme" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsDark}" Value="False">
-                                                <Setter Property="Text" Value="Dark theme" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Button>
-                    </StackPanel>
+                    <DockPanel Margin="{StaticResource Inset.0_8_0_16}"><ctl:ProviderLogo DockPanel.Dock="Left" Provider="{Binding Accounts.ActiveProvider}" Width="{StaticResource Metric.18}" Height="{StaticResource Metric.18}" Margin="{StaticResource Inset.0_0_8_0}" /><TextBlock Text="{Binding Accounts.ActiveName}" ToolTip="{Binding Accounts.ActiveName}" TextTrimming="CharacterEllipsis" Style="{StaticResource Body}" /></DockPanel>
+                    <StackPanel><Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Padding="{StaticResource Inset.0_8}"/><ctl:SegmentedControl x:Name="ThemeSegment" First="Dark" Second="Light" Margin="{StaticResource Inset.0_8_0_0}"/></StackPanel>
                 </StackPanel>
 
                 <StackPanel>
                     <RadioButton ToolTip="Chat" Style="{StaticResource NavButton}" GroupName="nav"
                                  IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Chat}">
-                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8F2;" Margin="0,0,16,0" FontSize="16" /><TextBlock x:Name="ChatNavLabel" Text="Chat" /></StackPanel>
+                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8F2;" Margin="{StaticResource Inset.0_0_16_0}" FontSize="{StaticResource Metric.15}" /><TextBlock x:Name="ChatNavLabel" Text="Chat" /></StackPanel>
                     </RadioButton>
                     <RadioButton Style="{StaticResource NavButton}" GroupName="nav" ToolTip="Models and accounts"
                                  IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Accounts}">
-                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE713;" Margin="0,0,16,0" FontSize="16" /><TextBlock x:Name="AccountsNavLabel" Text="Models &amp; accounts" /></StackPanel>
+                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE713;" Margin="{StaticResource Inset.0_0_16_0}" FontSize="{StaticResource Metric.15}" /><TextBlock x:Name="AccountsNavLabel" Text="Models &amp; accounts" /></StackPanel>
                     </RadioButton>
-                    <StackPanel x:Name="HistoryPanel" Margin="20,32,12,0"><TextBlock Text="RECENT CHATS" Style="{StaticResource Muted}" FontSize="10" Margin="0,0,0,12"/><TextBox x:Name="HistorySearch" TextChanged="HistorySearchChanged" ToolTip="Search chat titles" Height="30" Padding="6,3" Margin="0,0,0,6"/><ctl:FilterBar x:Name="HistoryFilters" Margin="0,0,0,8"/><ItemsControl x:Name="HistoryList"><ItemsControl.ItemTemplate><DataTemplate><Button Tag="{Binding}" Click="RestoreChat" HorizontalContentAlignment="Left" Style="{StaticResource GhostButton}" MaxWidth="180" ToolTip="{Binding Title}"><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+                    <StackPanel x:Name="HistoryPanel" Margin="{StaticResource Inset.20_32_12_0}"><ctl:TrackingLabel Text="RECENT CHATS" FontSize="{StaticResource Metric.11}" Margin="{StaticResource Inset.0_0_0_12}"/><Grid Margin="{StaticResource Inset.0_0_0_8}"><TextBox x:Name="HistorySearch" TextChanged="HistorySearchChanged" ToolTip="Search chat titles" Height="{StaticResource Metric.32}" Padding="{StaticResource Inset.28_4_8_4}" Margin="{StaticResource Inset.0}"/><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE721;" Margin="{StaticResource Inset.8_0_0_0}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" IsHitTestVisible="False"/><TextBlock  Text="Search chats" IsHitTestVisible="False" Margin="{StaticResource Inset.28_0_4_0}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=HistorySearch}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid><ctl:FilterBar x:Name="HistoryFilters" Margin="{StaticResource Inset.0_0_0_8}"/><ctl:SkeletonRows x:Name="HistorySkeleton" Visibility="Collapsed"/><TextBlock Text="No chats yet" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.0_8_0_0}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Items.Count, ElementName=HistoryList}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock><ItemsControl x:Name="HistoryList"><ItemsControl.ItemTemplate><DataTemplate><Button Tag="{Binding}" Click="RestoreChat" HorizontalContentAlignment="Left" Style="{StaticResource GhostButton}" MaxWidth="{StaticResource Metric.180}" ToolTip="{Binding Title}"><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -85,10 +71,10 @@
             </Grid.RowDefinitions>
 
             <!-- Header: folder, mode, model -->
-            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,10">
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_0_0_1}" Padding="{StaticResource Inset.24_10}">
                 <StackPanel>
-                    <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" ToolTip="Change project folder" Margin="-8,0,0,2">
-                        <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="13" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="720" />
+                    <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" ToolTip="Change project folder" Margin="{StaticResource Inset.n8_0_0_2}">
+                        <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="{StaticResource Metric.13}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="{StaticResource Metric.720}" />
                     </Button>
                     <StackPanel Orientation="Vertical">
                         <StackPanel.Style>
@@ -106,8 +92,8 @@
                         </StackPanel.Style>
                         <!-- Row 1: Provider, Modes, Open file, New chat -->
                         <WrapPanel>
-                            <ComboBox Width="112" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" ToolTip="Chat or cost routing" Margin="0,0,8,8" />
-                            <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="0,0,8,8">
+                            <ComboBox Width="{StaticResource Metric.112}" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" ToolTip="Chat or cost routing" Margin="{StaticResource Inset.0_0_8_8}" />
+                            <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="{StaticResource Inset.0_0_8_8}">
                                 <Button.Style>
                                     <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
                                         <Setter Property="IsEnabled" Value="True" />
@@ -119,10 +105,9 @@
                                     </Style>
                                 </Button.Style>
                             </Button>
-                            <Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="0,0,8,8" />
+                            <Button Content="Commands  Ctrl+K" Click="OpenPaletteClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button Content="Usage" Click="OpenUsageClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button Content="Files" Click="OpenFilesClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.0_0_8_8}" />
                         <!-- Overnight actions -->
-                            <Button Content="Overnight" Command="{Binding OvernightSkillCommand}" Margin="0,0,8,8" />
-                            <CheckBox Content="Shutdown PC when done" IsChecked="{Binding ShutdownWhenDone}" ToolTip="For /overnight runs only; shutdown follows the morning summary with a 120 second delay" Margin="0,0,8,8" VerticalAlignment="Center" />
+                            <ctl:SegmentedControl x:Name="WorkModeSegment" Margin="{StaticResource Inset.0_0_8_8}"/>
                         </WrapPanel>
                     </StackPanel>
                 </StackPanel>
@@ -142,15 +127,15 @@
                         </Style.Triggers>
                     </Style>
                 </Expander.Style>
-                <StackPanel Margin="16">
+                <StackPanel Margin="{StaticResource Inset.16}">
                     <DockPanel><Button DockPanel.Dock="Right" Content="Save" Command="{Binding SaveFileCommand}" /><TextBlock Text="{Binding EditorPath}" TextTrimming="CharacterEllipsis" /></DockPanel>
-                    <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" Height="260" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource CodeFont}" />
+                    <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" Height="{StaticResource Metric.260}" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource CodeFont}" />
                 </StackPanel>
             </Expander>
             <ctl:EvervaultBackground x:Name="ChatBackdrop" Grid.Row="2" />
-            <ctl:FilterBar x:Name="JobFilters" Visibility="Collapsed" Grid.Row="1" HorizontalAlignment="Right" Margin="16,2"/>
+            <ctl:FilterBar x:Name="JobFilters" Visibility="Collapsed" Grid.Row="1" HorizontalAlignment="Right" Margin="{StaticResource Inset.16_2}"/>
             <!-- Empty state -->
-            <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460">
+            <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="{StaticResource Metric.560}">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -164,61 +149,62 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock Style="{StaticResource Heading}" Text="What should we build?" Margin="0,0,0,16" /><ctl:ActivityHeatmap x:Name="HomeActivity" Margin="0,0,0,20"/>
-                <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="21"
-                           Text="Pick a project folder, then describe the change. OrchDesk reads, edits and tests the code there, and asks you before deleting files, installing packages or pushing." />
-                <Button Content="Choose a folder" Command="{Binding PickFolderCommand}" HorizontalAlignment="Left" Margin="0,24,0,0" Style="{StaticResource AccentButton}" />
+                <TextBlock Style="{StaticResource Heading}" Text="Make room for your next idea." Margin="{StaticResource Inset.0_0_0_16}" />
+                <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="{StaticResource Metric.21}"
+                           Text="Choose a project, bring your models, and turn a little direction into something worth shipping." />
+                <UniformGrid Columns="2" Margin="{StaticResource Inset.0_24_0_0}"><Button Style="{StaticResource BentoCard}" Command="{Binding PickFolderCommand}"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8B7;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Explore a project" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Choose a folder and start building." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button><Button Style="{StaticResource BentoCard}" Click="OpenOvernightSetup"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE708;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Plan an overnight run" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Set a goal for the hours ahead." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button><Button Style="{StaticResource BentoCard}" Click="OpenIntegrationsV2"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE703;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Connect your models" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Bring your accounts into one place." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button><Button Style="{StaticResource BentoCard}" Click="OpenPaletteClick"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE945;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Commands" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Find an action with Ctrl+K." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button></UniformGrid><ctl:TrackingLabel Text="ACTIVITY" FontSize="{StaticResource Metric.11}" Margin="{StaticResource Inset.0_16_0_0}"/><ctl:ActivityHeatmap x:Name="HomeActivity" Width="338" HorizontalAlignment="Left"/>
+                
             </StackPanel>
 
             <!-- Conversation -->
-            <ScrollViewer x:Name="ChatScroll" ScrollChanged="ThreadScrolled" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,8">
+            <ScrollViewer x:Name="ChatScroll" ScrollChanged="ThreadScrolled" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Inset.0_8}">
                 <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ScrollViewer.Resources>
-                <ItemsControl ItemsSource="{Binding Items}" MaxWidth="820" Margin="32,16" Focusable="False">
+                <ItemsControl ItemsSource="{Binding Items}" MaxWidth="{StaticResource Metric.820}" Margin="{StaticResource Inset.32_16}" Focusable="False">
                     <ItemsControl.Resources>
                         <DataTemplate DataType="{x:Type vm:UserItem}">
-                            <Border Background="{DynamicResource UserBubbleBrush}" CornerRadius="16,16,4,16" Padding="16"
-                                    HorizontalAlignment="Right" MaxWidth="600" Margin="80,16,0,8">
+                            <Border Background="{DynamicResource UserBubbleBrush}" CornerRadius="{StaticResource Round.16_16_4_16}" Padding="{StaticResource Inset.16}"
+                                    HorizontalAlignment="Right" MaxWidth="{StaticResource Metric.600}" Margin="{StaticResource Inset.80_16_0_8}">
                                 <TextBox Style="{StaticResource MessageText}" Text="{Binding Text, Mode=OneWay}" />
                             </Border>
                         </DataTemplate>
 
                         <DataTemplate DataType="{x:Type vm:AssistantItem}">
-                            <StackPanel Margin="0,20,28,16">
-                                <TextBlock Text="{Binding ModelName}" Style="{StaticResource Muted}" Margin="0,0,0,10" />
-                                <Expander Header="Reasoning" Visibility="{Binding Reasoning, Converter={StaticResource HasValue}}" Margin="0,0,0,12"><TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="12" /></Expander>
-                                <TextBlock TextWrapping="Wrap" FontSize="14" LineHeight="23" Foreground="{DynamicResource TextBrush}"><Run Text="{Binding Text, Mode=OneWay}"/><InlineUIContainer><ctl:MotionGlyph Text="▍" FontSize="14" Foreground="{DynamicResource AccentBrush}" Visibility="{Binding IsStreaming, Converter={StaticResource BoolVisible}}" /></InlineUIContainer></TextBlock>
+                            <StackPanel Margin="{StaticResource Inset.0_20_28_16}">
+                                <TextBlock Text="{Binding ModelName}" Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_0_0_10}" />
+                                <Expander Header="Reasoning" Visibility="{Binding Reasoning, Converter={StaticResource HasValue}}" Margin="{StaticResource Inset.0_0_0_12}"><TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.12}" /></Expander>
+                                <TextBlock TextWrapping="Wrap" FontSize="{StaticResource Metric.14}" LineHeight="{StaticResource Metric.23}" Foreground="{DynamicResource TextBrush}"><Run Text="{Binding Text, Mode=OneWay}"/><InlineUIContainer><ctl:MotionGlyph Text="▍" FontSize="{StaticResource Metric.14}" Foreground="{DynamicResource AccentBrush}" Visibility="{Binding IsStreaming, Converter={StaticResource BoolVisible}}" /></InlineUIContainer></TextBlock>
                             </StackPanel>
                         </DataTemplate>
                         <DataTemplate DataType="{x:Type vm:ToolItem}">
-                            <Border CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Background="{DynamicResource RaisedBrush}" Margin="0,6,28,8">
+                            <Border CornerRadius="{StaticResource Radius.Dialog}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.1}" Background="{DynamicResource RaisedBrush}" Margin="{StaticResource Inset.0_6_28_8}">
                                 <StackPanel>
-                                    <Button Command="{Binding ToggleCommand}" HorizontalContentAlignment="Stretch" Padding="14,10" Style="{StaticResource GhostButton}" ToolTip="Expand tool arguments and result">
-                                        <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Duration}" Foreground="{DynamicResource MutedBrush}" Margin="12,0"/><TextBlock DockPanel.Dock="Right" Text="⌄"/><ctl:MotionGlyph DockPanel.Dock="Left" Text="◌" Spin="True" Margin="0,0,10,0" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisible}}"/><TextBlock DockPanel.Dock="Left" Text="{Binding StateIcon}" Margin="0,0,10,0" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisible}, ConverterParameter=invert}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/><Style.Triggers><DataTrigger Binding="{Binding IsError}" Value="True"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" /></DockPanel>
+                                    <Button Command="{Binding ToggleCommand}" HorizontalContentAlignment="Stretch" Padding="{StaticResource Inset.14_10}" Style="{StaticResource GhostButton}" ToolTip="Expand tool arguments and result">
+                                        <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Duration}" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.12_0}"/><TextBlock DockPanel.Dock="Right" Text="⌄"/><ctl:MotionGlyph DockPanel.Dock="Left" Text="◌" Spin="True" Margin="{StaticResource Inset.0_0_10_0}" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisible}}"/><TextBlock DockPanel.Dock="Left" Text="{Binding StateIcon}" Margin="{StaticResource Inset.0_0_10_0}" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisible}, ConverterParameter=invert}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/><Style.Triggers><DataTrigger Binding="{Binding IsError}" Value="True"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" /></DockPanel>
                                     </Button>
-                                    <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolVisible}}" Margin="14,0,14,14">
-                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="-14,0,-14,12"/>
-                                        <TextBlock Text="ARGUMENTS" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
-                                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="10"><TextBox Style="{StaticResource CodeText}" Text="{Binding Arguments, Mode=OneWay}" /></Border>
-                                        <TextBlock Text="RESULT" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,12,0,8"/>
-                                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="10"><ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto"><TextBox Style="{StaticResource CodeText}" Text="{Binding Output, Mode=OneWay}" /></ScrollViewer></Border>
+                                    <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolVisible}}" Margin="{StaticResource Inset.14_0_14_14}">
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_1_0_0}" Margin="{StaticResource Inset.n14_0_n14_12}"/>
+                                        <ctl:TrackingLabel Text="ARGUMENTS" FontSize="{StaticResource Metric.11}" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.0_0_0_8}"/>
+                                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="{StaticResource Round.8}" Padding="{StaticResource Inset.10}"><TextBox Style="{StaticResource CodeText}" Text="{Binding Arguments, Mode=OneWay}" /></Border>
+                                        <DockPanel Margin="{StaticResource Inset.0_12_0_8}"><Button DockPanel.Dock="Right" Content="Copy result" Click="CopyToolOutput" MinHeight="{StaticResource Metric.24}" Padding="{StaticResource Inset.8_0}" Style="{StaticResource GhostButton}"/><ctl:TrackingLabel Text="RESULT" FontSize="{StaticResource Metric.11}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/></DockPanel>
+                                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="{StaticResource Round.8}" Padding="{StaticResource Inset.10}"><ScrollViewer MaxHeight="{StaticResource Metric.200}" VerticalScrollBarVisibility="Auto"><TextBox Style="{StaticResource CodeText}" Text="{Binding Output, Mode=OneWay}" /></ScrollViewer></Border>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
 
                         <DataTemplate DataType="{x:Type vm:StatusItem}">
-                            <TextBlock Text="{Binding Text}" Style="{StaticResource Muted}" Margin="0,8,0,0" FontStyle="Italic" />
+                            <TextBlock Text="{Binding Text}" Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_8_0_0}" FontStyle="Italic" />
                         </DataTemplate>
 
                         <DataTemplate DataType="{x:Type vm:ErrorItem}">
-                            <Border BorderBrush="{DynamicResource DangerBrush}" BorderThickness="2,0,0,0" Padding="8,0" Margin="0,8">
+                            <Border BorderBrush="{DynamicResource DangerBrush}" BorderThickness="{StaticResource Inset.2_0_0_0}" Padding="{StaticResource Inset.8_0}" Margin="{StaticResource Inset.0_8}">
                                 <TextBox Style="{StaticResource MessageText}" Text="{Binding Text, Mode=OneWay}" Foreground="{DynamicResource DangerBrush}" />
                             </Border>
                         </DataTemplate>
 
                         <!-- The only boxed element in the chat: it needs a decision. -->
                         <DataTemplate DataType="{x:Type vm:ApprovalItem}">
-                            <Border BorderThickness="1.5" CornerRadius="10" Padding="16,16" Margin="0,16" Background="{DynamicResource RaisedBrush}">
+                            <Border BorderThickness="{StaticResource Inset.1p5}" CornerRadius="{StaticResource Round.10}" Padding="{StaticResource Inset.16_16}" Margin="{StaticResource Inset.0_16}" Background="{DynamicResource RaisedBrush}">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
@@ -231,14 +217,14 @@
                                 </Border.Style>
                                 <StackPanel>
                                     <TextBlock Text="Needs your OK" FontWeight="SemiBold" Style="{StaticResource Body}" />
-                                    <TextBlock Text="{Binding Reason}" Style="{StaticResource Muted}" Margin="0,0,0,8" />
-                                    <TextBox Style="{StaticResource CodeText}" Foreground="{DynamicResource TextBrush}" FontSize="13" Text="{Binding Summary, Mode=OneWay}" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0" Visibility="{Binding IsPending, Converter={StaticResource BoolVisible}}">
+                                    <TextBlock Text="{Binding Reason}" Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_0_0_8}" />
+                                    <TextBox Style="{StaticResource CodeText}" Foreground="{DynamicResource TextBrush}" FontSize="{StaticResource Metric.13}" Text="{Binding Summary, Mode=OneWay}" />
+                                    <StackPanel Orientation="Horizontal" Margin="{StaticResource Inset.0_16_0_0}" Visibility="{Binding IsPending, Converter={StaticResource BoolVisible}}">
                                         <Button Content="Approve" Command="{Binding ApproveCommand}" Style="{StaticResource AccentButton}" />
-                                        <Button Content="Approve for this session" Command="{Binding ApproveAlwaysCommand}" Margin="8,0,0,0" />
-                                        <Button Content="Deny" Command="{Binding DenyCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
+                                        <Button Content="Approve for this session" Command="{Binding ApproveAlwaysCommand}" Margin="{StaticResource Inset.8_0_0_0}" />
+                                        <Button Content="Deny" Command="{Binding DenyCommand}" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.8_0_0_0}" />
                                     </StackPanel>
-                                    <TextBlock Text="{Binding Decision}" Style="{StaticResource Muted}" Margin="0,8,0,0"
+                                    <TextBlock Text="{Binding Decision}" Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_8_0_0}"
                                                Visibility="{Binding Decision, Converter={StaticResource HasValue}}" />
                                 </StackPanel>
                             </Border>
@@ -247,64 +233,65 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <StackPanel Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="32,0,0,12" Visibility="{Binding IsThinking, Converter={StaticResource BoolVisible}}"><ctl:ThinkingMark IsThinking="True"/><TextBlock Text="Thinking" Style="{StaticResource Muted}" Margin="4,4,0,0"/></StackPanel>
-            <Button x:Name="JumpLatest" Grid.Row="2" Content="↓  Jump to latest" Visibility="Collapsed" Click="JumpToLatest" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12" Panel.ZIndex="5" />
+            <StackPanel Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="{StaticResource Inset.32_0_0_12}" Visibility="{Binding IsThinking, Converter={StaticResource BoolVisible}}"><ctl:ThinkingMark IsThinking="True"/><TextBlock Text="Thinking" Style="{StaticResource Muted}" Margin="{StaticResource Inset.4_4_0_0}"/></StackPanel>
+            <Button x:Name="JumpLatest" Grid.Row="2" Content="↓  Jump to latest" Visibility="Collapsed" Click="JumpToLatest" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="{StaticResource Inset.0_0_0_12}" Panel.ZIndex="5" />
             <!-- Composer -->
-            <Border Grid.Row="3" Padding="32,16,32,24">
-                <Border MaxWidth="820" CornerRadius="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"><Grid>
+            <Border Grid.Row="3" Padding="{StaticResource Inset.32_16_32_24}">
+                <Border MaxWidth="{StaticResource Metric.820}" CornerRadius="{StaticResource Radius.Dialog}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.1}"><Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="Composer" Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                             Grid.ColumnSpan="2" TextWrapping="Wrap" MinLines="1" MaxLines="8" MinHeight="44" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="16" Style="{StaticResource ComposerInput}"
+                             Grid.ColumnSpan="2" TextWrapping="Wrap" MinLines="1" MaxLines="8" MinHeight="{StaticResource Metric.44}" MaxHeight="{StaticResource Metric.200}" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Inset.16}" Style="{StaticResource ComposerInput}"
                              PreviewKeyDown="Composer_PreviewKeyDown" AutomationProperties.Name="Message"
                              ToolTip="Enter to send · Shift+Enter for a new line" />
-                    <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="12,0,0,12" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><ctl:ProviderLogo Provider="{Binding SelectedProvider}" Width="16" Height="16" Margin="0,0,8,0" /><TextBlock x:Name="ModelNameLabel" Text="{Binding SelectedProvider.ModelName}" /><TextBlock Text="&#x2304;" Margin="12,0,0,0" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
-                    <Grid Grid.Column="1" Grid.Row="1" Margin="16,0,12,12" VerticalAlignment="Bottom">
-                        <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource AccentButton}" MinWidth="76" Height="40"
+                    <TextBlock Grid.ColumnSpan="2" Text="Ask OrchDesk to build, fix or explain..." IsHitTestVisible="False" Margin="{StaticResource Inset.16}" VerticalAlignment="Top" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Composer}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                    <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="{StaticResource Inset.12_0_0_12}" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><ctl:ProviderLogo Provider="{Binding SelectedProvider}" Width="{StaticResource Metric.16}" Height="{StaticResource Metric.16}" Margin="{StaticResource Inset.0_0_8_0}" /><TextBlock x:Name="ModelNameLabel" Text="{Binding SelectedProvider.ModelName}" /><TextBlock Text="&#x2304;" Margin="{StaticResource Inset.12_0_0_0}" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
+                    <Grid Grid.Column="1" Grid.Row="1" Margin="{StaticResource Inset.16_0_12_12}" VerticalAlignment="Bottom">
+                        <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource AccentButton}" MinWidth="{StaticResource Metric.76}" Height="{StaticResource Metric.40}"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" />
-                        <Button Content="Stop" Command="{Binding StopCommand}" MinWidth="76" Height="40"
+                        <Button Content="Stop" Command="{Binding StopCommand}" MinWidth="{StaticResource Metric.76}" Height="{StaticResource Metric.40}"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}}" />
                     </Grid>
                 </Grid></Border>
             </Border>
-            <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="600" MaxHeight="440" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="44,0,0,84" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
+            <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="{StaticResource Metric.600}" MaxHeight="{StaticResource Metric.440}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="{StaticResource Inset.44_0_0_84}" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.1}" CornerRadius="{StaticResource Radius.Dialog}" Padding="{StaticResource Inset.8}">
                 <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.3" /></Border.Effect>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><DockPanel>
-                    <ctl:FilterBar x:Name="ModelFilters" DockPanel.Dock="Top" Margin="6,2,6,8"/><Grid DockPanel.Dock="Top" Margin="6,6,6,8"><TextBox x:Name="ModelSearch" Padding="10,8" TextChanged="SearchModels" PreviewKeyDown="SearchKeyDown" AutomationProperties.Name="Search models" ToolTip="Search models"/><TextBlock Text="Search models…" IsHitTestVisible="False" Margin="12,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=ModelSearch}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid>
-                    <TextBlock DockPanel.Dock="Top" Text="Choose a model" FontFamily="{StaticResource DisplayFont}" Margin="12,8,12,12" FontSize="15" FontWeight="SemiBold" />
-                    <ListBox x:Name="ModelList" PreviewKeyDown="ModelKeyDown" MouseMove="PreviewModel" GotKeyboardFocus="FocusModel" ItemsSource="{Binding Source={StaticResource GroupedModels}}" SelectionChanged="ModelPicked" PreviewMouseLeftButtonUp="ConfirmPointerModel" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource ModelPickerItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ctl:FilterBar x:Name="ModelFilters" DockPanel.Dock="Top" Margin="{StaticResource Inset.6_2_6_8}"/><Grid DockPanel.Dock="Top" Margin="{StaticResource Inset.6_6_6_8}"><TextBox x:Name="ModelSearch" Padding="{StaticResource Inset.10_8}" TextChanged="SearchModels" PreviewKeyDown="SearchKeyDown" AutomationProperties.Name="Search models" ToolTip="Search models"/><TextBlock Text="Search models…" IsHitTestVisible="False" Margin="{StaticResource Inset.12_0}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=ModelSearch}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid>
+                    <TextBlock DockPanel.Dock="Top" Text="Choose a model" FontFamily="{StaticResource DisplayFont}" Margin="{StaticResource Inset.12_8_12_12}" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" />
+                    <ListBox x:Name="ModelList" PreviewKeyDown="ModelKeyDown" MouseMove="PreviewModel" GotKeyboardFocus="FocusModel" ItemsSource="{Binding Source={StaticResource GroupedModels}}" SelectionChanged="ModelPicked" PreviewMouseLeftButtonUp="ConfirmPointerModel" Background="Transparent" BorderThickness="{StaticResource Inset.0}" ItemContainerStyle="{StaticResource ModelPickerItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ListBox.Resources>
-                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ModelName}" Margin="22,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate></ListBox.ItemTemplate>
-                        <ListBox.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate><StackPanel Orientation="Horizontal" Margin="16,6,0,2"><ctl:ProviderLogo Provider="{Binding Items[0]}" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,8,0" /><TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="12" /></StackPanel></DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ListBox.GroupStyle>
+                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ModelName}" Margin="{StaticResource Inset.22_0_0_0}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate></ListBox.ItemTemplate>
+                        <ListBox.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate><StackPanel Orientation="Horizontal" Margin="{StaticResource Inset.16_6_0_2}"><ctl:ProviderLogo Provider="{Binding Items[0]}" Width="{StaticResource Metric.14}" Height="{StaticResource Metric.14}" VerticalAlignment="Center" Margin="{StaticResource Inset.0_0_8_0}" /><TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="{StaticResource Metric.11}" /></StackPanel></DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ListBox.GroupStyle>
                     </ListBox>
-                </DockPanel><Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="18,16"><StackPanel><TextBlock x:Name="ProfileName" FontFamily="{StaticResource DisplayFont}" FontSize="18" TextWrapping="Wrap"/><TextBlock Text="Approximate model profile" Style="{StaticResource Muted}" FontSize="10" Margin="0,8,0,24"/><TextBlock Text="Speed" Style="{StaticResource Muted}"/><Border Height="5" Background="{DynamicResource BorderBrush}" CornerRadius="2" Margin="0,8,0,20"><Border x:Name="SpeedBar" Background="{DynamicResource AccentBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".7"/></Border.RenderTransform></Border></Border><TextBlock Text="Cost · higher is pricier" Style="{StaticResource Muted}" FontSize="11"/><Border Height="5" Background="{DynamicResource BorderBrush}" CornerRadius="2" Margin="0,8,0,20"><Border x:Name="CostBar" Background="{DynamicResource PeachBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".6"/></Border.RenderTransform></Border></Border><TextBlock x:Name="ContextLabel" Style="{StaticResource Muted}"/><Border Height="5" Background="{DynamicResource BorderBrush}" CornerRadius="2" Margin="0,8,0,16"><Border x:Name="ContextBar" Background="{DynamicResource AccentBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".8"/></Border.RenderTransform></Border></Border><TextBlock Text="Relative estimates. Local speed depends on hardware." Style="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border></Grid>
+                </DockPanel><Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.1_0_0_0}" Padding="{StaticResource Inset.18_16}"><StackPanel><TextBlock x:Name="ProfileName" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.18}" TextWrapping="Wrap"/><TextBlock Text="Approximate model profile" Style="{StaticResource Muted}" FontSize="{StaticResource Metric.11}" Margin="{StaticResource Inset.0_8_0_24}"/><TextBlock Text="Speed" Style="{StaticResource Muted}"/><Border Height="{StaticResource Metric.5}" Background="{DynamicResource BorderBrush}" CornerRadius="{StaticResource Round.2}" Margin="{StaticResource Inset.0_8_0_20}"><Border x:Name="SpeedBar" Background="{DynamicResource AccentBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".7"/></Border.RenderTransform></Border></Border><TextBlock Text="Cost · higher is pricier" Style="{StaticResource Muted}" FontSize="{StaticResource Metric.11}"/><Border Height="{StaticResource Metric.5}" Background="{DynamicResource BorderBrush}" CornerRadius="{StaticResource Round.2}" Margin="{StaticResource Inset.0_8_0_20}"><Border x:Name="CostBar" Background="{DynamicResource PeachBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".6"/></Border.RenderTransform></Border></Border><TextBlock x:Name="ContextLabel" Style="{StaticResource Muted}"/><Border Height="{StaticResource Metric.5}" Background="{DynamicResource BorderBrush}" CornerRadius="{StaticResource Round.2}" Margin="{StaticResource Inset.0_8_0_16}"><Border x:Name="ContextBar" Background="{DynamicResource AccentBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".8"/></Border.RenderTransform></Border></Border><TextBlock Text="Relative estimates. Local speed depends on hardware." Style="{StaticResource Muted}" FontSize="{StaticResource Metric.11}" TextWrapping="Wrap"/></StackPanel></Border></Grid>
             </Border>
         </Grid>
 
         <!-- ───────── Overnight page ───────── -->
         <ScrollViewer Grid.Column="1" DataContext="{Binding Accounts}" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Accounts}">
-            <StackPanel Margin="32,24,32,16" MaxWidth="760" HorizontalAlignment="Left">
+            <StackPanel Margin="{StaticResource Inset.32_24_32_16}" MaxWidth="{StaticResource Metric.760}" HorizontalAlignment="Left">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="Check now" Command="{Binding CheckNowCommand}" VerticalAlignment="Center" />
                     <TextBlock Style="{StaticResource Heading}" Text="Models &amp; accounts" />
                 </DockPanel>
-                <TextBlock Style="{StaticResource Muted}" Margin="0,8,0,16" LineHeight="19"
+                <TextBlock Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_8_0_16}" LineHeight="{StaticResource Metric.19}"
                            Text="In Auto mode OrchDesk tries these in order. When your PC is off or an account hits its limit, it moves to the next one and comes back later. Change the order in Settings." />
 
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:AccountRow}">
-                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,16">
+                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_0_0_1}" Padding="{StaticResource Inset.0_16}">
                                 <DockPanel>
-                                    <TextBlock DockPanel.Dock="Left" Text="{Binding Position}" Width="34" FontFamily="{StaticResource DisplayFont}"
-                                               FontSize="20" Foreground="{DynamicResource PeachBrush}" VerticalAlignment="Top" />
-                                    <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" MinWidth="200">
+                                    <TextBlock DockPanel.Dock="Left" Text="{Binding Position}" Width="{StaticResource Metric.34}" FontFamily="{StaticResource DisplayFont}"
+                                               FontSize="{StaticResource Metric.18}" Foreground="{DynamicResource PeachBrush}" VerticalAlignment="Top" />
+                                    <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" MinWidth="{StaticResource Metric.200}">
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                            <Ellipse Width="{StaticResource Metric.8}" Height="{StaticResource Metric.8}" Margin="{StaticResource Inset.0_0_8_0}" VerticalAlignment="Center">
                                                 <Ellipse.Style>
                                                     <Style TargetType="Ellipse">
                                                         <Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
@@ -318,13 +305,13 @@
                                             </Ellipse>
                                             <TextBlock Text="{Binding HealthText}" Style="{StaticResource Body}" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding LimitText}" Style="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,0,0,0"
+                                        <TextBlock Text="{Binding LimitText}" Style="{StaticResource Muted}" HorizontalAlignment="Right" Margin="{StaticResource Inset.0_0_0_0}"
                                                    Visibility="{Binding HasLimit, Converter={StaticResource BoolVisible}}" />
                                         <Button Content="Clear limit" Command="{Binding ClearLimitCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"
                                                 Visibility="{Binding HasLimit, Converter={StaticResource BoolVisible}}" />
                                     </StackPanel>
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="SemiBold" FontSize="15" />
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Body}" FontWeight="SemiBold" FontSize="{StaticResource Metric.15}" />
                                         <TextBlock Text="{Binding Kind}" Style="{StaticResource Muted}" />
                                     </StackPanel>
                                 </DockPanel>
@@ -335,12 +322,12 @@
             </StackPanel>
         </ScrollViewer>
         <Border x:Name="WelcomeOverlay" Grid.Column="0" Grid.ColumnSpan="2" Panel.ZIndex="100" Visibility="Collapsed" Background="{DynamicResource BaseBrush}">
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460">
-                <Image Source="Assets/Icon/icon-256.png" RenderOptions.BitmapScalingMode="HighQuality" Width="96" Height="96" HorizontalAlignment="Left" Margin="0,0,0,30"/>
-                <TextBlock Text="Welcome to OrchDesk" FontFamily="{StaticResource DisplayFont}" FontSize="34" Margin="0,0,0,16"/>
-                <TextBlock Text="Your workspace, your models. Connect a provider and turn your next idea into working code." Style="{StaticResource Body}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,32"/>
-                <StackPanel Orientation="Horizontal"><ctl:ShinyButton Content="Continue" Click="CompleteWelcome"/><Button Content="Skip for now" Click="SkipWelcome" Style="{StaticResource GhostButton}" Margin="16,0,0,0"/></StackPanel>
-                <TextBlock Text="You can connect providers at any time in Settings." Style="{StaticResource Muted}" Margin="0,20,0,0"/>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="{StaticResource Metric.460}">
+                <Image Source="Assets/Icon/icon-256.png" RenderOptions.BitmapScalingMode="HighQuality" Width="{StaticResource Metric.96}" Height="{StaticResource Metric.96}" HorizontalAlignment="Left" Margin="{StaticResource Inset.0_0_0_30}"/>
+                <TextBlock Text="Welcome to OrchDesk" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.32}" Margin="{StaticResource Inset.0_0_0_16}"/>
+                <TextBlock Text="Your workspace, your models. Connect a provider and turn your next idea into working code." Style="{StaticResource Body}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.0_0_0_32}"/>
+                <StackPanel Orientation="Horizontal"><ctl:ShinyButton Content="Continue" Click="CompleteWelcome"/><Button Content="Skip for now" Click="SkipWelcome" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.16_0_0_0}"/></StackPanel>
+                <TextBlock Text="You can connect providers at any time in Settings." Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_20_0_0}"/>
             </StackPanel>
         </Border>
     </Grid>

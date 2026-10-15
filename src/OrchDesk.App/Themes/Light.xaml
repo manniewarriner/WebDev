@@ -1,31 +1,37 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Cream light: paper-cream base, dark-brown ink, deeper terracotta so it passes contrast on cream. -->
-    <Color x:Key="BaseColor">#FBF5EC</Color>
-    <Color x:Key="SurfaceColor">#F3E8DA</Color>
-    <Color x:Key="RaisedColor">#FFFCF7</Color>
-    <Color x:Key="BorderColor">#E0CFBC</Color>
-    <Color x:Key="TextColor">#2B1D15</Color>
-    <Color x:Key="MutedColor">#76604F</Color>
-    <Color x:Key="AccentColor">#A94D27</Color>
-    <Color x:Key="AccentTextColor">#FFF8F2</Color>
-    <Color x:Key="PeachColor">#D9895F</Color>
-    <Color x:Key="DangerColor">#B23A28</Color>
-    <Color x:Key="SuccessColor">#4F7A3F</Color>
-    <Color x:Key="WarnColor">#9A6A12</Color>
-    <Color x:Key="UserBubbleColor">#F0E0CC</Color>
-
-    <SolidColorBrush x:Key="BaseBrush" Color="{StaticResource BaseColor}" />
-    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
-    <SolidColorBrush x:Key="RaisedBrush" Color="{StaticResource RaisedColor}" />
-    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
-    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
-    <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}" />
-    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
-    <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource AccentTextColor}" />
-    <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource PeachColor}" />
-    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
-    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
-    <SolidColorBrush x:Key="WarnBrush" Color="{StaticResource WarnColor}" />
-    <SolidColorBrush x:Key="UserBubbleBrush" Color="{StaticResource UserBubbleColor}" />
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <Color x:Key="BaseColor">#FBF6F0</Color>
+  <SolidColorBrush x:Key="BaseBrush" Color="{StaticResource BaseColor}" />
+  <Color x:Key="SurfaceColor">#FFFFFF</Color>
+  <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
+  <Color x:Key="RaisedColor">#F4ECE3</Color>
+  <SolidColorBrush x:Key="RaisedBrush" Color="{StaticResource RaisedColor}" />
+  <Color x:Key="Surface3Color">#EDE1D5</Color>
+  <SolidColorBrush x:Key="Surface3Brush" Color="{StaticResource Surface3Color}" />
+  <Color x:Key="BorderColor">#E6DACD</Color>
+  <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+  <Color x:Key="TextColor">#2A1F1A</Color>
+  <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
+  <Color x:Key="MutedColor">#7A6A5E</Color>
+  <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}" />
+  <Color x:Key="AccentColor">#B5532E</Color>
+  <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+  <Color x:Key="AccentHoverColor">#9B4324</Color>
+  <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}" />
+  <Color x:Key="AccentTextColor">#FFFFFF</Color>
+  <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource AccentTextColor}" />
+  <Color x:Key="PeachColor">#B5532E</Color>
+  <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource PeachColor}" />
+  <Color x:Key="DangerColor">#C2412F</Color>
+  <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
+  <Color x:Key="SuccessColor">#2F8A55</Color>
+  <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+  <Color x:Key="WarnColor">#956409</Color>
+  <SolidColorBrush x:Key="WarnBrush" Color="{StaticResource WarnColor}" />
+  <Color x:Key="UserBubbleColor">#F4ECE3</Color>
+  <SolidColorBrush x:Key="UserBubbleBrush" Color="{StaticResource UserBubbleColor}" />
+  <Color x:Key="OverlayColor">#B32A1F1A</Color>
+  <SolidColorBrush x:Key="OverlayBrush" Color="{StaticResource OverlayColor}" />
+  <Color x:Key="HighlightColor">#0AFFFFFF</Color>
+  <SolidColorBrush x:Key="HighlightBrush" Color="{StaticResource HighlightColor}" />
+<Color x:Key="ShadowColor">#593723</Color>
 </ResourceDictionary>

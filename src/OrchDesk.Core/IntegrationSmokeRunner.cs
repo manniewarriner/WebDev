@@ -6,16 +6,20 @@ using OrchDesk.Core.Models;
 using OrchDesk.Core.Permissions;
 using OrchDesk.Core.Tools;
 namespace OrchDesk.Core.Verification;
-public sealed record SmokeResult(string Provider, string Status, string Detail);
+public sealed record SmokeResult(string Provider, string Status, string Detail, string Test = "integration", int? ModelCount = null);
 public static class IntegrationSmokeRunner
 {
     public static string IntegrationSummary(AppConfig config) => $"Claude: {config.Providers.Where(p => p.Kind == ProviderKind.ClaudeCli).Sum(p => p.AvailableModels.Count)} models; OpenCode: {config.Providers.Where(p => p.Id == "opencode-go").Sum(p => p.AvailableModels.Count)} models";
 
-    public static async Task<List<SmokeResult>> RunAsync(AppConfig config, ISecretProtector secrets, HttpClient http, string directory, CancellationToken ct = default)
+    public static async Task<List<SmokeResult>> RunAsync(AppConfig config, ISecretProtector secrets, HttpClient http, string directory, CancellationToken ct = default, Action<AppConfig>? saveSynced = null)
     {
         Directory.CreateDirectory(directory);
         var results = new List<SmokeResult>();
-        Console.WriteLine(IntegrationSummary(config));
+        var sync = new IntegrationModelSync(http, secrets, new ClaudeAuthRunner());
+        var synced = await StartupModelSync.RunAsync(config, sync, ct);
+        saveSynced?.Invoke(config);
+        results.AddRange(synced.Select(r => new SmokeResult(r.Provider, r.Status, $"Model sync: {r.ModelCount} models", "sync", r.ModelCount)));
+        await File.WriteAllTextAsync(Path.Combine(directory, "smoketest.json"), JsonSerializer.Serialize(results, ConfigStore.Json), CancellationToken.None);
         var factory = new ProviderFactory(secrets, http);
         var tester = new ConnectionTester(http, secrets);
         foreach (var c in config.Providers) {

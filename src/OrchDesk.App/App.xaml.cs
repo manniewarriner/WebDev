@@ -50,7 +50,7 @@ public partial class App : Application
             var store = storeOverride;
             using var http = new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan };
             try {
-                var results = await OrchDesk.Core.Verification.IntegrationSmokeRunner.RunAsync(store.Load(), new OrchDesk.Core.Config.DpapiSecretProtector(), http, System.IO.Path.Combine(store.Directory, "smoketest"));
+                var results = await OrchDesk.Core.Verification.IntegrationSmokeRunner.RunAsync(store.Load(), new OrchDesk.Core.Config.DpapiSecretProtector(), http, System.IO.Path.Combine(store.Directory, "smoketest"), saveSynced: store.Save);
                 Shutdown(results.Any(r => r.Status == "fail") ? 1 : 0);
             } catch { Shutdown(2); }
             return;
@@ -97,9 +97,10 @@ public partial class App : Application
         var screenshotMode = e.Args.Contains("--screenshot", StringComparer.OrdinalIgnoreCase);
         var pageIndex = Array.FindIndex(e.Args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
         var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
-        if (pageIndex >= 0 && page is not ("heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "sidebar-collapsed" or "sidebar-expanded")) { Shutdown(2); return; }
+        if (pageIndex >= 0 && page is not ("heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
         Motion.Screenshot = screenshotMode;
-        var services = new AppServices(screenshotMode, !screenshotMode || e.Args.Contains("--config", StringComparer.OrdinalIgnoreCase) ? storeOverride : null);
+        var services = new AppServices(screenshotMode, storeOverride, OrchDesk.Core.Config.ScreenshotOptions.UseDemo(e.Args));
+        if (screenshotMode && !services.UseDemo) await services.StartupSync;
         var themeIndex = Array.FindIndex(e.Args, a => a.Equals("--theme", StringComparison.OrdinalIgnoreCase));
         if (themeIndex >= 0 && themeIndex + 1 < e.Args.Length) services.Config.Theme = e.Args[themeIndex + 1];
         ApplyTheme(services.Config.Theme);
@@ -109,9 +110,10 @@ public partial class App : Application
         window.Show();
         await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         Window captureWindow = window;
-        if (page == "integrations")
+        if (page == "integrations" || page?.StartsWith("settings-") == true)
         {
             captureWindow = new Views.SettingsWindow(new SettingsViewModel(services)) { Owner = window };
+            ((Views.SettingsWindow)captureWindow).SelectPage(page!);
             captureWindow.Show();
         }
         else if (screenshotMode) window.PrepareScreenshot(page);
@@ -124,17 +126,18 @@ public partial class App : Application
             {
                 await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                 captureWindow.UpdateLayout();
-                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(captureWindow);
+                var captureRoot = captureWindow.Content as FrameworkElement ?? captureWindow;
+                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(captureRoot);
                 var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
-                    (int)Math.Ceiling(captureWindow.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(captureWindow.ActualHeight * dpi.DpiScaleY),
+                    (int)Math.Ceiling(captureRoot.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(captureRoot.ActualHeight * dpi.DpiScaleY),
                     dpi.PixelsPerInchX, dpi.PixelsPerInchY, System.Windows.Media.PixelFormats.Pbgra32);
                 // Native frame pixels are not WPF visuals. Fill the canvas first so the PNG
                 // stays opaque and uses the same theme background around the client area.
                 var canvas = new System.Windows.Media.DrawingVisual();
                 using (var drawing = canvas.RenderOpen())
-                    drawing.DrawRectangle(captureWindow.Background, null, new Rect(0, 0, captureWindow.ActualWidth, captureWindow.ActualHeight));
+                    drawing.DrawRectangle(captureWindow.Background, null, new Rect(0, 0, captureRoot.ActualWidth, captureRoot.ActualHeight));
                 bitmap.Render(canvas);
-                bitmap.Render(captureWindow);
+                bitmap.Render(captureRoot);
                 var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
                 encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
                 var path = System.IO.Path.GetFullPath(e.Args[screenshotIndex + 1]);

@@ -13,6 +13,8 @@ public class SmokeRunnerTests
         private int _turn;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("/models"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"data\":[{\"id\":\"live-model\"}]}") };
             var message = new JsonObject();
             if (request.Method == HttpMethod.Post)
             {
@@ -45,7 +47,7 @@ public class SmokeRunnerTests
         using var dir = new TempDir(); using var http = new HttpClient(new Handler(failures));
         var config = new AppConfig { WebFetchEnabled = false, Providers = [new() { Id = "qwen", BaseUrl = "https://provider.test/v1", Model = "qwen" }] };
         var results = await IntegrationSmokeRunner.RunAsync(config, new Secrets(), http, dir.Path);
-        var result = results.Single(r => r.Provider == "qwen");
+        var result = results.Single(r => r.Test == "integration" && r.Provider == "qwen");
         Assert.Equal(status, result.Status);
         Assert.Contains(detail, result.Detail);
     }
@@ -56,10 +58,25 @@ public class SmokeRunnerTests
     {
         using var dir = new TempDir(); using var http = new HttpClient(new Handler());
         var config = new AppConfig { WebFetchEnabled = false, Providers = [new() { Id = id, BaseUrl = "https://provider.test/v1", Model = "model", ApiKeyProtected = "key" }, new() { Id = "disabled", Enabled = false }] };
-        var results = await IntegrationSmokeRunner.RunAsync(config, new Secrets(), http, dir.Path);
-        Assert.Equal("pass", results.Single(r => r.Provider == id).Status);
-        Assert.Equal("skip", results.Single(r => r.Provider == "disabled").Status);
-        Assert.Equal("skip", results.Single(r => r.Provider == "meshy").Status);
+        using var store = new ConfigStore(Path.Combine(dir.Path, "config"));
+        bool saved = false;
+        var results = await IntegrationSmokeRunner.RunAsync(config, new Secrets(), http, dir.Path, saveSynced: c => {
+            Assert.Equal(["live-model"], c.Providers[0].AvailableModels);
+            store.Save(c);
+            saved = true;
+        });
+        Assert.True(saved);
+        Assert.Equal(["live-model"], store.Load().Providers[0].AvailableModels);
+        Assert.Equal("pass", results.Single(r => r.Provider == id && r.Test == "sync").Status);
+        Assert.Equal(1, results.Single(r => r.Provider == id && r.Test == "sync").ModelCount);
+        Assert.Equal("skip", results.Single(r => r.Provider == "disabled" && r.Test == "sync").Status);
+        Assert.Equal("pass", results.Single(r => r.Test == "integration" && r.Provider == id).Status);
+        Assert.Equal("skip", results.Single(r => r.Test == "integration" && r.Provider == "disabled").Status);
+        Assert.Equal("skip", results.Single(r => r.Test == "integration" && r.Provider == "meshy").Status);
         Assert.True(File.Exists(Path.Combine(dir.Path, "smoketest.json")));
+        var report = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(dir.Path, "smoketest.json")))!.AsArray();
+        var syncRow = report.Single(row => row!["provider"]!.GetValue<string>() == id && row["test"]!.GetValue<string>() == "sync")!;
+        Assert.Equal("pass", syncRow["status"]!.GetValue<string>());
+        Assert.Equal(1, syncRow["modelCount"]!.GetValue<int>());
     }
 }

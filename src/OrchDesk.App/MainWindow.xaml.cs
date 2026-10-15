@@ -17,11 +17,12 @@ public partial class MainWindow : Window
     private bool _stickToBottom = true;
     private bool _collapsed;
     private readonly ObservableCollection<ChatSnapshot> _history = [];
-    public sealed record ChatSnapshot(string Title, ChatItem[] Items, OrchDesk.Core.Orchestration.Conversation? Conversation) { public DateTimeOffset Date {get;init;} = DateTimeOffset.Now; public string Model {get;init;} = ""; public string? Workspace {get;init;} }
+    public sealed record ChatSnapshot(string Title, ChatItem[] Items, OrchDesk.Core.Orchestration.Conversation? Conversation) { public DateTimeOffset Date {get;init;} = DateTimeOffset.Now; public string Model {get;init;} = ""; public string? Workspace {get;init;} public string? ProviderId {get;init;} }
     public MainWindow()
     {
         InitializeComponent();
         InitializeFollowup();
+        InitializeRedesign();
         HistoryList.ItemsSource = _history;
         DataContextChanged += (_, _) =>
         {
@@ -37,7 +38,7 @@ public partial class MainWindow : Window
                 Dispatcher.BeginInvoke(() => {
                     var title = vm.Chat.Items.OfType<UserItem>().FirstOrDefault()?.Text;
                     if (title is null) return;
-                    var snapshot = new ChatSnapshot(title, vm.Chat.Items.ToArray(), vm.Chat.CurrentConversation) {Model=vm.Chat.SelectedProvider?.ModelName??"",Date=vm.Chat.Items.First().Timestamp,Workspace=vm.Chat.Workspace};
+                    var snapshot = new ChatSnapshot(title, vm.Chat.Items.ToArray(), vm.Chat.CurrentConversation) {Model=vm.Chat.SelectedProvider?.ModelName??"",Date=vm.Chat.Items.First().Timestamp,Workspace=vm.Chat.Workspace,ProviderId=vm.Chat.SelectedProvider?.Id};
                     var previous = _history.FirstOrDefault(h => h.Items.FirstOrDefault() == snapshot.Items.FirstOrDefault());
                     if (previous is not null) _history.Remove(previous);
                     _history.Insert(0, snapshot);
@@ -145,7 +146,7 @@ public partial class MainWindow : Window
         var from = Sidebar.ActualWidth > 0 ? Sidebar.ActualWidth : Sidebar.Width;
         Sidebar.BeginAnimation(WidthProperty, null); Sidebar.Width = collapsed ? 64 : 224;
         RailFooter.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
-        foreach (var label in new FrameworkElement[] { SidebarTitle, ChatNavLabel, AccountsNavLabel, SidebarFooter, HistoryPanel }) label.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var label in new FrameworkElement[] { AvatarDetails, SidebarTitle, ChatNavLabel, AccountsNavLabel, SidebarFooter, HistoryPanel }) label.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         if (animate && Motion.Enabled) Sidebar.BeginAnimation(WidthProperty, new DoubleAnimation(from, Sidebar.Width, TimeSpan.FromMilliseconds(230)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }, FillBehavior = FillBehavior.Stop });
     }
     private void RestoreChat(object sender, RoutedEventArgs e)
@@ -159,6 +160,14 @@ public partial class MainWindow : Window
         if (DataContext is not MainViewModel vm) return;
         var chat = vm.Chat;
         if (page is "thread" or "sidebar-expanded" or "sidebar-collapsed") Height = 860;
+        if (!vm.Services.UseDemo)
+        {
+            WelcomeOverlay.Visibility = Visibility.Collapsed;
+            SetSidebar(page == "sidebar-collapsed", false);
+            if (page is "selector" or "picker") OpenModelPicker();
+            PrepareRedesignScreenshot(page);
+            return;
+        }
         chat.Workspace = @"C:\Projects\OrchDesk";
         chat.SelectedProvider = chat.ProviderOptions.FirstOrDefault(p => p.Model == "sonnet") ?? chat.SelectedProvider;
         PrepareFollowupScreenshot(page);
@@ -172,8 +181,8 @@ public partial class MainWindow : Window
         SetSidebar(page == "sidebar-collapsed", false);
         if (page is "selector" or "picker") OpenModelPicker();
         if (page is "thread" or "sidebar-expanded" or "sidebar-collapsed") { _stickToBottom = false; Dispatcher.BeginInvoke(() => { ChatScroll.ScrollToTop(); JumpLatest.Visibility = Visibility.Collapsed; }, DispatcherPriority.ContextIdle); }
-        FocusManager.SetFocusedElement(this, ModelPickerButton);
-        ModelPickerButton.Focus();
+        PrepareRedesignScreenshot(page);
+        if (_modal is null) { FocusManager.SetFocusedElement(this, ModelPickerButton); ModelPickerButton.Focus(); }
     }
     private void Composer_PreviewKeyDown(object sender, KeyEventArgs e)
     {
