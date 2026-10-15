@@ -90,7 +90,18 @@
                         <WrapPanel>
                             <ComboBox Width="240" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}" DisplayMemberPath="Label" ToolTip="Choose your chat or overnight manager model" Margin="0,0,8,8" />
                             <ComboBox Width="112" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" ToolTip="Chat or cost routing" Margin="0,0,8,8" />
-                            <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="0,0,8,8" />
+                            <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="0,0,8,8">
+                                <Button.Style>
+                                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="IsEnabled" Value="True" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Workspace}" Value="{x:Null}">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                             <Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="0,0,8,8" />
                         </WrapPanel>
                         <!-- Row 2: Overnight run, Shutdown PC -->
