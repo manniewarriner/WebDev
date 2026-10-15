@@ -21,6 +21,22 @@ public partial class MainWindow : Window
         Loaded += (_, _) => Composer.Focus();
     }
 
+    public void OpenModelPicker() => ModelPickerOverlay.Visibility = Visibility.Visible;
+
+    private void ToggleModelPicker(object sender, RoutedEventArgs e) =>
+        ModelPickerOverlay.Visibility = ModelPickerOverlay.IsVisible ? Visibility.Collapsed : Visibility.Visible;
+
+    private void ModelPicked(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (IsLoaded) ModelPickerOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void DismissModelPicker(object sender, MouseButtonEventArgs e)
+    {
+        if (ModelPickerOverlay.IsVisible && !ModelPickerOverlay.IsMouseOver && !ModelPickerButton.IsMouseOver)
+            ModelPickerOverlay.Visibility = Visibility.Collapsed;
+    }
+
     /// <summary>Enter sends; Shift+Enter inserts a new line.</summary>
     private void Composer_PreviewKeyDown(object sender, KeyEventArgs e)
     {

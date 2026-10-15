@@ -92,7 +92,11 @@ public partial class App : Application
             args.Handled = true;
         };
 
-        var services = new AppServices();
+        var screenshotMode = e.Args.Contains("--screenshot", StringComparer.OrdinalIgnoreCase);
+        var pageIndex = Array.FindIndex(e.Args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
+        var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
+        if (pageIndex >= 0 && page is not ("integrations" or "picker")) { Shutdown(2); return; }
+        var services = new AppServices(screenshotMode);
         var themeIndex = Array.FindIndex(e.Args, a => a.Equals("--theme", StringComparison.OrdinalIgnoreCase));
         if (themeIndex >= 0 && themeIndex + 1 < e.Args.Length) services.Config.Theme = e.Args[themeIndex + 1];
         ApplyTheme(services.Config.Theme);
@@ -100,6 +104,13 @@ public partial class App : Application
         var window = new MainWindow { DataContext = vm };
         MainWindow = window;
         window.Show();
+        Window captureWindow = window;
+        if (page == "integrations")
+        {
+            captureWindow = new Views.SettingsWindow(new SettingsViewModel(services)) { Owner = window };
+            captureWindow.Show();
+        }
+        else if (page == "picker") window.OpenModelPicker();
 
         var screenshotIndex = Array.FindIndex(e.Args, a => a.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         if (screenshotIndex >= 0)
@@ -107,13 +118,19 @@ public partial class App : Application
             if (screenshotIndex + 1 >= e.Args.Length || e.Args[screenshotIndex + 1].StartsWith("--")) { Shutdown(2); return; }
             try
             {
-                await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-                window.UpdateLayout();
-                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(window);
+                await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                captureWindow.UpdateLayout();
+                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(captureWindow);
                 var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
-                    (int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY),
+                    (int)Math.Ceiling(captureWindow.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(captureWindow.ActualHeight * dpi.DpiScaleY),
                     dpi.PixelsPerInchX, dpi.PixelsPerInchY, System.Windows.Media.PixelFormats.Pbgra32);
-                bitmap.Render(window);
+                // Native frame pixels are not WPF visuals. Fill the canvas first so the PNG
+                // stays opaque and uses the same theme background around the client area.
+                var canvas = new System.Windows.Media.DrawingVisual();
+                using (var drawing = canvas.RenderOpen())
+                    drawing.DrawRectangle(captureWindow.Background, null, new Rect(0, 0, captureWindow.ActualWidth, captureWindow.ActualHeight));
+                bitmap.Render(canvas);
+                bitmap.Render(captureWindow);
                 var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
                 encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
                 var path = System.IO.Path.GetFullPath(e.Args[screenshotIndex + 1]);

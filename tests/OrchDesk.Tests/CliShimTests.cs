@@ -3,6 +3,21 @@ using Xunit;
 namespace OrchDesk.Tests;
 public class CliShimTests
 {
+    [Fact]
+    public void ClaudeEnvironmentExplicitlyRemovesApiCredentials()
+    {
+        var environment = new ClaudeCliProvider("claude", "Claude", new("subscription-profile")).BuildEnvironment();
+        foreach (var name in new[] { "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN" })
+        {
+            Assert.True(environment.ContainsKey(name));
+            Assert.Null(environment[name]);
+        }
+        var child = CliRunner.CreateStartInfo("claude.exe", [], null, environment);
+        Assert.False(child.Environment.ContainsKey("ANTHROPIC_API_KEY"));
+        Assert.False(child.Environment.ContainsKey("ANTHROPIC_AUTH_TOKEN"));
+        Assert.Equal("subscription-profile", child.Environment["CLAUDE_CONFIG_DIR"]);
+    }
+
     [Fact] public async Task WindowsBatchVersionTestUsesSafeArguments()
     {
         if (!OperatingSystem.IsWindows()) return;

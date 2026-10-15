@@ -14,6 +14,10 @@ public sealed class ProviderConfig
     /// <summary>Marks models on the user's own PC: preferred when online, skipped when the PC is off.</summary>
     public bool IsLocal { get; set; }
 
+    public List<string> AvailableModels { get; set; } = [];
+    public DateTimeOffset? ModelsSyncedAt { get; set; }
+    public Dictionary<string, string> ModelBaseUrls { get; set; } = [];
+
     // OpenAI-compatible
     public string? BaseUrl { get; set; }
     public string? Model { get; set; }

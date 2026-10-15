@@ -27,7 +27,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Services.Config.Theme = IsDark ? "Light" : "Dark";
         App.ApplyTheme(Services.Config.Theme);
-        Services.Store.Save(Services.Config);
+        if (!Services.IsScreenshot) Services.Store.Save(Services.Config);
         OnPropertyChanged(nameof(IsDark));
     }
 

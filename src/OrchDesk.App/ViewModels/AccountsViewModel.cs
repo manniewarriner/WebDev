@@ -74,6 +74,7 @@ public sealed partial class AccountsViewModel : ObservableObject
         _services.Rebuilt += Reload;
         _timer.Tick += async (_, _) => await CheckNowAsync();
         Reload();
+        if (services.IsScreenshot) return;
         _timer.Start();
         _ = CheckNowAsync();
     }

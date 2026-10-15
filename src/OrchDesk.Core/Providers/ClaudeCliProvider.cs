@@ -46,7 +46,12 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
 
     public IReadOnlyDictionary<string, string?> BuildEnvironment()
     {
-        var env = new Dictionary<string, string?> { ["CLAUDE_CONFIG_DIR"] = options.ConfigDir };
+        var env = new Dictionary<string, string?>
+        {
+            ["CLAUDE_CONFIG_DIR"] = options.ConfigDir,
+            ["ANTHROPIC_API_KEY"] = null,
+            ["ANTHROPIC_AUTH_TOKEN"] = null,
+        };
         foreach (var v in CliRunner.PaidApiEnvVars) env[v] = null; // null = remove
         return env;
     }

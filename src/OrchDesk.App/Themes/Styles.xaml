@@ -392,4 +392,43 @@
             </EventTrigger>
         </Style.Triggers>
     </Style>
+
+    <Style x:Key="ComposerInput" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox"><ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" /></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="ConnectionDetails" TargetType="Expander">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
+            <StackPanel><ToggleButton Content="{TemplateBinding Header}" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalAlignment="Left" Foreground="{DynamicResource MutedBrush}" Cursor="Hand">
+                <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><StackPanel Orientation="Horizontal" Background="Transparent"><TextBlock x:Name="Chevron" Text="&#x203A;" Margin="0,0,8,0" /><ContentPresenter /></StackPanel><ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="Chevron" Property="Text" Value="&#x2304;" /></Trigger></ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template>
+            </ToggleButton><ContentPresenter x:Name="Details" Visibility="Collapsed" /></StackPanel>
+            <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="Details" Property="Visibility" Value="Visible" /></Trigger></ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="QuietScrollBar" TargetType="ScrollBar">
+        <Setter Property="Width" Value="8" /><Setter Property="MinWidth" Value="8" /><Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar">
+            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton><RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" /></Track.DecreaseRepeatButton>
+                <Track.Thumb><Thumb><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="{DynamicResource BorderBrush}" CornerRadius="3" Margin="2" /></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
+                <Track.IncreaseRepeatButton><RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" /></Track.IncreaseRepeatButton>
+            </Track>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="IntegrationCard" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="12" /><Setter Property="Padding" Value="24,16" /><Setter Property="Margin" Value="0,0,0,16" />
+    </Style>
+    <Style x:Key="ConnectionPill" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource RaisedBrush}" /><Setter Property="CornerRadius" Value="12" /><Setter Property="Padding" Value="10,5" /><Setter Property="VerticalAlignment" Value="Top" /><Setter Property="TextElement.Foreground" Value="{DynamicResource MutedBrush}" />
+        <Style.Triggers><DataTrigger Binding="{Binding ConnectionState}" Value="Connected"><Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}" /></DataTrigger><DataTrigger Binding="{Binding ConnectionState}" Value="Needs login"><Setter Property="TextElement.Foreground" Value="{DynamicResource WarnBrush}" /></DataTrigger></Style.Triggers>
+    </Style>
+    <Style TargetType="TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" /><Setter Property="FontSize" Value="14" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem"><Border x:Name="Tab" BorderThickness="0,0,0,2" BorderBrush="Transparent" Padding="0,12" Margin="0,0,28,12"><ContentPresenter ContentSource="Header" /></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="BorderBrush" Value="{DynamicResource TextBrush}" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="FontWeight" Value="SemiBold" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="ModelPickerItem" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="Row" CornerRadius="8" Padding="12,9" Margin="4,1" Background="Transparent"><DockPanel><TextBlock x:Name="Check" DockPanel.Dock="Right" Text="&#x2713;" Foreground="{DynamicResource PeachBrush}" Visibility="Hidden" Margin="20,0,0,0" /><ContentPresenter /></DockPanel></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Check" Property="Visibility" Value="Visible" /><Setter TargetName="Row" Property="Background" Value="{DynamicResource UserBubbleBrush}" /></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource UserBubbleBrush}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
 </ResourceDictionary>

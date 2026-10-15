@@ -8,7 +8,12 @@
         Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
         Icon="Assets/orch-app-icon.ico" UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterScreen">
 
-    <Grid>
+    <Window.Resources>
+        <CollectionViewSource x:Key="GroupedModels" Source="{Binding Chat.ProviderOptions}">
+            <CollectionViewSource.GroupDescriptions><PropertyGroupDescription PropertyName="ProviderGroup" /></CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
+    </Window.Resources>
+    <Grid PreviewMouseDown="DismissModelPicker">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="224" />
             <ColumnDefinition Width="*" />
@@ -101,7 +106,6 @@
                         </StackPanel.Style>
                         <!-- Row 1: Provider, Modes, Open file, New chat -->
                         <WrapPanel>
-                            <ComboBox Width="240" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}" DisplayMemberPath="Label" ToolTip="Choose your chat or overnight manager model" Margin="0,0,8,8" />
                             <ComboBox Width="112" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" ToolTip="Chat or cost routing" Margin="0,0,8,8" />
                             <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="0,0,8,8">
                                 <Button.Style>
@@ -283,22 +287,35 @@
 
             <!-- Composer -->
             <Border Grid.Row="3" Padding="32,16,32,24">
-                <Grid MaxWidth="820">
+                <Border MaxWidth="820" CornerRadius="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"><Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="Composer" Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                             TextWrapping="Wrap" MinHeight="46" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="16"
+                             Grid.ColumnSpan="2" TextWrapping="Wrap" MinHeight="68" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="16" Style="{StaticResource ComposerInput}"
                              PreviewKeyDown="Composer_PreviewKeyDown" AutomationProperties.Name="Message"
                              ToolTip="Enter to send · Shift+Enter for a new line" />
-                    <Grid Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Bottom">
+                    <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="12,0,0,12" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding SelectedProvider.Label}" /><TextBlock Text="&#x2304;" Margin="12,0,0,0" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
+                    <Grid Grid.Column="1" Grid.Row="1" Margin="16,0,12,12" VerticalAlignment="Bottom">
                         <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource AccentButton}" MinWidth="76" Height="40"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" />
                         <Button Content="Stop" Command="{Binding StopCommand}" MinWidth="76" Height="40"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}}" />
                     </Grid>
-                </Grid>
+                </Grid></Border>
+            </Border>
+            <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="360" MaxHeight="460" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="44,0,0,84" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
+                <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.3" /></Border.Effect>
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Choose a model" Margin="12,8,12,12" FontSize="15" FontWeight="SemiBold" />
+                    <ListBox ItemsSource="{Binding Source={StaticResource GroupedModels}}" SelectedItem="{Binding SelectedProvider}" SelectionChanged="ModelPicked" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource ModelPickerItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ListBox.Resources>
+                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ModelName}" TextTrimming="CharacterEllipsis" /></DataTemplate></ListBox.ItemTemplate>
+                        <ListBox.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate><TextBlock Text="{Binding Name}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="16,10,0,4" /></DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ListBox.GroupStyle>
+                    </ListBox>
+                </DockPanel>
             </Border>
         </Grid>
 

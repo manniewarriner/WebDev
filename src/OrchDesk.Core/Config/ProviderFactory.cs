@@ -8,9 +8,17 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
     // Stable per app run so OpenCode sees one session (its docs ask clients for a steady x-opencode-session).
     private static readonly string SessionId = Guid.NewGuid().ToString("N");
 
-    public IModelProvider? Create(ProviderConfig c)
+    public IModelProvider? Create(ProviderConfig c, string? modelOverride = null)
     {
+        if (modelOverride is not null)
+        {
+            c = System.Text.Json.JsonSerializer.Deserialize<ProviderConfig>(System.Text.Json.JsonSerializer.Serialize(c))!;
+            c.Model = modelOverride;
+        }
         if (!c.Enabled) return null;
+        var baseUrl = c.BaseUrl;
+        if (c.Id == "opencode-go" && c.Model is not null && c.ModelBaseUrls.TryGetValue(c.Model, out var endpoint)
+            && endpoint is "https://opencode.ai/inference/go/v1" or "https://opencode.ai/zen/v1") baseUrl = endpoint;
         switch (c.Kind)
         {
             case ProviderKind.OpenAiCompatible:
@@ -26,7 +34,7 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
                     headers["User-Agent"] = "OrchDesk/0.1";
                 }
                 return new OpenAiCompatProvider(c.Id, c.DisplayName,
-                    new OpenAiCompatOptions(c.BaseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers),
+                    new OpenAiCompatOptions(baseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers),
                     c.IsLocal, http);
 
             case ProviderKind.ClaudeCli:
@@ -52,7 +60,7 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
     }
 
     public List<IModelProvider> CreateAll(AppConfig config) =>
-        config.Providers.Select(Create).OfType<IModelProvider>().ToList();
+        config.Providers.Select(c => Create(c)).OfType<IModelProvider>().ToList();
 
     /// <summary>Providers in the configured fallback order (unknown/disabled ids are skipped).</summary>
     public static List<IModelProvider> InRotationOrder(AppConfig config, IReadOnlyList<IModelProvider> all) =>

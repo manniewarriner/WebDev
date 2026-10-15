@@ -13,6 +13,7 @@ public sealed class ConnectionTester(HttpClient http, ISecretProtector secrets)
     public async Task<ConnectionTestResult> TestAsync(ProviderConfig config, CancellationToken ct = default)
     {
         return await Measure(async token => {
+            if (config.Kind == ProviderKind.ClaudeCli) return await new ClaudeAuthRunner().IsLoggedInAsync(config, token);
             if (config.Kind != ProviderKind.OpenAiCompatible) {
                 var exe = CliRunner.FindOnPath(config.Executable ?? (config.Kind == ProviderKind.ClaudeCli ? "claude" : "codex"));
                 if (exe is null) return false;

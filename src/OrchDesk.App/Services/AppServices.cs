@@ -29,12 +29,27 @@ public sealed class AppServices
 
     public event Action? Rebuilt;
 
-    public AppServices()
+    public bool IsScreenshot { get; }
+
+    public AppServices(bool screenshot = false)
     {
-        Config = Store.Load();
+        IsScreenshot = screenshot;
+        Config = screenshot ? AppConfig.CreateDefault() : Store.Load();
+        if (screenshot)
+        {
+            // Display-only fixtures: this instance never watches or saves user configuration.
+            foreach (var provider in Config.Providers.Where(p => p.Kind == ProviderKind.ClaudeCli || p.Id == "opencode-go"))
+                if (provider.AvailableModels.Count == 0)
+                {
+                    provider.AvailableModels = provider.Kind == ProviderKind.ClaudeCli
+                        ? ["sonnet", "opus", "haiku"] : ["glm-5.2", "kimi-k2.5", "minimax-m2.5"];
+                    provider.ModelsSyncedAt = DateTimeOffset.Now.AddMinutes(-2);
+                }
+        }
         Queue = new OvernightQueueStore(Path.Combine(Store.Directory, "overnight"));
         ReportsDir = Path.Combine(Store.Directory, "reports");
         Rebuild();
+        if (screenshot) return;
         Store.Changed += () => System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => {
             try { Config = Store.Load(); Rebuild(); } catch (IOException) { }
         }));
@@ -54,8 +69,32 @@ public sealed class AppServices
         Rebuilt?.Invoke();
     }
 
+    public AccountRotator CreateRunRotator(ModelPickerOption? selected)
+    {
+        if (selected?.Model is null) return Rotator;
+        var factory = new ProviderFactory(Secrets, Http);
+        var providers = Config.Providers.Select(c => factory.Create(c, c.Id == selected.Id ? selected.Model : null)).OfType<IModelProvider>().ToList();
+        var result = new AccountRotator(ProviderFactory.InRotationOrder(Config, providers), TimeSpan.FromMinutes(Config.LimitCooldownMinutes));
+        foreach (var account in result.Accounts)
+            if (Rotator.Find(account.Provider.Id) is { } previous) { account.Health = previous.Health; account.LastLimitHit = previous.LastLimitHit; account.LastOfflineAt = previous.LastOfflineAt; }
+        result.Changed += () =>
+        {
+            foreach (var account in result.Accounts)
+                if (Rotator.Find(account.Provider.Id) is { } shared)
+                {
+                    shared.Health = account.Health;
+                    shared.LastLimitHit = account.LastLimitHit;
+                    shared.LastLimitMessage = account.LastLimitMessage;
+                    shared.LastOfflineAt = account.LastOfflineAt;
+                    shared.LastChecked = account.LastChecked;
+                }
+        };
+        return result;
+    }
+
     public void Save()
     {
+        if (IsScreenshot) return;
         Store.Save(Config);
         Rebuild();
     }

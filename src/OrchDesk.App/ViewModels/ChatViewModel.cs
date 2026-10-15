@@ -11,7 +11,7 @@ using OrchDesk.Core.Permissions;
 
 namespace OrchDesk.App.ViewModels;
 
-public sealed record ProviderOption(string? Id, string Label) { public override string ToString() => Label; }
+
 public enum ChatMode { Chat, CostRouter }
 
 public sealed partial class ChatViewModel : ObservableObject
@@ -21,13 +21,13 @@ public sealed partial class ChatViewModel : ObservableObject
     private CancellationTokenSource? _cts;
 
     public ObservableCollection<ChatItem> Items { get; } = [];
-    public ObservableCollection<ProviderOption> ProviderOptions { get; } = [];
+    public ObservableCollection<OrchDesk.Core.Config.ModelPickerOption> ProviderOptions { get; } = [];
     public IReadOnlyList<ChatMode> Modes { get; } = [ChatMode.Chat, ChatMode.CostRouter];
 
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand))] private string _input = "";
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand)), NotifyPropertyChangedFor(nameof(WorkspaceLabel))] private string? _workspace;
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand), nameof(StopCommand))] private bool _isBusy;
-    [ObservableProperty] private ProviderOption? _selectedProvider;
+    [ObservableProperty] private OrchDesk.Core.Config.ModelPickerOption? _selectedProvider;
     [ObservableProperty] private ChatMode _mode = ChatMode.Chat;
     [ObservableProperty] private string _activeModel = "";
     [ObservableProperty] private bool _shutdownWhenDone;
@@ -71,15 +71,16 @@ public sealed partial class ChatViewModel : ObservableObject
     private void ReloadProviders()
     {
         ShutdownWhenDone = _services.Config.Overnight.ShutdownWhenDone;
+        var keepModel = SelectedProvider?.Model;
         var keep = SelectedProvider?.Id ?? _services.Config.LastProviderId;
         ProviderOptions.Clear();
-        ProviderOptions.Add(new ProviderOption(null, "Auto — PC first, cloud when it's off"));
-        foreach (var p in _services.Providers) ProviderOptions.Add(new ProviderOption(p.Id, p.DisplayName));
-        SelectedProvider = ProviderOptions.FirstOrDefault(o => o.Id == keep) ?? ProviderOptions[0];
+        ProviderOptions.Add(new OrchDesk.Core.Config.ModelPickerOption(null, "Auto — PC first, cloud when it's off"));
+        foreach (var p in OrchDesk.Core.Config.ModelPickerOption.Expand(_services.Config.Providers)) ProviderOptions.Add(p);
+        SelectedProvider = ProviderOptions.FirstOrDefault(o => o.Id == keep && (keepModel is null || o.Model == keepModel)) ?? ProviderOptions[0];
         _conversation = null; // pick up the new rotation chain on the next message; history is kept in Items only
     }
 
-    partial void OnSelectedProviderChanged(ProviderOption? value)
+    partial void OnSelectedProviderChanged(OrchDesk.Core.Config.ModelPickerOption? value)
     {
         _services.Config.LastProviderId = value?.Id;
         if (_conversation is not null) _conversation.PreferredProviderId = value?.Id;
@@ -92,7 +93,7 @@ public sealed partial class ChatViewModel : ObservableObject
         EditorPath = "";
         EditorText = "";
         _services.Config.LastWorkspace = value;
-        _services.Store.Save(_services.Config);
+        if (!_services.IsScreenshot) _services.Store.Save(_services.Config);
     }
 
     [RelayCommand]
@@ -180,7 +181,7 @@ public sealed partial class ChatViewModel : ObservableObject
     private async Task RunOvernightAsync(string goal, CancellationToken ct, OrchDesk.Core.Overnight.OvernightRun? existing = null)
     {
         var id = existing?.ManagerId ?? SelectedProvider?.Id;
-        var manager = id is null ? _services.Providers.FirstOrDefault(p => !p.IsAgentic) : _services.Providers.FirstOrDefault(p => p.Id == id);
+        var manager = id is null ? _services.Providers.FirstOrDefault(p => !p.IsAgentic) : _services.CreateRunRotator(SelectedProvider).Find(id)?.Provider;
         if (manager is null) throw new InvalidOperationException("Configure an API manager model for overnight runs.");
         ActiveModel = manager.DisplayName;
         var run = existing ?? new OrchDesk.Core.Overnight.OvernightRun {
@@ -235,7 +236,7 @@ public sealed partial class ChatViewModel : ObservableObject
     {
         var gate = new PermissionGate(_services.CreatePolicy(), ApproveAsync);
         var loop = _services.CreateLoop(gate);
-        var rotator = _services.Rotator;
+        var rotator = _services.CreateRunRotator(SelectedProvider);
         var sup = _services.Config.Supervisor;
 
         switch (Mode)

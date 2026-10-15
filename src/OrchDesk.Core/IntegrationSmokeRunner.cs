@@ -9,10 +9,13 @@ namespace OrchDesk.Core.Verification;
 public sealed record SmokeResult(string Provider, string Status, string Detail);
 public static class IntegrationSmokeRunner
 {
+    public static string IntegrationSummary(AppConfig config) => $"Claude: {config.Providers.Where(p => p.Kind == ProviderKind.ClaudeCli).Sum(p => p.AvailableModels.Count)} models; OpenCode: {config.Providers.Where(p => p.Id == "opencode-go").Sum(p => p.AvailableModels.Count)} models";
+
     public static async Task<List<SmokeResult>> RunAsync(AppConfig config, ISecretProtector secrets, HttpClient http, string directory, CancellationToken ct = default)
     {
         Directory.CreateDirectory(directory);
         var results = new List<SmokeResult>();
+        Console.WriteLine(IntegrationSummary(config));
         var factory = new ProviderFactory(secrets, http);
         var tester = new ConnectionTester(http, secrets);
         foreach (var c in config.Providers) {

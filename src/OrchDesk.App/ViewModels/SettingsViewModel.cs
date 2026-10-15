@@ -7,8 +7,8 @@ using OrchDesk.Core.Config;
 namespace OrchDesk.App.ViewModels;
 
 /// <summary>
-/// Editable copy of one provider. New secrets typed into the password boxes are held here in memory only until
-/// Save, when they're DPAPI-encrypted into config.json. Existing secrets are never shown back.
+/// Editable copy of one provider. API keys are protected immediately; saved secrets are never shown back.
+/// Save persists the encrypted values to config.json.
 /// </summary>
 public sealed partial class ProviderEdit : ObservableObject
 {
@@ -17,10 +17,26 @@ public sealed partial class ProviderEdit : ObservableObject
         _id = c.Id; _displayName = c.DisplayName; _kind = c.Kind; _enabled = c.Enabled; _isLocal = c.IsLocal;
         _baseUrl = c.BaseUrl; _model = c.Model; _executable = c.Executable; _claudeConfigDir = c.ClaudeConfigDir;
         _permissionMode = c.PermissionMode;
-        Original = c;
+        _apiKeyProtected = c.ApiKeyProtected;
+        Original = c; ModelBaseUrls = new(c.ModelBaseUrls); AvailableModels = [.. c.AvailableModels]; ModelsSyncedAt = c.ModelsSyncedAt;
     }
 
     public ProviderConfig Original { get; }
+    public List<string> AvailableModels { get; set; } = [];
+    public Dictionary<string, string> ModelBaseUrls { get; set; } = [];
+    public DateTimeOffset? ModelsSyncedAt { get; set; }
+    public string Badge => IsClaude ? "C" : "O";
+    public string Subtitle => IsClaude ? "Claude Code · Subscription account" : "OpenCode · Go & Zen models";
+    public string ConnectionState => !Enabled ? "Not connected" : ModelsSyncedAt is not null ? "Connected" : "Needs login";
+    public string SyncSummary => ModelsSyncedAt is { } synced
+        ? $"Synced {Math.Max(0, (int)(DateTimeOffset.Now - synced).TotalMinutes)}m ago · {AvailableModels.Count} models"
+        : "Not synced yet · Connect to discover models";
+    public void RefreshConnection()
+    {
+        OnPropertyChanged(nameof(ConnectionState));
+        OnPropertyChanged(nameof(SyncSummary));
+    }
+    partial void OnEnabledChanged(bool value) => RefreshConnection();
     [ObservableProperty] private string _status = "Not tested";
     [ObservableProperty] private bool _testing;
     [ObservableProperty] private string _id;
@@ -34,7 +50,13 @@ public sealed partial class ProviderEdit : ObservableObject
     [ObservableProperty] private string? _claudeConfigDir;
     [ObservableProperty] private string? _permissionMode;
 
-    public string? NewApiKey { get; set; }
+    private string? _apiKeyProtected;
+    public void StoreApiKey(string key, ISecretProtector secrets)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return;
+        _apiKeyProtected = secrets.Protect(key.Trim());
+        OnPropertyChanged(nameof(KeyState));
+    }
     public string? NewAccessClientId { get; set; }
     public string? NewAccessClientSecret { get; set; }
     public bool ClearSecrets { get; set; }
@@ -42,7 +64,7 @@ public sealed partial class ProviderEdit : ObservableObject
     public bool IsHttp => Kind == ProviderKind.OpenAiCompatible;
     public bool IsClaude => Kind == ProviderKind.ClaudeCli;
     public bool IsCli => Kind != ProviderKind.OpenAiCompatible;
-    public string KeyState => string.IsNullOrEmpty(Original.ApiKeyProtected) ? "No key saved" : "A key is saved (type to replace)";
+    public string KeyState => string.IsNullOrEmpty(_apiKeyProtected) ? "No key saved" : "Key saved";
 
     public ProviderConfig ToConfig(ISecretProtector secrets)
     {
@@ -50,10 +72,11 @@ public sealed partial class ProviderEdit : ObservableObject
             ClearSecrets ? null : string.IsNullOrWhiteSpace(newValue) ? old : secrets.Protect(newValue.Trim());
         return new ProviderConfig
         {
+            ModelBaseUrls = new(ModelBaseUrls), AvailableModels = [.. AvailableModels], ModelsSyncedAt = ModelsSyncedAt,
             Id = Id.Trim(), DisplayName = DisplayName.Trim(), Kind = Kind, Enabled = Enabled, IsLocal = IsLocal,
             BaseUrl = BaseUrl?.Trim(), Model = Model?.Trim(), Executable = Executable?.Trim(),
             ClaudeConfigDir = ClaudeConfigDir?.Trim(), PermissionMode = PermissionMode?.Trim(),
-            ApiKeyProtected = Keep(NewApiKey, Original.ApiKeyProtected),
+            ApiKeyProtected = ClearSecrets ? null : _apiKeyProtected,
             AccessClientIdProtected = Keep(NewAccessClientId, Original.AccessClientIdProtected),
             AccessClientSecretProtected = Keep(NewAccessClientSecret, Original.AccessClientSecretProtected),
         };
@@ -65,6 +88,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AppServices _services;
 
     public ObservableCollection<ProviderEdit> Providers { get; }
+    public IEnumerable<ProviderEdit> ClaudeProfiles => Providers.Where(p => p.Id is "claude-gmail" or "claude-outlook");
+    public IEnumerable<ProviderEdit> OpenCodeProfiles => Providers.Where(p => p.Id == "opencode-go");
+    public IEnumerable<ProviderEdit> OtherProviders => Providers.Except(ClaudeProfiles).Except(OpenCodeProfiles);
     public IReadOnlyList<ProviderKind> Kinds { get; } = Enum.GetValues<ProviderKind>();
     public IReadOnlyList<string> PermissionModes { get; } = ["acceptEdits", "default", "plan"];
 
@@ -99,6 +125,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         var c = services.Config;
         Providers = new(c.Providers.Select(p => new ProviderEdit(p)));
+        foreach (var builtin in AppConfig.CreateDefault().Providers.Where(p => p.Id is "claude-gmail" or "claude-outlook" or "opencode-go"))
+            if (!Providers.Any(p => p.Id == builtin.Id)) { builtin.Enabled = false; Providers.Add(new(builtin)); }
         Selected = Providers.FirstOrDefault();
         _rotationOrder = string.Join(", ", c.RotationOrder);
         _maxSteps = c.MaxSteps;
@@ -115,6 +143,40 @@ public sealed partial class SettingsViewModel : ObservableObject
         _pushBranches = c.Overnight.PushBranches;
     }
 
+    [RelayCommand]
+    private Task ConnectIntegrationAsync(ProviderEdit? provider) => CheckIntegrationAsync(provider, true, true);
+    [RelayCommand]
+    private Task TestIntegrationAsync(ProviderEdit? provider) => CheckIntegrationAsync(provider, false, false);
+    [RelayCommand]
+    private Task SyncIntegrationAsync(ProviderEdit? provider) => CheckIntegrationAsync(provider, true, false);
+
+    private async Task CheckIntegrationAsync(ProviderEdit? provider, bool sync, bool connect)
+    {
+        if (provider is null || provider.Testing) return;
+        provider.Testing = true;
+        provider.Status = "Checking?";
+        try
+        {
+            if (connect) provider.Enabled = true;
+            using var http = new System.Net.Http.HttpClient();
+            var config = provider.ToConfig(_services.Secrets);
+            var service = new OrchDesk.Core.Integrations.IntegrationModelSync(http, _services.Secrets, new OrchDesk.Core.Integrations.ClaudeAuthRunner());
+            var result = await service.RunAsync(config, sync);
+            provider.Status = result.Message;
+            if (!result.Ok) provider.ModelsSyncedAt = null;
+            if (result.Ok && sync)
+            {
+                provider.ModelBaseUrls = config.ModelBaseUrls;
+                provider.AvailableModels = config.AvailableModels;
+                provider.ModelsSyncedAt = config.ModelsSyncedAt;
+                await SaveAsync();
+            }
+        }
+        finally { provider.Testing = false; provider.RefreshConnection(); }
+    }
+
+    public void StoreApiKey(ProviderEdit provider, string key) => provider.StoreApiKey(key, _services.Secrets);
+
     private OrchDesk.Core.Integrations.ConnectionTester Tester() => new(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(60) }, _services.Secrets);
     [RelayCommand]
     private async Task TestConnectionAsync(ProviderEdit? provider)
@@ -122,7 +184,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         if (provider is null || provider.Testing) return;
         provider.Testing = true; provider.Status = "Testing?";
         try { var result = await Tester().TestAsync(provider.ToConfig(_services.Secrets)); provider.Status = $"{result.Message} ({result.ElapsedMs} ms)"; }
-        finally { provider.Testing = false; }
+        finally { provider.Testing = false; provider.RefreshConnection(); }
     }
     [RelayCommand]
     private async Task TestWebAsync() => WebStatus = (await Tester().TestWebAsync(WebFetchEnabled)).Message;
@@ -138,6 +200,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             BaseUrl = "http://127.0.0.1:1234/v1",
         });
         Providers.Add(p);
+        OnPropertyChanged(nameof(OtherProviders));
         Selected = p;
     }
 
@@ -147,6 +210,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         if (Selected is null) return;
         var i = Providers.IndexOf(Selected);
         Providers.Remove(Selected);
+        OnPropertyChanged(nameof(OtherProviders));
         Selected = Providers.ElementAtOrDefault(Math.Max(0, i - 1));
     }
 
