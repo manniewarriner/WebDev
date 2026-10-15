@@ -205,6 +205,8 @@
     <Style x:Key="Heading" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
         <Setter Property="FontSize" Value="28" />
+        <Setter Property="LineHeight" Value="36" />
+        <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
