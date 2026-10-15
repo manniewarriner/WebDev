@@ -190,7 +190,16 @@
         <Setter Property="Padding" Value="16,8" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
             <Border x:Name="Item" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="8"><ContentPresenter /></Border>
-            <ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="{DynamicResource UserBubbleBrush}" /></Trigger></ControlTemplate.Triggers>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource UserBubbleBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="Item" Property="Opacity" Value="0.45" />
+                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource RaisedBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                </Trigger>
+            </ControlTemplate.Triggers>
         </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style TargetType="ComboBox">
