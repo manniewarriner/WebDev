@@ -55,7 +55,7 @@ public partial class MainWindow
         menu.SetResourceReference(Control.BorderBrushProperty, "BorderBrush");
         void Add(string title, Action action) { var item = new MenuItem { Header = title }; item.SetResourceReference(Control.ForegroundProperty, "TextBrush"); item.Click += (_, _) => action(); menu.Items.Add(item); }
         Add("Usage", ShowUsage); Add("Files", ShowFiles); Add("Commands  Ctrl+K", ShowPalette);
-        menu.PlacementTarget = MoreActions; menu.IsOpen = true;
+        MoreActions.ContextMenu = menu; menu.PlacementTarget = MoreActions; menu.IsOpen = true;
     }
     private StackPanel ShowModal(string title, double width = 620, bool animate = true)
     {
@@ -89,7 +89,7 @@ public partial class MainWindow
     private void OpenPaletteClick(object sender, RoutedEventArgs e) => ShowPalette();
     private void OpenUsageClick(object sender, RoutedEventArgs e) => ShowUsage();
     private void OpenFilesClick(object sender, RoutedEventArgs e) => ShowFiles();
-    private void OpenIntegrationsV2(object sender, RoutedEventArgs e) => OpenSettingsTab();
+    private void OpenIntegrationsV2(object sender, RoutedEventArgs e) => ShowConnect();
     private void OpenOvernightSetup(object sender, RoutedEventArgs e) => ShowOvernight();
     private void ShowPalette()
     {
@@ -164,9 +164,17 @@ public partial class MainWindow
         if (DataContext is not MainViewModel vm) return;
         var body = ShowModal("Project files", 660);
         body.Children.Add(Label(vm.Chat.Workspace ?? "Choose a folder to explore your project.", "Muted", 13));
+        if (vm.Chat.Workspace is null) body.Children.Add(ActionButton("Choose a folder", () => { CloseModal(); vm.Chat.PickFolderCommand.Execute(null); ShowFiles(); }));
         var nodes = vm.Services.UseDemo ? FileNode.Build(["src/OrchDesk.App/MainWindow.xaml", "src/OrchDesk.App/Themes/Dark.xaml", "src/OrchDesk.Core/Presentation/WorkspacePresentation.cs", "tests/OrchDesk.Tests/DesignSystemTests.cs"], new Dictionary<string, string> { ["src/OrchDesk.App/MainWindow.xaml"] = "Modified", ["src/OrchDesk.Core/Presentation/WorkspacePresentation.cs"] = "Added" }) : FileNode.Read(vm.Chat.Workspace ?? "");
         var tree = new TreeView { Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = Brush("Text"), Margin = new Thickness(0, 16, 0, 0) };
         TreeViewItem Item(FileNode node) { var item = new TreeViewItem { Header = node.Name + (node.Change is null ? "" : "    " + node.Change), IsExpanded = true, Foreground = Brush(node.Change == "Added" ? "Success" : node.Change == "Modified" ? "Warn" : "Text"), Padding = new Thickness(4, 6, 4, 6), Tag = node }; foreach (var child in node.Children) item.Items.Add(Item(child)); return item; }
+        tree.MouseDoubleClick += (_, _) => {
+            if (tree.SelectedItem is not TreeViewItem { Tag: FileNode node } || node.Children.Count > 0 || vm.Chat.Workspace is null) return;
+            try {
+                var path = OrchDesk.Core.Tools.WorkspacePath.Resolve(vm.Chat.Workspace, node.RelativePath);
+                vm.Chat.EditorText = System.IO.File.ReadAllText(path); vm.Chat.EditorPath = path; CloseModal();
+            } catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { ShowToast("Unable to open this file", true); }
+        };
         foreach (var node in nodes) tree.Items.Add(Item(node)); body.Children.Add(tree);
         if (!vm.Services.UseDemo && vm.Chat.Workspace is { } workspace) {
             try { var inspection = await WorkspaceInspection.ReadAsync(workspace); var actual = nodes.SelectMany(Flatten).Select(n => n.RelativePath).Concat(inspection.Changes.Keys); nodes = FileNode.Build(actual, inspection.Changes); tree.Items.Clear(); foreach (var node in nodes) tree.Items.Add(Item(node)); }

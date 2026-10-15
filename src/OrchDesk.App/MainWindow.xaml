@@ -77,19 +77,6 @@
                         <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="{StaticResource Metric.13}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="{StaticResource Metric.720}" />
                     </Button>
                     <StackPanel Orientation="Vertical">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Visible" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Workspace}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Workspace}" Value="">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
                         <!-- Row 1: Provider, Modes, Open file, New chat -->
                         <DockPanel LastChildFill="True">
                             <ctl:SegmentedControl x:Name="WorkModeSegment" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="{StaticResource Inset.8_0_0_8}"/>
@@ -137,29 +124,20 @@
             <ctl:EvervaultBackground x:Name="ChatBackdrop" Grid.Row="2" />
             <ctl:FilterBar x:Name="JobFilters" Visibility="Collapsed" Grid.Row="1" HorizontalAlignment="Right" Margin="{StaticResource Inset.16_2}"/>
             <!-- Empty state -->
-            <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="{StaticResource Metric.560}">
-                <StackPanel.Style>
-                    <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Workspace}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Workspace}" Value="">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Style>
-                <TextBlock Style="{StaticResource Heading}" Text="Make room for your next idea." Margin="{StaticResource Inset.0_0_0_16}" />
+            <ScrollViewer x:Name="HomeContent" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="{StaticResource Inset.24_24_24_16}">
+            <StackPanel HorizontalAlignment="Center" MaxWidth="{StaticResource Metric.560}">
+                <TextBlock Style="{StaticResource Heading}" Text="Make room for your next idea." TextWrapping="Wrap" Padding="{StaticResource Inset.0_4_0_0}" Margin="{StaticResource Inset.0_0_0_16}" />
                 <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="{StaticResource Metric.21}"
                            Text="Choose a project, bring your models, and turn a little direction into something worth shipping." />
                 <UniformGrid Columns="2" Margin="{StaticResource Inset.0_24_0_0}"><Button Style="{StaticResource BentoCard}" Command="{Binding PickFolderCommand}"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8B7;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Explore a project" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Choose a folder and start building." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button><Button Style="{StaticResource BentoCard}" Click="OpenOvernightSetup"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE708;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Plan an overnight run" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Set a goal for the hours ahead." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button><Button Style="{StaticResource BentoCard}" Click="OpenIntegrationsV2"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE703;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Connect your models" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Bring your accounts into one place." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button><Button Style="{StaticResource BentoCard}" Click="OpenPaletteClick"><StackPanel><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE945;" FontSize="{StaticResource Metric.20}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="Commands" FontSize="{StaticResource Metric.15}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_4}"/><TextBlock Text="Find an action with Ctrl+K." FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Button></UniformGrid><ctl:TrackingLabel Text="ACTIVITY" FontSize="{StaticResource Metric.11}" Margin="{StaticResource Inset.0_16_0_0}"/><ctl:ActivityHeatmap x:Name="HomeActivity" Width="338" HorizontalAlignment="Left"/>
-                
+                <WrapPanel Margin="{StaticResource Inset.0_12_0_0}"><Button Content="Open folder" Command="{Binding PickFolderCommand}"/><Button Content="Choose a folder" Command="{Binding PickFolderCommand}" Margin="{StaticResource Inset.8_0_0_0}"/></WrapPanel>
+                <ItemsControl ItemsSource="{Binding RecentFolders}" Margin="{StaticResource Inset.0_12_0_0}"><ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding}" Command="{Binding DataContext.OpenRecentFolderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" HorizontalAlignment="Left"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
             </StackPanel>
 
+            </ScrollViewer>
+
             <!-- Conversation -->
-            <ScrollViewer x:Name="ChatScroll" ScrollChanged="ThreadScrolled" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Inset.0_8}">
+            <ScrollViewer x:Name="ChatScroll" Visibility="Collapsed" ScrollChanged="ThreadScrolled" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Inset.0_8}">
                 <ScrollViewer.Style><Style TargetType="ScrollViewer"><Style.Triggers><DataTrigger Binding="{Binding Visibility, ElementName=JumpLatest}" Value="Visible"><Setter Property="Margin" Value="{StaticResource Inset.0_0_0_56}"/></DataTrigger></Style.Triggers></Style></ScrollViewer.Style>
                 <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ScrollViewer.Resources>
                 <ItemsControl ItemsSource="{Binding Items}" MaxWidth="{StaticResource Metric.820}" Margin="{StaticResource Inset.32_16}" Focusable="False">

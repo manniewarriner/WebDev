@@ -49,7 +49,7 @@ public sealed class ProviderLogo : ContentControl
         {
             Content = new Viewbox { Stretch = System.Windows.Media.Stretch.Uniform, Child = new Image
             {
-                Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/orch-app-icon-512.png")),
+                Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/OrchDesk;component/Assets/orch-app-icon-512.png")),
                 Stretch = System.Windows.Media.Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center

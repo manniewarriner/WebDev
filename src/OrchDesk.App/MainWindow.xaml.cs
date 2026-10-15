@@ -28,9 +28,11 @@ public partial class MainWindow : Window
         {
             if (DataContext is not MainViewModel vm) return;
             Motion.ReduceMotion = vm.Services.Config.ReduceMotion;
+            UpdateChatView(false);
             SetSidebar(vm.Services.Config.SidebarCollapsed, false);
             vm.Chat.ContentAdded += FollowContent;
             vm.Chat.PropertyChanged += (_, e) => {
+                if (e.PropertyName == nameof(ChatViewModel.ViewState)) UpdateChatView(true);
                 if (e.PropertyName == nameof(ChatViewModel.SelectedProvider)) Motion.Reveal(ModelNameLabel);
             };
             vm.Chat.Items.CollectionChanged += (_, e) => {
@@ -51,6 +53,23 @@ public partial class MainWindow : Window
         IsVisibleChanged += (_, _) => { if (!IsVisible) Sidebar.BeginAnimation(WidthProperty, null); };
         Closed += (_, _) => { Motion.Changed -= MotionChanged; if (DataContext is MainViewModel vm) vm.Chat.ContentAdded -= FollowContent; };
     }
+    private void UpdateChatView(bool animate)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        var home = vm.Chat.ViewState == ChatViewState.Home;
+        HomeContent.BeginAnimation(OpacityProperty, null);
+        HomeContent.IsHitTestVisible = home;
+        ChatScroll.Visibility = home ? Visibility.Collapsed : Visibility.Visible;
+        if (home) { HomeContent.Visibility = Visibility.Visible; HomeContent.ScrollToTop(); }
+        if (animate && Motion.Enabled)
+        {
+            var fade = new DoubleAnimation(home ? 0 : 1, home ? 1 : 0, TimeSpan.FromMilliseconds(180));
+            fade.Completed += (_, _) => { if (vm.Chat.ViewState == ChatViewState.Thread) HomeContent.Visibility = Visibility.Collapsed; };
+            HomeContent.BeginAnimation(OpacityProperty, fade);
+        }
+        else { HomeContent.Opacity = home ? 1 : 0; HomeContent.Visibility = home ? Visibility.Visible : Visibility.Collapsed; }
+    }
+
     private void StopPickerAnimations()
     {
         Motion.StopReveal(ModelPickerOverlay);
@@ -60,6 +79,7 @@ public partial class MainWindow : Window
     private void MotionChanged()
     {
         if (Motion.Enabled) return;
+        UpdateChatView(false);
         StopPickerAnimations();
         Motion.StopReveal(ModelNameLabel);
         Sidebar.BeginAnimation(WidthProperty, null);
@@ -185,6 +205,7 @@ public partial class MainWindow : Window
             chat.Items.Add(new ToolItem("demo", "query_metrics", "{ \"period\": \"7 days\", \"metric\": \"p95 latency\" }") { Output = "p95: 180ms → 340ms\nSequential scan on events. Missing index: (account_id, created_at).", IsRunning = false, IsExpanded = true });
             chat.Items.Add(new AssistantItem("Claude Sonnet") { Reasoning = "Compare recent timings with the deployment, then inspect the query plan.", Text = "The increase lines up with Tuesday’s deploy. Adding an index should bring p95 back down without a rollback.", IsStreaming = true });
         }
+        if (page == "reply") { chat.Items.Add(new UserItem("Reply with exactly: pong")); chat.Items.Add(new AssistantItem("Demo") { Text = "pong" }); }
         if (page == "thinking") { chat.Items.Add(new UserItem("Find the best approach for this project.")); chat.IsBusy = true; chat.IsThinking = true; }
         if (page == "composer") chat.Input = "Review the chat experience in both themes.\n\nMake the input feel natural as the message grows.\nKeep the model selector close to the send action.\nThen run the build and all tests.";
         SetSidebar(page == "sidebar-collapsed", false);

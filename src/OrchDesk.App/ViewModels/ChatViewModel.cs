@@ -12,11 +12,16 @@ using OrchDesk.Core.Permissions;
 namespace OrchDesk.App.ViewModels;
 
 
+public enum ChatViewState { Home, Thread }
+
 public enum ChatMode { Chat, CostRouter }
 
 public sealed partial class ChatViewModel : ObservableObject
 {
     private readonly AppServices _services;
+    private readonly IFolderPicker _folderPicker;
+    public ChatViewState ViewState => Items.Count > 0 || IsBusy ? ChatViewState.Thread : ChatViewState.Home;
+    partial void OnIsBusyChanged(bool value) { OnPropertyChanged(nameof(ViewState)); PickFolderCommand.NotifyCanExecuteChanged(); }
     private Conversation? _conversation;
     private CancellationTokenSource? _cts;
     private readonly string _scratchWorkspace;
@@ -45,6 +50,15 @@ public sealed partial class ChatViewModel : ObservableObject
     }
     partial void OnInputChanged(string value) { ComposerNotice = null; }
 
+
+    public ObservableCollection<string> RecentFolders { get; } = [];
+    [RelayCommand]
+    private void OpenRecentFolder(string? path)
+    {
+        if (IsBusy || path is null) return;
+        if (Directory.Exists(path)) Workspace = path;
+        else { RecentFolders.Remove(path); ComposerNotice = "That folder is no longer available. Choose another folder."; }
+    }
 
     public ObservableCollection<ChatItem> Items { get; } = [];
     public ObservableCollection<OrchDesk.Core.Config.ModelPickerOption> ProviderOptions { get; } = [];
@@ -86,13 +100,16 @@ public sealed partial class ChatViewModel : ObservableObject
     /// <summary>Raised whenever content is added so the view can keep the list scrolled to the bottom.</summary>
     public event Action? ContentAdded;
 
-    public ChatViewModel(AppServices services, string? scratchWorkspace = null)
+    public ChatViewModel(AppServices services, string? scratchWorkspace = null, IFolderPicker? folderPicker = null)
     {
         _services = services;
+        _folderPicker = folderPicker ?? new FolderPicker();
+        Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ViewState));
         _scratchWorkspace = scratchWorkspace ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "OrchDesk", "Scratch");
         _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         _services.Rebuilt += ReloadProviders;
         ReloadProviders();
+        foreach (var path in services.Config.RecentWorkspaces.Where(Directory.Exists).Take(5)) RecentFolders.Add(path);
         if (services.Config.LastWorkspace is { } ws && Directory.Exists(ws)) Workspace = ws;
     }
 
@@ -126,20 +143,21 @@ public sealed partial class ChatViewModel : ObservableObject
         EditorPath = "";
         EditorText = "";
         _services.Config.LastWorkspace = value;
+        if (value is not null) {
+            RecentFolders.Remove(value); RecentFolders.Insert(0, value);
+            while (RecentFolders.Count > 5) RecentFolders.RemoveAt(5);
+            _services.Config.RecentWorkspaces = RecentFolders.ToList();
+        }
         if (!_services.IsScreenshot) _services.Store.Save(_services.Config);
     }
 
-    [RelayCommand]
+    private bool CanPickFolder() => !IsBusy;
+    [RelayCommand(CanExecute = nameof(CanPickFolder))]
     private void PickFolder()
     {
-        if (IsBusy) return;
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Choose the project folder OrchDesk may work in" };
-        if (Workspace is not null) dlg.InitialDirectory = Workspace;
-        if (dlg.ShowDialog() == true && !IsBusy)
-        {
-            Workspace = dlg.FolderName;
-            Items.Add(new StatusItem($"Working in {Workspace}"));
-        }
+        if (!CanPickFolder()) return;
+        var path = _folderPicker.PickFolder(Workspace);
+        if (path is not null && Directory.Exists(path) && !IsBusy) Workspace = Path.GetFullPath(path);
     }
 
     [RelayCommand(CanExecute = nameof(CanSend))]
@@ -273,9 +291,10 @@ public sealed partial class ChatViewModel : ObservableObject
     private void Stop() => _cts?.Cancel();
 
     [RelayCommand]
-    private void NewChat()
+    private async Task NewChatAsync()
     {
         _cts?.Cancel();
+        if (SendCommand.ExecutionTask is { } pending) await pending;
         _conversation = null;
         Items.Clear();
     }

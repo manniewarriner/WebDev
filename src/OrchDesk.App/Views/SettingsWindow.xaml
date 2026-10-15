@@ -4,13 +4,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Name="Root" Title="OrchDesk settings" Width="1180" Height="780" MinWidth="1024" MinHeight="680"
         Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
-        Icon="/Assets/orch-app-icon.ico" FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterOwner">
+        Icon="/OrchDesk;component/Assets/orch-app-icon.ico" FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterOwner">
     <Window.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></Window.Resources>
     <DockPanel>
         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_1_0_0}" Padding="{StaticResource Inset.24_12}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Cancel" IsCancel="True" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.0_0_8_0}" />
+                    <Button Content="Cancel" IsCancel="True" Click="CancelSettings" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.0_0_8_0}" />
                     <Button Content="Save settings" Command="{Binding SaveCommand}" Style="{StaticResource AccentButton}" IsDefault="True" />
                 </StackPanel>
                 <StackPanel><TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>

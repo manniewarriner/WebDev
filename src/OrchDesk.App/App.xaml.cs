@@ -127,18 +127,26 @@ public partial class App : Application
         var screenshotMode = e.Args.Contains("--screenshot", StringComparer.OrdinalIgnoreCase);
         var pageIndex = Array.FindIndex(e.Args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
         var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
-        if (pageIndex >= 0 && page is not ("accounts" or "settings-appearance" or "settings-about" or "heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "composer-empty" or "composer-ready" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
+        if (pageIndex >= 0 && page is not ("accounts" or "settings-appearance" or "settings-about" or "heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "reply" or "selector" or "composer" or "composer-empty" or "composer-ready" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
         Motion.Screenshot = screenshotMode;
-        var services = new AppServices(screenshotMode, storeOverride, OrchDesk.Core.Config.ScreenshotOptions.UseDemo(e.Args));
+        var services = new AppServices(screenshotMode, storeOverride, OrchDesk.Core.Config.ScreenshotOptions.UseDemo(e.Args), chatOnly: e.Args.Contains("--ui-selftest", StringComparer.OrdinalIgnoreCase));
         if (screenshotMode && !services.UseDemo) await services.StartupSync;
         var themeIndex = Array.FindIndex(e.Args, a => a.Equals("--theme", StringComparison.OrdinalIgnoreCase));
         if (themeIndex >= 0 && themeIndex + 1 < e.Args.Length) services.Config.Theme = e.Args[themeIndex + 1];
         ApplyTheme(services.Config.Theme);
-        var vm = new MainViewModel(services);
+        var uiSelftest = e.Args.Contains("--ui-selftest", StringComparer.OrdinalIgnoreCase);
+        var folderIndex = Array.FindIndex(e.Args, a => a.Equals("--folder", StringComparison.OrdinalIgnoreCase));
+        var suppliedFolder = folderIndex >= 0 && folderIndex + 1 < e.Args.Length ? e.Args[folderIndex + 1] : null;
+        var vm = new MainViewModel(services, uiSelftest && suppliedFolder is not null ? new SuppliedFolderPicker(suppliedFolder) : null);
         var window = new MainWindow { DataContext = vm };
         MainWindow = window;
         window.Show();
         await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        if (uiSelftest) {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var passed = await window.RunUiSelftestAsync(storeOverride.Directory, suppliedFolder);
+            window.Close(); Shutdown(passed ? 0 : 1); return;
+        }
         Window captureWindow = window;
         if (page == "integrations" || page?.StartsWith("settings-") == true)
         {
@@ -162,6 +170,9 @@ public partial class App : Application
                     captureWindow.Width = width + captureWindow.ActualWidth - ((FrameworkElement)captureWindow.Content).ActualWidth;
                     await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                 }
+                var heightIndex = Array.FindIndex(e.Args, a => a.Equals("--height", StringComparison.OrdinalIgnoreCase));
+                if (heightIndex >= 0 && heightIndex + 1 < e.Args.Length && int.TryParse(e.Args[heightIndex + 1], out var height)) captureWindow.Height = Math.Max(captureWindow.MinHeight, height);
+                await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                 captureWindow.UpdateLayout();
                 var captureRoot = captureWindow.Content as FrameworkElement ?? captureWindow;
                 var dpi = widthIndex >= 0 ? new DpiScale(1, 1) : System.Windows.Media.VisualTreeHelper.GetDpi(captureRoot);

@@ -67,6 +67,7 @@ public sealed class AppConfig
     public bool SidebarCollapsed { get; set; }
     public string Theme { get; set; } = "Dark";
     public string? LastWorkspace { get; set; }
+    public List<string> RecentWorkspaces { get; set; } = [];
     public string? LastProviderId { get; set; }
     public List<string> ExtraAllowedCommands { get; set; } = [];
     public SupervisorConfig Supervisor { get; set; } = new();

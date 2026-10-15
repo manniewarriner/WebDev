@@ -20,6 +20,7 @@ public sealed class ComposerSendTests : IDisposable
         var provider = new FakeProvider();
         var vm = Create(provider);
         vm.Input = "Hello";
+        Assert.Equal(ChatViewState.Home, vm.ViewState);
         Assert.Null(vm.Workspace);
         Assert.False(Directory.Exists(vm.EffectiveWorkspace));
         Assert.Null(vm.SendBlockedReason);
@@ -30,6 +31,9 @@ public sealed class ComposerSendTests : IDisposable
         Assert.Null(vm.Workspace);
         Assert.Null(_store.Load().LastWorkspace);
         Assert.Contains(vm.Items.OfType<AssistantItem>(), a => a.Text == "Hello back");
+        Assert.Equal(ChatViewState.Thread, vm.ViewState);
+        await vm.NewChatCommand.ExecuteAsync(null);
+        Assert.Equal(ChatViewState.Home, vm.ViewState);
     }
 
     [Fact]
@@ -82,6 +86,24 @@ public sealed class ComposerSendTests : IDisposable
     {
         Assert.Null(SendOptions.Parse(["--page", "composer-ready"]));
         Assert.Equal(new SendOptions("Hello world", "fake", "test.json"), SendOptions.Parse(["--send", "Hello world", "--provider", "fake", "--config", "test.json"]));
+    }
+
+    [Fact]
+    public void FolderCommandsSetWorkspaceAndStayHome()
+    {
+        Directory.CreateDirectory(_root);
+        var picker = new SuppliedFolderPicker(_root);
+        var vm = new ChatViewModel(new AppServices(store: _store, chatOnly: true, providers: []), folderPicker: picker);
+        Assert.True(vm.PickFolderCommand.CanExecute(null));
+        vm.PickFolderCommand.Execute(null);
+        Assert.Equal(Path.GetFullPath(_root), vm.Workspace);
+        Assert.Equal(ChatViewState.Home, vm.ViewState);
+        vm.Workspace = null;
+        vm.OpenRecentFolderCommand.Execute(_root);
+        Assert.Equal(Path.GetFullPath(_root), vm.Workspace);
+        vm.IsBusy = true;
+        Assert.Equal(ChatViewState.Thread, vm.ViewState);
+        Assert.False(vm.PickFolderCommand.CanExecute(null));
     }
 
     public void Dispose() { _store.Dispose(); if (Directory.Exists(_root)) Directory.Delete(_root, true); }

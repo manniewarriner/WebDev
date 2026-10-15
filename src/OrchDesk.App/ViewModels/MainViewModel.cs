@@ -13,10 +13,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _page = "Chat";
 
-    public MainViewModel(AppServices services)
+    public MainViewModel(AppServices services, IFolderPicker? folderPicker = null)
     {
         Services = services;
-        Chat = new ChatViewModel(services);
+        Chat = new ChatViewModel(services, folderPicker: folderPicker);
         Accounts = new AccountsViewModel(services);
     }
 
