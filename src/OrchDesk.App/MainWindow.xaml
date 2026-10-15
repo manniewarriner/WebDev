@@ -106,7 +106,20 @@
                         </WrapPanel>
                         <!-- Row 2: Overnight run, Shutdown PC -->
                         <WrapPanel>
-                            <Button Content="Overnight run" Command="{Binding OvernightSkillCommand}" Margin="0,0,8,8" />
+                            <WrapPanel.Style>
+                                <Style TargetType="WrapPanel">
+                                    <Setter Property="IsEnabled" Value="True" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Workspace}" Value="{x:Null}">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Workspace}" Value="">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </WrapPanel.Style>
+                            <Button Content="Prepare overnight prompt" Command="{Binding OvernightSkillCommand}" Margin="0,0,8,8" />
                             <CheckBox Content="Shutdown PC when done" IsChecked="{Binding ShutdownWhenDone}" ToolTip="For /overnight runs only; shutdown follows the morning summary with a 120 second delay" Margin="0,0,8,8" VerticalAlignment="Center" />
                         </WrapPanel>
                     </StackPanel>
