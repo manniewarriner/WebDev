@@ -192,4 +192,14 @@ public sealed class ModelSyncTests
         var config = new AppConfig { Providers = [new() { Kind = ProviderKind.ClaudeCli, AvailableModels = ["sonnet", "opus"] }, new() { Id = "opencode-go", AvailableModels = ["free"] }] };
         Assert.Equal("Claude: 2 models; OpenCode: 1 models", IntegrationSmokeRunner.IntegrationSummary(config));
     }
+
+    [Fact]
+    public async Task SmokeSyncSkipsUnconfiguredProviders()
+    {
+        var config = new AppConfig { Providers = [new() { Id = "opencode-go", ApiKeyProtected = "" }] };
+        var results = await IntegrationSmokeRunner.RunAsync(config, new Secrets(), new HttpClient(), "test-dir");
+        var opencodeResult = results.FirstOrDefault(r => r.Provider == "opencode-go");
+        Assert.NotNull(opencodeResult);
+        Assert.Equal("skip", opencodeResult.Status);
+    }
 }

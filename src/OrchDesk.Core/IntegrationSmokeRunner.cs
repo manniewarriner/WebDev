@@ -18,7 +18,15 @@ public static class IntegrationSmokeRunner
         var sync = new IntegrationModelSync(http, secrets, new ClaudeAuthRunner());
         var synced = await StartupModelSync.RunAsync(config, sync, ct);
         saveSynced?.Invoke(config);
-        results.AddRange(synced.Select(r => new SmokeResult(r.Provider, r.Status, $"Model sync: {r.ModelCount} models", "sync", r.ModelCount)));
+        foreach (var r in synced)
+        {
+            var provider = config.Providers.FirstOrDefault(p => p.Id == r.Provider);
+            bool isUnconfigured = provider == null || !provider.Enabled || 
+                (provider.Kind == ProviderKind.OpenAiCompatible && (string.IsNullOrWhiteSpace(provider.BaseUrl) || string.IsNullOrWhiteSpace(provider.Model) || (provider.Id == "opencode-go" && string.IsNullOrWhiteSpace(provider.ApiKeyProtected)))) || 
+                (provider.Kind != ProviderKind.OpenAiCompatible && OrchDesk.Core.Providers.CliRunner.FindOnPath(provider.Executable ?? "") is null);
+
+            results.Add(new(r.Provider, isUnconfigured ? "skip" : r.Status, $"Model sync: {r.ModelCount} models", "sync", r.ModelCount));
+        }
         await File.WriteAllTextAsync(Path.Combine(directory, "smoketest.json"), JsonSerializer.Serialize(results, ConfigStore.Json), CancellationToken.None);
         var factory = new ProviderFactory(secrets, http);
         var tester = new ConnectionTester(http, secrets);
