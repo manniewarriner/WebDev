@@ -46,7 +46,7 @@ public class IntegrationTests
         using var http = new HttpClient();
         Assert.False((await new ConnectionTester(http, new Secrets()).TestAsync(new() { Kind = kind, Executable = "orchdesk-missing-cli" })).Ok);
     }
-    [Fact] public async Task RemovedBuiltInProviderStaysRemovedAfterReload()
+    [Fact] public async Task ConfigRemovesBuiltInProvidersPersistentlyOnReload()
     {
         using var dir = new TempDir(); using var store = new ConfigStore(dir.Path);
         var original = AppConfig.CreateDefault();
