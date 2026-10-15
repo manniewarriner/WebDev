@@ -97,7 +97,7 @@
                 <TextBlock Style="{StaticResource Heading}" Text="What should we build?" Margin="0,0,0,16" />
                 <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="21"
                            Text="Pick a project folder, then describe the change. OrchDesk reads, edits and tests the code there, and asks you before deleting files, installing packages or pushing." />
-                <Button Content="Choose a folder" Command="{Binding PickFolderCommand}" HorizontalAlignment="Left" Margin="0,24,0,0" />
+                <Button Content="Choose a folder" Command="{Binding PickFolderCommand}" HorizontalAlignment="Left" Margin="0,24,0,0" Style="{StaticResource AccentButton}" />
             </StackPanel>
 
             <!-- Conversation -->
