@@ -39,6 +39,7 @@ public partial class MainWindow
             vm.Chat.ContentAdded += () => _historyDirty = true;
             vm.Chat.Items.CollectionChanged += (_, change) => {
                 ChatBackdrop.Dimmed = vm.Chat.Items.Count > 0;
+                ChatBackdrop.Visibility = Visibility.Collapsed;
                 ChatBackdrop.InvalidateVisual();
                 if(change.NewItems is not null) foreach(var tool in change.NewItems.OfType<ToolItem>()) tool.PropertyChanged += (_,_)=>FilterJobs();
                 // Refresh after CollectionView has processed the collection notification.
@@ -57,9 +58,10 @@ public partial class MainWindow
         var local = (DataContext as MainViewModel)?.Services.Config.Providers.FirstOrDefault(p => p.Id == option.Id)?.IsLocal ?? profile.IsLocal;
         return field switch { "Provider" => option.ProviderGroup, "Location" => local ? "Local" : "Cloud", "Price" => local || profile.IsFree ? "Free" : "Paid", _ => null };
     }
+    private void OpenHistoryFilters(object sender, RoutedEventArgs e) => HistoryFilters.OpenMenu((Button)sender);
     private void HistorySearchChanged(object sender, TextChangedEventArgs e) { if (HistoryFilters is not null) FilterHistory(); }
     private void FilterHistory() { if (HistoryList is null) return; HistoryFilters.Fields["Model"]=_history.Select(h=>h.Model).Where(m=>!string.IsNullOrWhiteSpace(m)).Distinct().ToArray(); var predicate = FilterModel.BuildPredicate<ChatSnapshot>(HistoryFilters.Filters, (h, f) => f switch { "Title" => h.Title, "Date" => h.Date.ToString("yyyy-MM-dd"), "Model" => h.Model, _ => null }); HistoryList.ItemsSource = _history.Where(h => h.Title.Contains(HistorySearch.Text, StringComparison.OrdinalIgnoreCase) && predicate(h)).ToArray(); }
-    private void FilterJobs() { if (DataContext is not MainViewModel vm) return; var view = CollectionViewSource.GetDefaultView(vm.Chat.Items); var predicate = FilterModel.BuildPredicate<ToolItem>(JobFilters.Filters, (t, f) => f switch { "Status" => t.IsRunning ? "Running" : t.IsError ? "Failed" : "Completed", "Tool" => t.Title, "Date" => t.Timestamp.ToString("yyyy-MM-dd"), _ => null }); view.Filter = o => o is not ToolItem tool || predicate(tool); JobFilters.Visibility = vm.Chat.Items.OfType<ToolItem>().Any() ? Visibility.Visible : Visibility.Collapsed; }
+    private void FilterJobs() { if (DataContext is not MainViewModel vm) return; var view = CollectionViewSource.GetDefaultView(vm.Chat.Items); var predicate = FilterModel.BuildPredicate<ToolItem>(JobFilters.Filters, (t, f) => f switch { "Status" => t.IsRunning ? "Running" : t.IsError ? "Failed" : "Completed", "Tool" => t.Title, "Date" => t.Timestamp.ToString("yyyy-MM-dd"), _ => null }); view.Filter = o => o is not ToolItem tool || predicate(tool); JobFilters.Visibility = Visibility.Collapsed; }
     private void CompleteWelcome(object sender, RoutedEventArgs e) { FinishWelcome(); OpenSettingsTab(); }
     private void SkipWelcome(object sender, RoutedEventArgs e) => FinishWelcome();
     private void FinishWelcome() { WelcomeOverlay.Visibility = Visibility.Collapsed; if (DataContext is MainViewModel vm) { vm.Services.Config.FirstRunCompleted = true; if (!vm.Services.IsScreenshot) vm.Services.Store.Save(vm.Services.Config); } }

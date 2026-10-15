@@ -17,6 +17,21 @@ public sealed class TeamTests
     }
     private static IEnumerable<ChatEvent> Say(string text)=>[new TextDelta(text),new UsageReported(new(10,20)),new Done()];
     private static AgentLoop Loop(string root)=>new(ToolRegistry.CreateDefault(),new PermissionGate(new PermissionPolicy { WorkspaceRoot=root, WorkspacePermission=OrchDesk.Core.Config.WorkspacePermission.FullAccess },null));
+    [Fact] public void TeamViewModelExposesPerModelRowsAndRefreshesBackoff()
+    {
+        var tracker = new ModelUsageTracker();
+        var model = new Model("glm", _ => Say("ok"));
+        tracker.Start(model); tracker.Complete(model, new(12, 8));
+        var item = new OrchDesk.App.ViewModels.TeamItem();
+        item.Refresh(new TeamJob(), tracker);
+        var row = Assert.Single(item.ModelUsageRows);
+        Assert.Equal("go/glm", row.Model);
+        Assert.Equal(1, row.TodayRequests); Assert.Equal(20, row.TodayTokens);
+        Assert.Equal(1, row.SessionRequests); Assert.Equal(20, row.SessionTokens);
+        Assert.Equal("Ready", row.Backoff);
+        tracker.Backoff(model); item.Refresh(new TeamJob(), tracker);
+        Assert.StartsWith("Until ", Assert.Single(item.ModelUsageRows).Backoff);
+    }
     [Fact] public void LeastUsedDailyResetPersistenceAndRetryAfter()
     {
         using var dir=new TempDir(); var now=DateTimeOffset.UtcNow; var tracker=new ModelUsageTracker(dir.Path,()=>now);

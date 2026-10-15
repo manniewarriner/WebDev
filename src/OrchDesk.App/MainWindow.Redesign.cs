@@ -57,7 +57,7 @@ public partial class MainWindow
         void Add(string title, Action action) { var item = new MenuItem { Header = title }; item.SetResourceReference(Control.ForegroundProperty, "TextBrush"); item.Click += (_, _) => action(); menu.Items.Add(item); }
         Add("Delete chat", () => { if (DataContext is MainViewModel vm && vm.Chat.Items.FirstOrDefault() is { } first && _history.FirstOrDefault(h => h.Items.FirstOrDefault() == first) is { } chat) ConfirmDeleteChat(chat); });
         menu.Items.Add(new Separator());
-        Add("Usage", ShowUsage); Add("Files", ShowFiles); Add("Commands  Ctrl+K", ShowPalette);
+        Add("Filter tools", ShowToolFilters); Add("Usage", ShowUsage); Add("Files", ShowFiles); Add("Commands  Ctrl+K", ShowPalette);
         MoreActions.ContextMenu = menu; menu.PlacementTarget = MoreActions; menu.IsOpen = true;
     }
     private StackPanel ShowModal(string title, double width = 620, bool animate = true)
@@ -146,6 +146,7 @@ public partial class MainWindow
         var usage = vm.Services.UseDemo ? new[] { new ProviderUsage("claude-gmail", 84, 6, 122), new ProviderUsage("local-pc", 32, 3, 48) } : UsageAggregator.Read(vm.Services.Store.Directory);
         var totals = new UniformGrid { Columns = 3, Margin = new Thickness(0, 16, 0, 12) };
         foreach (var (caption, value) in new[] { ("Messages", usage.Sum(u => u.Messages)), ("Runs", usage.Sum(u => u.Runs)), ("Tool steps", usage.Sum(u => u.Steps)) }) { var metric = new StackPanel(); metric.Children.Add(Label(caption, "Muted", 13)); metric.Children.Add(HeadingText(value.ToString())); var metricCard = Card(metric); metricCard.Margin = new Thickness(0, 0, 8, 12); metricCard.Padding = new Thickness(16); metricCard.MinHeight = 96; totals.Children.Add(metricCard); } body.Children.Add(totals);
+        body.Children.Add(ActionButton("Usage by model", () => ShowModelUsage(vm.ModelUsageRows)));
         var budget = vm.Services.UseDemo ? new RunBudget(26, 40, 3, 4, "Completed") : RunBudget.ReadLatest(vm.Services.Store.Directory);
         if (budget is not null) {
             var panel = new StackPanel(); panel.Children.Add(Label("LATEST RUN  /  " + budget.Status, "Muted", 11));
@@ -225,7 +226,7 @@ public partial class MainWindow
         switch (page) {
             case "accounts": vm.Page = "Accounts"; break;
             case "palette": ShowPalette(); break; case "connect-dialog": ShowConnect(); break;
-            case "overnight-setup": ShowOvernight(); break; case "usage": ShowUsage(); break;
+            case "overnight-setup": ShowOvernight(); break; case "usage": ShowUsage(); break; case "usage-by-model": foreach (var model in vm.Services.AutoModels().Take(4)) { vm.Services.Usage.Start(model); vm.Services.Usage.Complete(model, new(240, 80)); } ShowModelUsage(vm.ModelUsageRows); break;
             case "file-tree": ShowFiles(); break; case "diff": ShowCode(true); break;
             case "code-block": ShowCode(false); break; case "skeleton": ShowSkeleton(); break;
             case "toasts": ShowToast("Overnight run complete. Ready for review.", false); ShowToast("Provider unavailable. Fallback selected.", true); ShowToast("Settings saved", false); break;

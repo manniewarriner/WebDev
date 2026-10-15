@@ -124,6 +124,7 @@ public sealed class TeamItem : ChatItem
 {
     public string Header { get; private set; } = "Auto model \u00b7 Team";
     public string ThoughtSummary { get; private set; } = "";
+    public IReadOnlyList<ModelUsageRow> ModelUsageRows { get; private set; } = [];
     public string ModelUsage { get; private set; } = "";
     public string UsageTooltip { get; private set; } = "";
     public System.Collections.ObjectModel.ObservableCollection<OrchDesk.Core.Orchestration.TeamCard> Cards { get; } = [];
@@ -133,6 +134,8 @@ public sealed class TeamItem : ChatItem
         ThoughtSummary = job.ThoughtSummary;
         UsageTooltip = job.Usage.Tooltip("Team", string.Join(", ", job.Cards.Select(c => c.Model).Where(m=>m.Length>0).Distinct()));
         Cards.Clear(); foreach (var card in job.Cards.ToArray()) Cards.Add(card);
+        ModelUsageRows = ModelUsageRow.Read(usage);
+        OnPropertyChanged(nameof(ModelUsageRows));
         ModelUsage = string.Join("\n", usage.Snapshot().Select(p => $"{p.Key}   {p.Value.Requests} requests \u00b7 {p.Value.Tokens:N0} tokens today; session {p.Value.SessionRequests} requests / {p.Value.SessionTokens:N0} tokens" + (p.Value.BackoffUntil > DateTimeOffset.UtcNow ? $" \u00b7 backoff until {p.Value.BackoffUntil:HH:mm}" : " \u00b7 ready")));
         OnPropertyChanged(nameof(Header)); OnPropertyChanged(nameof(ThoughtSummary)); OnPropertyChanged(nameof(ModelUsage)); OnPropertyChanged(nameof(UsageTooltip));
     }

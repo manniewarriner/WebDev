@@ -188,7 +188,7 @@ public partial class MainWindow : Window
             var names = new[] { "Plan and assign chunks", "Build dashboard layout", "Connect activity data", "Add integration tests" };
             var models = new[] { "Claude Opus", "GLM 5.2", "Kimi K2.5", "Claude Haiku" };
             for(var i=0;i<4;i++) job.Cards.Add(new() { Id=i.ToString(),Title=names[i],Role=i==0?"PM":"Worker",Model=models[i],Status=page=="team-done"||i==0?"done":i==3?"queued":"running",Elapsed=TimeSpan.FromSeconds(i==0?8:12),Usage=new(240+i*100,80+i*50,i==2),Output="Chunk completed and cross-reviewed. Workspace permission checks passed." });
-            var item=new TeamItem(); var usage=new OrchDesk.Core.Orchestration.ModelUsageTracker(); foreach(var model in vm.Services.AutoModels().Take(4)) { usage.Start(model); usage.Complete(model,new(240,80)); } item.Refresh(job,usage); chat.Items.Add(item);
+            var item=new TeamItem(); var usage=vm.Services.Usage; foreach(var model in vm.Services.AutoModels().Take(4)) { usage.Start(model); usage.Complete(model,new(240,80)); } item.Refresh(job,usage); chat.Items.Add(item);
             _stickToBottom = false;
             Dispatcher.BeginInvoke(() => ChatScroll.ScrollToTop(), DispatcherPriority.ApplicationIdle);
             SetSidebar(false,false); return;

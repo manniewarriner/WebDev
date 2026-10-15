@@ -41,7 +41,7 @@ public sealed class AppServices
         ChatOnly = chatOnly;
         _providerOverride = providers;
         Store = store ?? new();
-        Usage = new(Store.Directory);
+        Usage = new(screenshot ? null : Store.Directory);
         IsScreenshot = screenshot;
         var useFixtures = UseDemo = screenshot && (demo ?? store is null);
         Config = useFixtures ? AppConfig.CreateDefault() : Store.Load();

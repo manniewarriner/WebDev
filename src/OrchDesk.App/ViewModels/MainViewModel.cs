@@ -9,6 +9,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     public AppServices Services { get; }
     public ChatViewModel Chat { get; }
+    public IReadOnlyList<ModelUsageRow> ModelUsageRows => ModelUsageRow.Read(Services.Usage);
     public AccountsViewModel Accounts { get; }
 
     [ObservableProperty] private string _page = "Chat";

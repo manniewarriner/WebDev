@@ -9,6 +9,13 @@ namespace OrchDesk.App.Controls;
 
 public sealed class FilterBar : WrapPanel
 {
+    public bool ShowAddButton { get; set; } = true;
+    public void OpenMenu(Button anchor)
+    {
+        var menu = new ContextMenu();
+        foreach (var field in Fields.Keys) { var item = new MenuItem { Header = field }; item.Click += (_, _) => Add(field, Fields[field].FirstOrDefault() ?? "", field == "Title" ? FilterOperator.Contains : FilterOperator.Is); menu.Items.Add(item); }
+        menu.PlacementTarget = anchor; menu.IsOpen = true;
+    }
     public Dictionary<string, string[]> Fields { get; } = new();
     public List<FilterModel> Filters { get; } = [];
     public event Action? Changed;
@@ -34,7 +41,7 @@ public sealed class FilterBar : WrapPanel
     private void Rebuild()
     {
         Children.Clear(); var add = SmallButton("+ Filter");
-        add.Click += (_, _) => { var menu = new ContextMenu(); foreach (var field in Fields.Keys) { var item = new MenuItem { Header = field }; item.Click += (_, _) => Add(field, Fields[field].FirstOrDefault() ?? "", field == "Title" ? FilterOperator.Contains : FilterOperator.Is); menu.Items.Add(item); } add.ContextMenu = menu; menu.IsOpen = true; }; Children.Add(add);
+        add.Click += (_, _) => OpenMenu(add); if (ShowAddButton) Children.Add(add);
         foreach (var original in Filters.ToArray())
         {
             var current = original;
