@@ -89,7 +89,7 @@ public sealed class OvernightRoundRunner(string directory, ToolRegistry tools, P
                     if (ev is ErrorEvent or UsageLimitHit or ProviderUnavailable) throw new InvalidOperationException("Manager review unavailable");
                 }
                 run.Summary += "\nManager review: " + review;
-                if (review.ToString().Trim().StartsWith("GOAL_COMPLETE", StringComparison.Ordinal)) {
+                if (review.ToString().Split('\n').Any(line => string.Equals(line.Trim(), "GOAL_COMPLETE", StringComparison.Ordinal))) {
                     run.Status = run.Approvals.Count == 0 ? "Completed" : "Needs morning approval"; Save(); break;
                 }
                 Save();
