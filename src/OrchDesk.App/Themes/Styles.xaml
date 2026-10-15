@@ -54,6 +54,7 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="PlainButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"/>
 
     <!-- The one filled button per screen: Send, Approve, Run queue. -->
     <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
