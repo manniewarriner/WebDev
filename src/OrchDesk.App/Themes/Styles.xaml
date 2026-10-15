@@ -10,7 +10,7 @@
         <Setter Property="Control.Template">
             <Setter.Value>
                 <ControlTemplate>
-                    <Rectangle Margin="-3" RadiusX="7" RadiusY="7" StrokeThickness="2" Stroke="{DynamicResource PeachBrush}" />
+                    <Rectangle Margin="-3" RadiusX="6" RadiusY="6" StrokeThickness="2" Stroke="{DynamicResource PeachBrush}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
