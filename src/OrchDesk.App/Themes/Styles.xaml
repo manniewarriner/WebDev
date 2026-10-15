@@ -180,7 +180,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="Padding" Value="16,8" />
         <Setter Property="CaretBrush" Value="{DynamicResource PeachBrush}" />
     </Style>
 
