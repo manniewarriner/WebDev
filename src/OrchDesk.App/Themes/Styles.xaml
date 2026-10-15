@@ -56,9 +56,14 @@
                                 </Setter.Value>
                             </Setter>
                         </MultiTrigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsPressed" Value="True" />
+                                <Condition Property="IsEnabled" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PeachBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource BaseBrush}" />
+                        </MultiTrigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceBrush}" />
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
