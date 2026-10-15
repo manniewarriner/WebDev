@@ -284,6 +284,10 @@
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
     </Style>
 
+    <Style x:Key="Small10" TargetType="TextBlock" BasedOn="{StaticResource Caption12}">
+        <Setter Property="FontSize" Value="10" />
+    </Style>
+
     <Style x:Key="Label12" TargetType="TextBlock" BasedOn="{StaticResource Caption12}">
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
