@@ -63,6 +63,7 @@
               Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Chat}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -84,14 +85,14 @@
                 </StackPanel>
             </Border>
 
-            <Expander Grid.Row="1" Header="File editor" VerticalAlignment="Top" Panel.ZIndex="2" Background="{DynamicResource SurfaceBrush}">
+            <Expander Grid.Row="1" Header="File editor" VerticalAlignment="Top" Background="{DynamicResource SurfaceBrush}">
                 <StackPanel Margin="16">
                     <DockPanel><Button DockPanel.Dock="Right" Content="Save" Command="{Binding SaveFileCommand}" /><TextBlock Text="{Binding EditorPath}" TextTrimming="CharacterEllipsis" /></DockPanel>
                     <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" Height="260" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource CodeFont}" />
                 </StackPanel>
             </Expander>
             <!-- Empty state -->
-            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460"
+            <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460"
                         Visibility="{Binding Items.Count, Converter={StaticResource ZeroVisible}}">
                 <TextBlock Style="{StaticResource Heading}" Text="What should we build?" Margin="0,0,0,16" />
                 <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="21"
@@ -100,7 +101,7 @@
             </StackPanel>
 
             <!-- Conversation -->
-            <ScrollViewer x:Name="ChatScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,8">
+            <ScrollViewer x:Name="ChatScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,8">
                 <ItemsControl ItemsSource="{Binding Items}" MaxWidth="820" Margin="32,16" Focusable="False">
                     <ItemsControl.Resources>
                         <DataTemplate DataType="{x:Type vm:UserItem}">
@@ -202,7 +203,7 @@
             </ScrollViewer>
 
             <!-- Composer -->
-            <Border Grid.Row="2" Padding="32,16,32,24">
+            <Border Grid.Row="3" Padding="32,16,32,24">
                 <Grid MaxWidth="820">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
