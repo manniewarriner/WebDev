@@ -34,6 +34,11 @@ public sealed record ModelSyncResult(bool Ok, string Message);
 
 public sealed class IntegrationModelSync(HttpClient http, ISecretProtector secrets, IClaudeAuthRunner claude)
 {
+    private static bool IsChatModel(string id) => !string.IsNullOrWhiteSpace(id) &&
+        !id.Equals("test", StringComparison.OrdinalIgnoreCase) &&
+        !id.EndsWith("-backup", StringComparison.OrdinalIgnoreCase) &&
+        !id.Contains("embed", StringComparison.OrdinalIgnoreCase);
+
     public async Task<ModelSyncResult> RunAsync(ProviderConfig provider, bool sync = true, CancellationToken ct = default)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -79,7 +84,7 @@ public sealed class IntegrationModelSync(HttpClient http, ISecretProtector secre
                     if (!response.IsSuccessStatusCode) return new(false, $"OpenCode model request failed (HTTP {(int)response.StatusCode}).");
                     using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
                     foreach (var item in json.RootElement.GetProperty("data").EnumerateArray())
-                        if (item.TryGetProperty("id", out var id) && id.GetString() is { Length: > 0 } value)
+                        if (item.TryGetProperty("id", out var id) && id.GetString() is { Length: > 0 } value && IsChatModel(value))
                         {
                             models.Add(value);
                             modelBaseUrls.TryAdd(value, endpoint);

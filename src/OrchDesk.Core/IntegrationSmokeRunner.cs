@@ -9,6 +9,12 @@ namespace OrchDesk.Core.Verification;
 public sealed record SmokeResult(string Provider, string Status, string Detail, string Test = "integration", int? ModelCount = null);
 public static class IntegrationSmokeRunner
 {
+    private static bool IsConfigured(ProviderConfig provider) => provider.Enabled &&
+        (provider.Kind == ProviderKind.OpenAiCompatible
+            ? !string.IsNullOrWhiteSpace(provider.BaseUrl) && !string.IsNullOrWhiteSpace(provider.Model) &&
+              (!provider.Id.StartsWith("opencode", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrWhiteSpace(provider.ApiKeyProtected))
+            : OrchDesk.Core.Providers.CliRunner.FindOnPath(provider.Executable ?? "") is not null);
+
     public static string IntegrationSummary(AppConfig config) => $"Claude: {config.Providers.Where(p => p.Kind == ProviderKind.ClaudeCli).Sum(p => p.AvailableModels.Count)} models; OpenCode: {config.Providers.Where(p => p.Id == "opencode-go").Sum(p => p.AvailableModels.Count)} models";
 
     public static async Task<List<SmokeResult>> RunAsync(AppConfig config, ISecretProtector secrets, HttpClient http, string directory, CancellationToken ct = default, Action<AppConfig>? saveSynced = null)
@@ -21,9 +27,7 @@ public static class IntegrationSmokeRunner
         foreach (var r in synced)
         {
             var provider = config.Providers.FirstOrDefault(p => p.Id == r.Provider);
-            bool isUnconfigured = provider == null || !provider.Enabled || 
-                (provider.Kind == ProviderKind.OpenAiCompatible && (string.IsNullOrWhiteSpace(provider.BaseUrl) || string.IsNullOrWhiteSpace(provider.Model) || (provider.Id == "opencode-go" && string.IsNullOrWhiteSpace(provider.ApiKeyProtected)))) || 
-                (provider.Kind != ProviderKind.OpenAiCompatible && OrchDesk.Core.Providers.CliRunner.FindOnPath(provider.Executable ?? "") is null);
+            var isUnconfigured = provider is null || !IsConfigured(provider);
 
             results.Add(new(r.Provider, isUnconfigured ? "skip" : r.Status, $"Model sync: {r.ModelCount} models", "sync", r.ModelCount));
         }
@@ -31,7 +35,7 @@ public static class IntegrationSmokeRunner
         var factory = new ProviderFactory(secrets, http);
         var tester = new ConnectionTester(http, secrets);
         foreach (var c in config.Providers) {
-            if (!c.Enabled || (c.Kind == ProviderKind.OpenAiCompatible && (string.IsNullOrWhiteSpace(c.BaseUrl) || string.IsNullOrWhiteSpace(c.Model) || (c.Id == "opencode-go" && string.IsNullOrWhiteSpace(c.ApiKeyProtected)))) || (c.Kind != ProviderKind.OpenAiCompatible && OrchDesk.Core.Providers.CliRunner.FindOnPath(c.Executable ?? "") is null)) {
+            if (!IsConfigured(c)) {
                 results.Add(new(c.Id, "skip", "Not configured or disabled")); continue;
             }
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(TimeSpan.FromMinutes(3));

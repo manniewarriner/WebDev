@@ -24,6 +24,8 @@ public partial class MainWindow
     private Border Card(UIElement content) => new() { Child = content, Style = (Style)FindResource("Card"), Margin = new Thickness(0, 0, 0, 12) };
     private void InitializeRedesign()
     {
+        SizeChanged += (_, _) => UpdateToolbar();
+        Loaded += (_, _) => UpdateToolbar();
         WorkModeSegment.SelectionChanged += index => { if (index == 1) ShowOvernight(); };
         ThemeSegment.SelectionChanged += index => { if (DataContext is MainViewModel vm && vm.IsDark != (index == 0)) vm.ToggleThemeCommand.Execute(null); };
         DataContextChanged += (_, _) => { if (DataContext is not MainViewModel vm) return; ThemeSegment.SelectedIndex = vm.IsDark ? 0 : 1; vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MainViewModel.IsDark)) ThemeSegment.SelectedIndex = vm.IsDark ? 0 : 1; }; var wasBusy = false; vm.Chat.PropertyChanged += (_, e) => { if (e.PropertyName != nameof(ChatViewModel.IsBusy)) return; if (wasBusy && !vm.Chat.IsBusy) ShowToast(vm.Chat.Items.LastOrDefault() is ErrorItem ? "Job needs attention. Open the thread to review." : "Job finished. Your results are ready.", vm.Chat.Items.LastOrDefault() is ErrorItem); wasBusy = vm.Chat.IsBusy; }; };
@@ -37,6 +39,23 @@ public partial class MainWindow
                 var layout = new Grid(); layout.Children.Add(new Controls.AuroraBackground()); layout.Children.Add(content); WelcomeOverlay.Child = layout;
             }
         };
+    }
+    private void UpdateToolbar()
+    {
+        var compact = ActualWidth < 1100;
+        CommandsAction.Visibility = UsageAction.Visibility = FilesAction.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        MoreActions.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
+        ModelPickerOverlay.Width = Math.Min(600, Math.Max(320, ActualWidth - Sidebar.ActualWidth - 72));
+    }
+    private void OpenMoreActions(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu();
+        menu.SetResourceReference(Control.BackgroundProperty, "RaisedBrush");
+        menu.SetResourceReference(Control.ForegroundProperty, "TextBrush");
+        menu.SetResourceReference(Control.BorderBrushProperty, "BorderBrush");
+        void Add(string title, Action action) { var item = new MenuItem { Header = title }; item.SetResourceReference(Control.ForegroundProperty, "TextBrush"); item.Click += (_, _) => action(); menu.Items.Add(item); }
+        Add("Usage", ShowUsage); Add("Files", ShowFiles); Add("Commands  Ctrl+K", ShowPalette);
+        menu.PlacementTarget = MoreActions; menu.IsOpen = true;
     }
     private StackPanel ShowModal(string title, double width = 620, bool animate = true)
     {
@@ -190,6 +209,7 @@ public partial class MainWindow
         if (DataContext is not MainViewModel vm) return;
         if (page == "home" && vm.Services.UseDemo) vm.Chat.Workspace = null;
         switch (page) {
+            case "accounts": vm.Page = "Accounts"; break;
             case "palette": ShowPalette(); break; case "connect-dialog": ShowConnect(); break;
             case "overnight-setup": ShowOvernight(); break; case "usage": ShowUsage(); break;
             case "file-tree": ShowFiles(); break; case "diff": ShowCode(true); break;

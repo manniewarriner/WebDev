@@ -24,6 +24,8 @@ public sealed partial class ProviderEdit : ObservableObject
     public DateTimeOffset? ModelsSyncedAt { get; set; }
     [ObservableProperty] private bool _detailsExpanded;
     public bool IsConnected => Enabled && ModelsSyncedAt is not null;
+    public string ConnectActionLabel => IsConnected ? "Manage" : "Connect";
+    public bool NeedsConnection => !IsConnected;
     public bool IsOpenCode => Id.StartsWith("opencode", StringComparison.OrdinalIgnoreCase);
     public string FriendlyName => DisplayName;
     [RelayCommand] private void Manage() => DetailsExpanded = !DetailsExpanded;
@@ -42,6 +44,8 @@ public sealed partial class ProviderEdit : ObservableObject
     public void RefreshConnection()
     {
         OnPropertyChanged(nameof(IsConnected));
+        OnPropertyChanged(nameof(ConnectActionLabel));
+        OnPropertyChanged(nameof(NeedsConnection));
         OnPropertyChanged(nameof(ConnectionState));
         OnPropertyChanged(nameof(SyncSummary));
     }

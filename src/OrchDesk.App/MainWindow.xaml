@@ -27,22 +27,22 @@
                 <Button DockPanel.Dock="Top" Content="☰" Click="ToggleSidebar" ToolTip="Collapse or expand sidebar" HorizontalAlignment="Left" Margin="{StaticResource Inset.12_0_0_16}" Style="{StaticResource GhostButton}" />
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="{StaticResource Inset.20_0_0_32}"><Image Source="Assets/orch-app-icon-512.png" Width="{StaticResource Metric.32}" Height="{StaticResource Metric.32}" RenderOptions.BitmapScalingMode="HighQuality" Margin="{StaticResource Inset.0_0_10_0}" /><TextBlock x:Name="SidebarTitle" Text="OrchDesk" VerticalAlignment="Center" FontFamily="{StaticResource DisplayFont}" FontSize="{StaticResource Metric.24}" /></StackPanel>
 
-                <Button x:Name="AvatarButton" DockPanel.Dock="Bottom" Click="OpenAccountMenu" HorizontalAlignment="Left" Margin="{StaticResource Inset.12_12_0_0}" Padding="{StaticResource Inset.0}" Background="Transparent" BorderThickness="{StaticResource Inset.0}"><StackPanel Orientation="Horizontal"><Border x:Name="AvatarRing" Width="{StaticResource Metric.40}" Height="{StaticResource Metric.40}" CornerRadius="{StaticResource Round.20}" BorderThickness="{StaticResource Inset.2}" BorderBrush="{DynamicResource MutedBrush}" Padding="{StaticResource Inset.3}"><Grid><Ellipse x:Name="AvatarImage"/><TextBlock x:Name="AvatarInitials" Text="MW" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" /></Grid></Border><StackPanel x:Name="AvatarDetails" VerticalAlignment="Center" Margin="{StaticResource Inset.12_0_0_0}"><TextBlock x:Name="SidebarProfileName" FontWeight="SemiBold" FontSize="{StaticResource Metric.13}"/><TextBlock x:Name="ProfileStatus" FontSize="{StaticResource Metric.11}" Foreground="{DynamicResource MutedBrush}"/></StackPanel></StackPanel></Button>
+                <Button x:Name="AvatarButton" DockPanel.Dock="Bottom" Click="OpenAccountMenu" HorizontalAlignment="Left" Margin="{StaticResource Inset.12_12_0_0}" Padding="{StaticResource Inset.0}" Background="Transparent" BorderThickness="{StaticResource Inset.0}"><StackPanel Orientation="Horizontal"><Border x:Name="AvatarRing" Width="{StaticResource Metric.40}" Height="{StaticResource Metric.40}" CornerRadius="{StaticResource Round.20}" BorderThickness="{StaticResource Inset.2}" BorderBrush="{DynamicResource MutedBrush}" Padding="{StaticResource Inset.3}"><Grid><Ellipse x:Name="AvatarImage"/><TextBlock x:Name="AvatarInitials" Text="MW" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" /></Grid></Border><StackPanel x:Name="AvatarDetails" VerticalAlignment="Center" Margin="{StaticResource Inset.12_0_0_0}"><TextBlock x:Name="SidebarProfileName" FontWeight="SemiBold" FontSize="{StaticResource Metric.13}"/><TextBlock x:Name="ProfileStatus" Text="{Binding ConnectionStatus}" TextTrimming="CharacterEllipsis" FontSize="{StaticResource Metric.11}" Foreground="{DynamicResource MutedBrush}"/></StackPanel></StackPanel></Button>
                 <StackPanel x:Name="RailFooter" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="{StaticResource Inset.8_0}"><Button Content="◷" ToolTip="Recent chats" Click="ToggleSidebar" Style="{StaticResource GhostButton}"/><Button Content="⚙" ToolTip="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}"/><Button Content="◐" ToolTip="Switch theme" Command="{Binding ToggleThemeCommand}" Style="{StaticResource GhostButton}"/></StackPanel>
                 <StackPanel x:Name="SidebarFooter" DockPanel.Dock="Bottom" Margin="{StaticResource Inset.16_0}">
-                    <TextBlock x:Name="SidebarStatusText">
+                    <TextBlock x:Name="SidebarStatusText" TextTrimming="CharacterEllipsis" ToolTip="{Binding SidebarStatus}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Muted}">
-                                <Setter Property="Text" Value="Ready" />
+                                <Setter Property="Text" Value="{Binding SidebarStatus}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Chat.IsBusy}" Value="True">
                                         <Setter Property="Text" Value="Answering now" />
                                     </DataTrigger>
-                                </Style.Triggers>
+                                <DataTrigger Binding="{Binding Chat.IsThinking}" Value="True"><Setter Property="Text" Value="Thinking now" /></DataTrigger></Style.Triggers>
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <DockPanel Margin="{StaticResource Inset.0_8_0_16}"><ctl:ProviderLogo DockPanel.Dock="Left" Provider="{Binding Accounts.ActiveProvider}" Width="{StaticResource Metric.18}" Height="{StaticResource Metric.18}" Margin="{StaticResource Inset.0_0_8_0}" /><TextBlock Text="{Binding Accounts.ActiveName}" ToolTip="{Binding Accounts.ActiveName}" TextTrimming="CharacterEllipsis" Style="{StaticResource Body}" /></DockPanel>
+                    <DockPanel Margin="{StaticResource Inset.0_8_0_16}"><ctl:ProviderLogo DockPanel.Dock="Left" Provider="{Binding Accounts.ActiveProvider}" Width="{StaticResource Metric.18}" Height="{StaticResource Metric.18}" Margin="{StaticResource Inset.0_0_8_0}" /><TextBlock Text="{Binding Accounts.ActiveName}" TextWrapping="NoWrap" ToolTip="{Binding Accounts.ActiveName}" TextTrimming="CharacterEllipsis" Style="{StaticResource Body}" /></DockPanel>
                     <StackPanel><Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Padding="{StaticResource Inset.0_8}"/><ctl:SegmentedControl x:Name="ThemeSegment" First="Dark" Second="Light" Margin="{StaticResource Inset.0_8_0_0}"/></StackPanel>
                 </StackPanel>
 
@@ -91,7 +91,9 @@
                             </Style>
                         </StackPanel.Style>
                         <!-- Row 1: Provider, Modes, Open file, New chat -->
-                        <WrapPanel>
+                        <DockPanel LastChildFill="True">
+                            <ctl:SegmentedControl x:Name="WorkModeSegment" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="{StaticResource Inset.8_0_0_8}"/>
+                            <StackPanel Orientation="Horizontal">
                             <ComboBox Width="{StaticResource Metric.112}" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" ToolTip="Chat or cost routing" Margin="{StaticResource Inset.0_0_8_8}" />
                             <Button Content="Open file" Command="{Binding OpenFileCommand}" Margin="{StaticResource Inset.0_0_8_8}">
                                 <Button.Style>
@@ -105,10 +107,10 @@
                                     </Style>
                                 </Button.Style>
                             </Button>
-                            <Button Content="Commands  Ctrl+K" Click="OpenPaletteClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button Content="Usage" Click="OpenUsageClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button Content="Files" Click="OpenFilesClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.0_0_8_8}" />
+                            <Button x:Name="CommandsAction" Style="{StaticResource GhostButton}" Content="Commands  Ctrl+K" Click="OpenPaletteClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button x:Name="UsageAction" Style="{StaticResource GhostButton}" Content="Usage" Click="OpenUsageClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button x:Name="FilesAction" Style="{StaticResource GhostButton}" Content="Files" Click="OpenFilesClick" Margin="{StaticResource Inset.0_0_8_8}"/><Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.0_0_8_8}" />
                         <!-- Overnight actions -->
-                            <ctl:SegmentedControl x:Name="WorkModeSegment" Margin="{StaticResource Inset.0_0_8_8}"/>
-                        </WrapPanel>
+                            <Button x:Name="MoreActions" Content="More &#x2304;" Click="OpenMoreActions" Margin="{StaticResource Inset.0_0_8_8}" Visibility="Collapsed"/>
+                        </StackPanel></DockPanel>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -158,6 +160,7 @@
 
             <!-- Conversation -->
             <ScrollViewer x:Name="ChatScroll" ScrollChanged="ThreadScrolled" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Inset.0_8}">
+                <ScrollViewer.Style><Style TargetType="ScrollViewer"><Style.Triggers><DataTrigger Binding="{Binding Visibility, ElementName=JumpLatest}" Value="Visible"><Setter Property="Margin" Value="{StaticResource Inset.0_0_0_56}"/></DataTrigger></Style.Triggers></Style></ScrollViewer.Style>
                 <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ScrollViewer.Resources>
                 <ItemsControl ItemsSource="{Binding Items}" MaxWidth="{StaticResource Metric.820}" Margin="{StaticResource Inset.32_16}" Focusable="False">
                     <ItemsControl.Resources>

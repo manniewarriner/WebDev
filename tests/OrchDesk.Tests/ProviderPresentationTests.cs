@@ -44,12 +44,21 @@ public class ProviderPresentationTests
     {
         var row = new ProviderEdit(new() { Enabled = true });
         Assert.False(row.IsConnected);
+        Assert.Equal("Connect", row.ConnectActionLabel);
+        Assert.True(row.NeedsConnection);
+        var notifications = new List<string?>();
+        row.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
         row.ModelsSyncedAt = DateTimeOffset.Now; row.RefreshConnection();
         Assert.True(row.IsConnected);
+        Assert.Equal("Manage", row.ConnectActionLabel);
+        Assert.False(row.NeedsConnection);
+        Assert.Contains(nameof(row.ConnectActionLabel), notifications);
         row.ManageCommand.Execute(null);
         Assert.True(row.DetailsExpanded);
         row.Enabled = false;
         Assert.False(row.IsConnected);
+        Assert.Equal("Connect", row.ConnectActionLabel);
+        Assert.True(row.NeedsConnection);
     }
 
     [Theory]

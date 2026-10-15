@@ -163,4 +163,8 @@
 <Thickness x:Key="Inset.28_0_4_0">28,0,4,0</Thickness>
 <sys:Double x:Key="Metric.20">20</sys:Double>
 <sys:Double x:Key="Metric.12">12</sys:Double>
+    <Thickness x:Key="Inset.8_0_0_8">8,0,0,8</Thickness>
+
+    <Thickness x:Key="Inset.0_8_0_8">0,8,0,8</Thickness>
+    <Thickness x:Key="Inset.0_0_0_56">0,0,0,56</Thickness>
 </ResourceDictionary>

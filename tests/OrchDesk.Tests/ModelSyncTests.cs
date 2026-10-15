@@ -26,6 +26,33 @@ public sealed class ModelSyncTests
         public Task<bool> IsLoggedInAsync(ProviderConfig profile, CancellationToken ct) { Profile = profile; return Task.FromResult(authenticated); }
     }
     [Fact]
+    public void PickerHidesUnconnectedCloudGroupsButKeepsLocalAndRelay()
+    {
+        var providers = new[] {
+            new ProviderConfig { Id = "claude", Kind = ProviderKind.ClaudeCli },
+            new ProviderConfig { Id = "opencode-go", AvailableModels = ["cached"] },
+            new ProviderConfig { Id = "opencode-zen", ApiKeyProtected = " " },
+            new ProviderConfig { Id = "local-pc", BaseUrl = "http://localhost/v1" },
+            new ProviderConfig { Id = "relay", BaseUrl = "https://relay/v1" }
+        };
+        Assert.Equal(new[] { "local-pc", "relay" }, ModelPickerOption.Expand(providers).Select(p => p.Id));
+        providers[0].AvailableModels = ["sonnet"];
+        providers[1].ApiKeyProtected = "protected";
+        Assert.Equal(4, ModelPickerOption.Expand(providers).Count);
+    }
+
+    [Fact]
+    public async Task OpenCodeFiltersJunkAndTheirEndpointMappings()
+    {
+        using var http = new HttpClient(new Handler(_ => new(HttpStatusCode.OK) {
+            Content = new StringContent("""{"data":[{"id":"test"},{"id":"TEST"},{"id":"model-backup"},{"id":"model-BACKUP"},{"id":"text-embed"},{"id":" "},{"id":"chat"}]}""") }));
+        var provider = new ProviderConfig { BaseUrl = "https://opencode.ai/zen/v1", ApiKeyProtected = new Secrets().Protect("test-key") };
+        Assert.True((await new IntegrationModelSync(http, new Secrets(), new Auth(false)).RunAsync(provider)).Ok);
+        Assert.Equal(new[] { "chat" }, provider.AvailableModels);
+        Assert.Equal(new[] { "chat" }, provider.ModelBaseUrls.Keys);
+    }
+
+    [Fact]
     public async Task CompatibleDiscoveryFiltersEmbeddingsAndSendsRelayHeaders()
     {
         var secrets = new Secrets();
@@ -197,9 +224,14 @@ public sealed class ModelSyncTests
     public async Task SmokeSyncSkipsUnconfiguredProviders()
     {
         var config = new AppConfig { Providers = [new() { Id = "opencode-go", ApiKeyProtected = "" }] };
-        var results = await IntegrationSmokeRunner.RunAsync(config, new Secrets(), new HttpClient(), "test-dir");
-        var opencodeResult = results.FirstOrDefault(r => r.Provider == "opencode-go");
-        Assert.NotNull(opencodeResult);
-        Assert.Equal("skip", opencodeResult.Status);
+        var directory = Path.Combine(Path.GetTempPath(), "orchdesk-smoke-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var http = new HttpClient(new Handler(_ => throw new InvalidOperationException("Unexpected network request")));
+            var results = await IntegrationSmokeRunner.RunAsync(config, new Secrets(), http, directory);
+            Assert.All(results.Where(r => r.Provider == "opencode-go"), r => Assert.Equal("skip", r.Status));
+            Assert.Contains(results, r => r.Test == "sync");
+        }
+        finally { Directory.Delete(directory, true); }
     }
 }

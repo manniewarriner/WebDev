@@ -97,7 +97,7 @@ public partial class App : Application
         var screenshotMode = e.Args.Contains("--screenshot", StringComparer.OrdinalIgnoreCase);
         var pageIndex = Array.FindIndex(e.Args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
         var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
-        if (pageIndex >= 0 && page is not ("heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
+        if (pageIndex >= 0 && page is not ("accounts" or "settings-appearance" or "settings-about" or "heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
         Motion.Screenshot = screenshotMode;
         var services = new AppServices(screenshotMode, storeOverride, OrchDesk.Core.Config.ScreenshotOptions.UseDemo(e.Args));
         if (screenshotMode && !services.UseDemo) await services.StartupSync;
@@ -125,9 +125,16 @@ public partial class App : Application
             try
             {
                 await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                var widthIndex = Array.FindIndex(e.Args, a => a.Equals("--width", StringComparison.OrdinalIgnoreCase));
+                if (widthIndex >= 0)
+                {
+                    if (widthIndex + 1 >= e.Args.Length || !int.TryParse(e.Args[widthIndex + 1], out var width) || width < captureWindow.MinWidth || width > 4096) { Shutdown(2); return; }
+                    captureWindow.Width = width + captureWindow.ActualWidth - ((FrameworkElement)captureWindow.Content).ActualWidth;
+                    await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                }
                 captureWindow.UpdateLayout();
                 var captureRoot = captureWindow.Content as FrameworkElement ?? captureWindow;
-                var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(captureRoot);
+                var dpi = widthIndex >= 0 ? new DpiScale(1, 1) : System.Windows.Media.VisualTreeHelper.GetDpi(captureRoot);
                 var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
                     (int)Math.Ceiling(captureRoot.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(captureRoot.ActualHeight * dpi.DpiScaleY),
                     dpi.PixelsPerInchX, dpi.PixelsPerInchY, System.Windows.Media.PixelFormats.Pbgra32);

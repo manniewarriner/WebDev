@@ -8,7 +8,9 @@ public sealed record ModelPickerOption(string? Id, string Label, string? Model =
     public string ModelName => Model is null && DisplayModel is null ? Label : ModelDisplayNames.Get(Model ?? DisplayModel);
     public static List<ModelPickerOption> Expand(IEnumerable<ProviderConfig> providers)
     {
-        var enabled = providers.Where(p => p.Enabled).ToList();
+        var enabled = providers.Where(p => p.Enabled &&
+            !(p.Kind == ProviderKind.ClaudeCli && p.AvailableModels.Count == 0) &&
+            !(p.Id.StartsWith("opencode", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(p.ApiKeyProtected))).ToList();
         var seen = new HashSet<(string, string)>();
         var options = new List<ModelPickerOption>();
         foreach (var p in enabled)

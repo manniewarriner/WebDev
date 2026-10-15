@@ -20,6 +20,10 @@ public sealed partial class MainViewModel : ObservableObject
         Accounts = new AccountsViewModel(services);
     }
 
+    [ObservableProperty] private string _connectionStatus = "Offline";
+    public string SidebarStatus => ConnectionStatus == "PC online" ? "Ready \u00b7 PC models online" : ConnectionStatus == "Cloud only" ? "Ready \u00b7 cloud only" : "Offline";
+    partial void OnConnectionStatusChanged(string value) => OnPropertyChanged(nameof(SidebarStatus));
+
     public bool IsDark => Services.Config.Theme != "Light";
 
     [RelayCommand]
