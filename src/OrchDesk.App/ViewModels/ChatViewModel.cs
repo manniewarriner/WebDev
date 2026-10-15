@@ -88,6 +88,7 @@ public sealed partial class ChatViewModel : ObservableObject
     partial void OnWorkspaceChanged(string? value)
     {
         _conversation = null;
+        Items.Clear();
         EditorPath = "";
         EditorText = "";
         _services.Config.LastWorkspace = value;
