@@ -24,7 +24,18 @@
                            FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,0">
-                    <TextBlock Text="Answering now" Style="{StaticResource Muted}" />
+                    <TextBlock>
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Muted}">
+                                <Setter Property="Text" Value="Ready" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Chat.IsBusy}" Value="True">
+                                        <Setter Property="Text" Value="Answering now" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <TextBlock Text="{Binding Accounts.ActiveName}" Style="{StaticResource Body}" Margin="0,8,0,16" />
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}" Margin="-8,0,0,0" />
