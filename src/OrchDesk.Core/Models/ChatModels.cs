@@ -32,7 +32,8 @@ public sealed record ChatRequest(
     IReadOnlyList<ChatMessage> Messages,
     IReadOnlyList<ToolDef> Tools,
     string? WorkingDirectory = null,
-    bool ReadOnly = false);
+    bool ReadOnly = false,
+    bool HostManagedTools = false);
 
 /// <summary>Streamed output from a provider or the agent loop.</summary>
 public abstract record ChatEvent

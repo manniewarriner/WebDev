@@ -179,6 +179,25 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainViewModel vm) return;
         var chat = vm.Chat;
+        if (page is "composer-modes" or "plan-card" or "approval-card" or "changes-panel") {
+            WelcomeOverlay.Visibility = Visibility.Collapsed;
+            chat.Workspace = @"C:\Projects\OrchDesk";
+            chat.SelectedProvider = chat.ProviderOptions[0];
+            chat.Items.Clear();
+            chat.PermissionIndex = page is "composer-modes" or "changes-panel" ? 1 : 0;
+            chat.WorkModeIndex = page == "plan-card" ? 0 : 1;
+            chat.Input = page == "composer-modes" ? "Build the composer modes and verify the tests." : "";
+            chat.Items.Add(new UserItem("Add workspace permissions and a planning mode to the composer."));
+            if (page == "plan-card") chat.Items.Add(new PlanItem(["Inspect the composer and permission policy.", "Add workspace permissions, approvals and undo history.", "Build and run the full test suite."], _ => Task.CompletedTask));
+            if (page == "approval-card") chat.Items.Add(new ApprovalItem(new("edit_file", "Edit composer settings", "Ask first · review this change", "--- composer.cs\n+++ composer.cs\n- mode = Chat;\n+ mode = Agent;")));
+            if (page == "changes-panel") {
+                chat.Changes.Add(new(new(chat.EffectiveWorkspace, "composer.cs", "edit_file", System.Text.Encoding.UTF8.GetBytes("mode = Chat;"), System.Text.Encoding.UTF8.GetBytes("mode = Agent;"))));
+                chat.Changes.Add(new(new(chat.EffectiveWorkspace, "legacy.cs", "delete_file", System.Text.Encoding.UTF8.GetBytes("// retired"), null)));
+                chat.ChangesVisible = true;
+            }
+            SetSidebar(false, false);
+            return;
+        }
         if (page is "composer-empty" or "composer-ready")
         {
             WelcomeOverlay.Visibility = Visibility.Collapsed;

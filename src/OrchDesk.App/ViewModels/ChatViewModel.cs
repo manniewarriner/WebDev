@@ -72,6 +72,32 @@ public sealed partial class ChatViewModel : ObservableObject
     [ObservableProperty] private bool _isThinking;
     [ObservableProperty] private string _activeModel = "";
     [ObservableProperty] private bool _shutdownWhenDone;
+    [ObservableProperty] private int _workModeIndex = 1;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(FullAccess))] private int _permissionIndex;
+    [ObservableProperty] private bool _changesVisible;
+    [ObservableProperty] private string _actionToast = "";
+    [ObservableProperty] private string _thinkingLabel = "Thinking · 0s";
+    public bool FullAccess => PermissionIndex == 1;
+    public ObservableCollection<ChangeItem> Changes { get; } = [];
+    private ChangeLog _changeLog = new();
+    private readonly System.Diagnostics.Stopwatch _thinkingWatch = new();
+    private readonly System.Windows.Threading.DispatcherTimer _thinkingTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private ResponseUsage? _runUsage;
+    private string _runInput = "";
+    private int _runFirstItem;
+    partial void OnIsThinkingChanged(bool value) { if (value) _thinkingWatch.Start(); else _thinkingWatch.Stop(); }
+    partial void OnPermissionIndexChanged(int value) { _services.Config.SetPermission(EffectiveWorkspace, value == 1 ? OrchDesk.Core.Config.WorkspacePermission.FullAccess : OrchDesk.Core.Config.WorkspacePermission.Manual); if (!_services.IsScreenshot) _services.Store.Save(_services.Config); }
+    partial void OnWorkModeIndexChanged(int value) { _services.Config.LastWorkMode = (OrchDesk.Core.Config.WorkMode)value; if (!_services.IsScreenshot) _services.Store.Save(_services.Config); }
+    [RelayCommand] private void ToggleChanges() => ChangesVisible = !ChangesVisible;
+    private void AttachChanges(OrchDesk.Core.Agent.AgentLoop loop)
+    {
+        loop.Changes = _changeLog;
+    }
+    private void ResetChanges()
+    {
+        Changes.Clear(); _changeLog = new();
+        _changeLog.Added += entry => Application.Current.Dispatcher.Invoke(() => { Changes.Add(new(entry)); ActionToast = $"{entry.Action}: {(entry.Path.Length == 0 ? "completed" : System.IO.Path.GetFileName(entry.Path))}"; var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(4) }; timer.Tick += (_, _) => { ActionToast = ""; timer.Stop(); }; timer.Start(); });
+    }
 
     [ObservableProperty] private string _editorText = "";
     [ObservableProperty] private string _editorPath = "";
@@ -103,9 +129,13 @@ public sealed partial class ChatViewModel : ObservableObject
     public ChatViewModel(AppServices services, string? scratchWorkspace = null, IFolderPicker? folderPicker = null)
     {
         _services = services;
+        _workModeIndex = (int)services.Config.LastWorkMode;
+        ResetChanges();
+        _thinkingTimer.Tick += (_, _) => ThinkingLabel = $"Thinking · {_thinkingWatch.Elapsed.TotalSeconds:0}s";
         _folderPicker = folderPicker ?? new FolderPicker();
         Items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ViewState));
         _scratchWorkspace = scratchWorkspace ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "OrchDesk", "Scratch");
+        _permissionIndex = (int)services.Config.PermissionFor(_scratchWorkspace);
         _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         _services.Rebuilt += ReloadProviders;
         ReloadProviders();
@@ -119,7 +149,7 @@ public sealed partial class ChatViewModel : ObservableObject
         var keepModel = SelectedProvider?.Model;
         var keep = SelectedProvider?.Id ?? _services.Config.LastProviderId;
         ProviderOptions.Clear();
-        ProviderOptions.Add(new OrchDesk.Core.Config.ModelPickerOption(null, "Auto — PC first, cloud when it's off"));
+        ProviderOptions.Add(new OrchDesk.Core.Config.ModelPickerOption(null, "Auto model"));
         foreach (var p in OrchDesk.Core.Config.ModelPickerOption.Expand(_services.Config.Providers)) ProviderOptions.Add(p);
         SelectedProvider = ProviderOptions.FirstOrDefault(o => o.Id == keep && (keepModel is null || o.Model == keepModel)) ?? ProviderOptions[0];
         if (_observedRotator is not null) _observedRotator.Changed -= RefreshSendState;
@@ -140,6 +170,8 @@ public sealed partial class ChatViewModel : ObservableObject
     {
         _conversation = null;
         Items.Clear();
+        ResetChanges();
+        PermissionIndex = (int)_services.Config.PermissionFor(EffectiveWorkspace);
         EditorPath = "";
         EditorText = "";
         _services.Config.LastWorkspace = value;
@@ -169,7 +201,7 @@ public sealed partial class ChatViewModel : ObservableObject
         bool isOvernight = false;
         string goal = "";
 
-        if (!_services.ChatOnly && (text.Equals("/overnight", StringComparison.OrdinalIgnoreCase) ||
+        if (WorkModeIndex == 1 && !_services.ChatOnly && (text.Equals("/overnight", StringComparison.OrdinalIgnoreCase) ||
             text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase)))
         {
             isOvernight = true;
@@ -184,10 +216,13 @@ public sealed partial class ChatViewModel : ObservableObject
         }
 
         Input = "";
+        foreach (var plan in Items.OfType<PlanItem>().Where(p => p.IsPending)) plan.CancelCommand.Execute(null);
         Items.Add(new UserItem(text));
+        _runFirstItem = Items.Count;
         ContentAdded?.Invoke();
         IsBusy = true;
         IsThinking = true;
+        _runInput = text; _runUsage = null; _thinkingWatch.Restart(); _thinkingTimer.Start(); ThinkingLabel = "Thinking · 0s";
         _cts = new CancellationTokenSource();
 
         try
@@ -195,7 +230,16 @@ public sealed partial class ChatViewModel : ObservableObject
             Directory.CreateDirectory(EffectiveWorkspace);
             if (isOvernight)
                 await RunOvernightAsync(goal, _cts.Token);
-            else await foreach (var ev in StartRun(text, _cts.Token)) Render(ev);
+            else {
+                var planning = WorkModeIndex == 0;
+                var firstItem = Items.Count;
+                await foreach (var ev in StartRun(text, _cts.Token)) Render(ev);
+                if (planning && !_cts.IsCancellationRequested) {
+                    var planText = string.Join("\n", Items.Skip(firstItem).OfType<AssistantItem>().Select(a => a.Text));
+                    var steps = OrchDesk.Core.Agent.WorkPlan.Parse(planText);
+                    if (steps.Count > 0) Items.Add(new PlanItem(steps, RunApprovedPlan));
+                }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -207,6 +251,14 @@ public sealed partial class ChatViewModel : ObservableObject
         }
         finally
         {
+            _thinkingWatch.Stop(); _thinkingTimer.Stop();
+            var finalAnswer = Items.Skip(_runFirstItem).OfType<AssistantItem>().LastOrDefault();
+            if (finalAnswer is not null) {
+                var usage = _runUsage ?? ResponseUsage.Estimate(_runInput, finalAnswer.Text + finalAnswer.Reasoning);
+                finalAnswer.Usage = usage; finalAnswer.ThinkingSeconds = _thinkingWatch.Elapsed.TotalSeconds;
+                finalAnswer.ThoughtSummary = usage.Format(_thinkingWatch.Elapsed);
+                finalAnswer.UsageTooltip = usage.Tooltip(_conversation?.LastProvider?.DisplayName ?? finalAnswer.ProviderId ?? "", _conversation?.LastProvider?.ModelId ?? finalAnswer.ModelName);
+            }
             foreach (var a in Items.OfType<ApprovalItem>().Where(a => a.IsPending)) a.Cancel();
             foreach (var t in Items.OfType<ToolItem>().Where(t => t.IsRunning)) { t.IsError = true; t.Output ??= "Interrupted before a result was returned."; t.IsRunning = false; }
             foreach (var answer in Items.OfType<AssistantItem>()) answer.IsStreaming = false;
@@ -297,6 +349,7 @@ public sealed partial class ChatViewModel : ObservableObject
         if (SendCommand.ExecutionTask is { } pending) await pending;
         _conversation = null;
         Items.Clear();
+        ResetChanges();
     }
 
     public Conversation? CurrentConversation => _conversation;
@@ -305,9 +358,15 @@ public sealed partial class ChatViewModel : ObservableObject
     {
         if (IsBusy) return;
         _conversation = conversation;
+        if (conversation is not null) {
+            _changeLog = conversation.Changes;
+            Changes.Clear(); foreach (var entry in _changeLog.Entries) Changes.Add(new(entry));
+        }
         if (_conversation is null) {
+            ResetChanges();
             var gate = new PermissionGate(_services.CreatePolicy(), ApproveAsync);
-            _conversation = new Conversation(_services.CreateLoop(gate), _services.CreateRunRotator(SelectedProvider), EffectiveWorkspace);
+            var loop = _services.CreateLoop(gate); AttachChanges(loop);
+            _conversation = new Conversation(loop, _services.CreateRunRotator(SelectedProvider), EffectiveWorkspace);
             foreach (var item in items) { if(item is UserItem u) _conversation.Messages.Add(ChatMessage.User(u.Text)); else if(item is AssistantItem a) _conversation.Messages.Add(ChatMessage.Assistant(a.Text)); }
         }
         Items.Clear();
@@ -317,12 +376,16 @@ public sealed partial class ChatViewModel : ObservableObject
 
     private IAsyncEnumerable<ChatEvent> StartRun(string text, CancellationToken ct)
     {
-        var gate = new PermissionGate(_services.CreatePolicy(), ApproveAsync);
+        var policy = _services.CreatePolicy();
+        policy.WorkspaceRoot = EffectiveWorkspace;
+        policy.WorkspacePermission = _services.Config.PermissionFor(EffectiveWorkspace);
+        var gate = new PermissionGate(policy, ApproveAsync);
         var loop = _services.CreateLoop(gate);
+        AttachChanges(loop);
         var rotator = _services.CreateRunRotator(SelectedProvider);
         var sup = _services.Config.Supervisor;
 
-        switch (Mode)
+        switch (WorkModeIndex == 0 ? ChatMode.Chat : Mode)
         {
             case ChatMode.CostRouter:
                 var tiers = sup.CostTiers.Select(id => rotator.Find(id)).Where(a => a is not null && rotator.IsUsable(a)).Select(a => a!.Provider).ToList();
@@ -335,8 +398,17 @@ public sealed partial class ChatViewModel : ObservableObject
                 if (_conversation is not null) { convo.Messages.AddRange(_conversation.Messages); convo.StickyProviderId = _conversation.StickyProviderId; }
                 else if (_services.ChatOnly) convo.Messages.Add(ChatMessage.System("You are OrchDesk, a helpful chat assistant. Answer the user directly. No tools are available."));
                 _conversation = convo;
-                return convo.SendAsync(text, ct);
+                if (WorkModeIndex == 0) text = OrchDesk.Core.Agent.WorkPlan.Instruction + "\n\nTask: " + text;
+                return convo.SendAsync(text, ct, readOnly: WorkModeIndex == 0);
         }
+    }
+
+    private async Task RunApprovedPlan(string task)
+    {
+        if (IsBusy) return;
+        WorkModeIndex = 1;
+        Input = task;
+        await SendCommand.ExecuteAsync(null);
     }
 
     private static async IAsyncEnumerable<ChatEvent> One(ChatEvent ev)
@@ -364,7 +436,11 @@ public sealed partial class ChatViewModel : ObservableObject
     {
         switch (ev)
         {
+            case UsageReported u:
+                _runUsage = _runUsage is null ? u.Usage : new ResponseUsage(_runUsage.InputTokens + u.Usage.InputTokens, _runUsage.OutputTokens + u.Usage.OutputTokens);
+                break;
             case StatusUpdate s when s.Text.StartsWith("Using "):
+                _runUsage = null;
                 ActiveModel = _conversation?.LastProvider is { } answering ? OrchDesk.Core.Config.ModelDisplayNames.Get(answering.ModelId) + (_conversation.Attempts.Count > 0 ? " ? fell back from " + (_conversation.Attempts.Any(a => a.ProviderId is "remote-pc" or "local-pc") ? "Desktop PC" : _conversation.Attempts[0].ProviderId) : "") : s.Text[6..];
                 if (_current is not null) _current.IsStreaming = false;
                 _current = null;

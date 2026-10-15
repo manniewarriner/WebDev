@@ -28,12 +28,23 @@ public sealed partial class PermissionPolicy
 
     /// <summary>Overnight mode: there is nobody to ask, so every "Ask" becomes "Deny".</summary>
     public bool Unattended { get; set; }
+    public string? WorkspaceRoot { get; set; }
+    public OrchDesk.Core.Config.WorkspacePermission? WorkspacePermission { get; set; }
     public bool HostManagedCommits { get; set; }
 
     public PermissionDecision Evaluate(string toolName, JsonObject args)
     {
         if (HostManagedCommits && toolName is "git_commit" or "git_push") return PermissionDecision.Deny("Overnight host controls commits and never pushes");
+        if (WorkspacePermission is not null && toolName == "run_command" && OutsidePath().IsMatch(args["command"]?.ToString() ?? ""))
+            return PermissionDecision.Deny("Commands referencing paths outside the workspace are blocked");
+        if (WorkspaceRoot is not null && toolName is "write_file" or "edit_file" or "delete_file")
+        {
+            try { OrchDesk.Core.Tools.WorkspacePath.Resolve(WorkspaceRoot, args["path"]?.GetValue<string>()); }
+            catch (Exception ex) when (ex is OrchDesk.Core.Tools.PathOutsideWorkspaceException or ArgumentException) { return PermissionDecision.Deny(ex.Message); }
+        }
         var decision = EvaluateAttended(toolName, args);
+        if (decision.Verdict != Verdict.Deny && WorkspacePermission is { } mode && toolName is "write_file" or "edit_file" or "delete_file" or "run_command")
+            decision = mode == OrchDesk.Core.Config.WorkspacePermission.FullAccess ? PermissionDecision.Allow("Full access") : PermissionDecision.Ask("Ask first");
         return Unattended && decision.Verdict == Verdict.Ask
             ? PermissionDecision.Deny($"{decision.Reason} (unattended mode: not allowed without a person to approve)")
             : decision;

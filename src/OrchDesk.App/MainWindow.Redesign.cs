@@ -194,9 +194,7 @@ public partial class MainWindow
         if (text.Length == 0) text = "No job output yet. Run a task to inspect its results here.";
         var output = new TextBox { Text = text, Style = (Style)FindResource("CodeText"), Foreground = Brush("Text"), MinHeight = 220, FontSize = 13 };
         body.Children.Add(Label(diff ? "UNIFIED DIFF" : "RESULT · PLAIN TEXT", "Muted", 11)); if (diff) {
-            var document = new System.Windows.Documents.FlowDocument { FontFamily = (FontFamily)FindResource("CodeFont"), FontSize = 13, PagePadding = new Thickness(0), Background = Brushes.Transparent };
-            foreach (var line in text.Split('\n')) { var paragraph = new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run(line.Length == 0 ? " " : line)) { Margin = new Thickness(0), LineHeight = 21, Foreground = Brush(line.StartsWith("+") ? "Success" : line.StartsWith("-") ? "Danger" : line.StartsWith("@@") ? "Accent" : "Text") }; document.Blocks.Add(paragraph); }
-            var diffView = new RichTextBox { Document = document, IsReadOnly = true, BorderThickness = new Thickness(0), Background = Brushes.Transparent, MinHeight = 220, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }; body.Children.Add(Card(diffView));
+            body.Children.Add(Card(new OrchDesk.App.Controls.DiffViewer { Diff = text, MinHeight = 220 }));
         } else body.Children.Add(Card(output));
         body.Children.Add(ActionButton("Copy", () => { Clipboard.SetText(text); ShowToast("Copied to clipboard", false); }));
     }

@@ -40,6 +40,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
         var args = new List<string> { "-p", "--output-format", "stream-json", "--verbose" };
         args.AddRange(["--permission-mode", request.ReadOnly ? "plan" : options.PermissionMode]);
         args.AddRange(["--model", ModelId]);
+        if (request.HostManagedTools) args.AddRange(["--tools", ""]);
         if (options.AllowedTools is { Count: > 0 }) args.AddRange(["--allowedTools", string.Join(",", options.AllowedTools)]);
         if (resumeSessionId is not null) args.AddRange(["--resume", resumeSessionId]);
         return args;
@@ -71,6 +72,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
         // With a live session only the newest user message is sent; otherwise the whole transcript,
         // so a conversation that rotated here from another model keeps its context.
         var prompt = sessionId is not null ? Transcript.LastUserMessage(request.Messages) : Transcript.Flatten(request.Messages);
+        if (request.HostManagedTools) prompt += HostToolProtocol.Instruction(request);
 
         var psi = CliRunner.CreateStartInfo(exe, BuildArgs(request, sessionId), cwd, BuildEnvironment());
         var sawResult = false;
@@ -83,6 +85,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
             if (parsed.SessionId is not null) _sessions[cwd] = parsed.SessionId;
             foreach (var ev in parsed.Events)
             {
+                if (request.HostManagedTools && ev is TextDelta delta) { foreach (var content in SseChatParser.ParseContent(delta.Text)) yield return content; continue; }
                 if (ev is Done or ErrorEvent or UsageLimitHit) sawResult = true;
                 yield return ev;
             }

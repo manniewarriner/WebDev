@@ -16,6 +16,7 @@ public static class SseChatParser
     public static IEnumerable<ChatEvent> ParseCompletion(string json)
     {
         var node = JsonNode.Parse(json);
+        if (ResponseUsage.Parse(node?["usage"]) is { } usage) yield return new UsageReported(usage);
         if (node?["error"] is { } error)
         {
             yield return new ErrorEvent(error["message"]?.ToString() ?? "Provider error");
@@ -90,6 +91,7 @@ public static class SseChatParser
                 yield break;
             }
 
+            if (ResponseUsage.Parse(node?["usage"]) is { } usage) yield return new UsageReported(usage);
             var delta = (node?["choices"] as JsonArray)?.FirstOrDefault()?["delta"];
             if (delta is null) continue;
 

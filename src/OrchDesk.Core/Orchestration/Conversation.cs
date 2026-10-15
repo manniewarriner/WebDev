@@ -14,6 +14,7 @@ namespace OrchDesk.Core.Orchestration;
 public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string workspace)
 {
     public List<ChatMessage> Messages { get; } = [];
+    public OrchDesk.Core.Permissions.ChangeLog Changes { get; } = loop.Changes ??= new();
     public string Workspace { get; } = WorkspacePath.NormalizeRoot(workspace);
 
     /// <summary>null = Auto (follow the rotation chain). Otherwise try this provider first, then fall back.</summary>

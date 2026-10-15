@@ -275,6 +275,20 @@
             </Grid>
         </ControlTemplate></Setter.Value></Setter>
     </Style>
+    <Style x:Key="PermissionsChip" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
+            <Grid>
+                <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" ClickMode="Press">
+                    <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent" CornerRadius="6"><TextBlock Text="⌄" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource MutedBrush}"/></Border></ControlTemplate></ToggleButton.Template>
+                </ToggleButton>
+                <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" TextElement.Foreground="{TemplateBinding Foreground}" Margin="8,8,28,8" VerticalAlignment="Center"/>
+                <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
+                    <Border Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="4" MinWidth="130"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></Border>
+                </Popup>
+            </Grid>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style TargetType="Expander">
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
         <Setter Property="Padding" Value="12,8" />

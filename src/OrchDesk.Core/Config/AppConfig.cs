@@ -51,8 +51,17 @@ public sealed class OvernightConfig
     public bool ShutdownWhenDone { get; set; }
 }
 
+public enum WorkMode { Plan, Agent }
+public enum WorkspacePermission { Manual, FullAccess }
+
 public sealed class AppConfig
 {
+    public Dictionary<string, WorkspacePermission> WorkspacePermissions { get; set; } = [];
+    public WorkMode LastWorkMode { get; set; } = WorkMode.Agent;
+    public static string WorkspaceKey(string path) => OrchDesk.Core.Tools.WorkspacePath.NormalizeRoot(path).ToUpperInvariant();
+    public WorkspacePermission PermissionFor(string path) => WorkspacePermissions.GetValueOrDefault(WorkspaceKey(path));
+    public void SetPermission(string path, WorkspacePermission permission) => WorkspacePermissions[WorkspaceKey(path)] = permission;
+
     public bool PreferFreeModels { get; set; } = true;
     public bool WebFetchEnabled { get; set; } = true;
     public string? MeshyApiKeyProtected { get; set; }

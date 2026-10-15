@@ -15,6 +15,10 @@ public sealed class UserItem(string text) : ChatItem
 public sealed partial class AssistantItem(string modelName) : ChatItem
 {
     public string ModelName { get; } = modelName;
+    [ObservableProperty] private string _thoughtSummary = "";
+    [ObservableProperty] private string _usageTooltip = "";
+    public OrchDesk.Core.Models.ResponseUsage? Usage { get; set; }
+    public double ThinkingSeconds { get; set; }
     public string? ProviderId { get; init; }
     public OrchDesk.Core.Config.ModelPickerOption Provider => new(ProviderId, ProviderId ?? ModelName);
     [ObservableProperty] private bool _isStreaming;
@@ -55,6 +59,7 @@ public sealed class ErrorItem(string text) : ChatItem
 /// <summary>The Approve/Deny card. The agent loop awaits Answer until a button is clicked (or Stop is pressed).</summary>
 public sealed partial class ApprovalItem(ApprovalRequest request) : ChatItem
 {
+    public string? Diff { get; } = request.Diff;
     private readonly TaskCompletionSource<ApprovalAnswer> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public string Summary { get; } = request.Summary;
@@ -75,4 +80,42 @@ public sealed partial class ApprovalItem(ApprovalRequest request) : ChatItem
     {
         if (_tcs.TrySetResult(answer)) Decision = label;
     }
+}
+
+public sealed partial class PlanStep(string text) : ObservableObject
+{
+    [ObservableProperty] private string _text = text;
+    [ObservableProperty] private string _number = "";
+}
+
+public sealed partial class PlanItem : ChatItem
+{
+    public System.Collections.ObjectModel.ObservableCollection<PlanStep> Steps { get; } = [];
+    private readonly Func<string, Task> _run;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanApprove))] private bool _isPending = true;
+    public bool CanApprove => IsPending && Steps.Any(s => !string.IsNullOrWhiteSpace(s.Text));
+    public PlanItem(IEnumerable<string> steps, Func<string, Task> run) {
+        _run = run;
+        Steps.CollectionChanged += (_, e) => {
+            if (e.NewItems is not null) foreach (PlanStep step in e.NewItems) step.PropertyChanged += (_, _) => OnPropertyChanged(nameof(CanApprove));
+            for (var i = 0; i < Steps.Count; i++) Steps[i].Number = $"{i + 1}.";
+            OnPropertyChanged(nameof(CanApprove));
+        };
+        foreach (var step in steps) Steps.Add(new(step));
+    }
+    [RelayCommand] private void AddStep() => Steps.Add(new("New step"));
+    [RelayCommand] private void RemoveStep(PlanStep step) => Steps.Remove(step);
+    [RelayCommand] private void Cancel() => IsPending = false;
+    [RelayCommand] private async Task Approve() { if (!CanApprove) return; IsPending = false; await _run(OrchDesk.Core.Agent.WorkPlan.ApprovedTask(Steps.Select(s => s.Text))); }
+}
+
+public sealed partial class ChangeItem(ChangeEntry entry) : ObservableObject
+{
+    public ChangeEntry Entry { get; } = entry;
+    public string Path => Entry.Path;
+    public string Action => Entry.Action;
+    public string Diff => Entry.Diff;
+    public bool CanUndo => Entry.CanUndo;
+    [ObservableProperty] private string _error = "";
+    [RelayCommand] private void Undo() { try { Entry.Undo(); OnPropertyChanged(nameof(CanUndo)); } catch (Exception ex) { Error = ex.Message; } }
 }

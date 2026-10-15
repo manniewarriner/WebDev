@@ -2,6 +2,7 @@ namespace OrchDesk.Core.Config;
 
 public sealed record ModelPickerOption(string? Id, string Label, string? Model = null)
 {
+    public string Subtitle => Id is null ? "PC first, cloud fallback" : "";
     public string ProviderGroup => Id is null ? "Automatic" : Label.Split(" · ")[0];
     public ProviderKind Kind { get; init; }
     public string? DisplayModel { get; init; }

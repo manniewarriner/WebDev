@@ -23,6 +23,7 @@ public sealed class AgentLoopOptions
 /// </summary>
 public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoopOptions? options = null)
 {
+    public ChangeLog? Changes { get; set; }
     private readonly AgentLoopOptions _options = options ?? new AgentLoopOptions();
 
     public const string DefaultSystemPrompt =
@@ -37,7 +38,7 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
         IModelProvider provider, List<ChatMessage> messages, ToolContext ctx,
         [EnumeratorCancellation] CancellationToken ct, bool readOnly = false)
     {
-        if (provider.IsAgentic)
+        if (provider.IsAgentic && gate.Policy.WorkspacePermission is null)
         {
             var text = new StringBuilder();
             await foreach (var ev in provider.StreamChatAsync(new ChatRequest(messages, [], ctx.WorkspaceRoot, readOnly), ct))
@@ -67,7 +68,7 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
             var calls = new List<ToolCall>();
             var stop = false;
 
-            await foreach (var ev in provider.StreamChatAsync(new ChatRequest(messages, toolDefs, ctx.WorkspaceRoot, readOnly), ct))
+            await foreach (var ev in provider.StreamChatAsync(new ChatRequest(messages, toolDefs, ctx.WorkspaceRoot, readOnly, gate.Policy.WorkspacePermission is not null), ct))
             {
                 switch (ev)
                 {
@@ -115,13 +116,17 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
         try { args = JsonNode.Parse(string.IsNullOrWhiteSpace(call.ArgumentsJson) ? "{}" : call.ArgumentsJson) as JsonObject ?? new JsonObject(); }
         catch (System.Text.Json.JsonException ex) { return ($"Arguments were not valid JSON: {ex.Message}", true); }
 
+        gate.Policy.WorkspaceRoot = ctx.WorkspaceRoot;
         var decision = await gate.CheckAsync(call.Name, args, ct);
         if (decision.Verdict == Verdict.Deny) return ($"Not allowed: {decision.Reason}", true);
 
         try
         {
+            string? path = call.Name is "write_file" or "edit_file" or "delete_file" ? WorkspacePath.Resolve(ctx.WorkspaceRoot, args["path"]?.ToString()) : null;
+            var before = path is not null && File.Exists(path) ? await File.ReadAllBytesAsync(path, ct) : null;
             // Tools do blocking file IO; run them off the UI thread.
             var output = await Task.Run(() => tool.ExecuteAsync(args, ctx, ct), ct);
+            Changes?.Record(new ChangeEntry(ctx.WorkspaceRoot, path ?? "", call.Name, before, path is not null && File.Exists(path) ? await File.ReadAllBytesAsync(path, ct) : null));
             return (output, false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }

@@ -108,6 +108,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
             ["model"] = options.Model,
             ["messages"] = messages,
             ["stream"] = true,
+            ["stream_options"] = new JsonObject { ["include_usage"] = true },
         };
         if (options.Temperature is double t) body["temperature"] = t;
         if (request.Tools.Count > 0)

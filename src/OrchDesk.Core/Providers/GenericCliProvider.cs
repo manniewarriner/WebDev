@@ -29,15 +29,34 @@ public sealed class GenericCliProvider(
             yield break;
         }
 
-        var psi = CliRunner.CreateStartInfo(exe, args, request.WorkingDirectory, env);
+        var runArgs = args.ToList();
+        var runEnv = env is null ? new Dictionary<string, string?>() : new Dictionary<string, string?>(env);
+        var openCode = Path.GetFileNameWithoutExtension(executable).Equals("opencode", StringComparison.OrdinalIgnoreCase);
+        if (request.ReadOnly || request.HostManagedTools) {
+            if (openCode) runEnv["OPENCODE_PERMISSION"] = "{\"*\":\"deny\"}";
+            else {
+                var sandbox = runArgs.IndexOf("--sandbox");
+                if (sandbox >= 0 && sandbox + 1 < runArgs.Count) runArgs[sandbox + 1] = "read-only";
+            }
+        }
+        if (openCode) runArgs.AddRange(["--format", "json"]);
+        var psi = CliRunner.CreateStartInfo(exe, runArgs, request.WorkingDirectory, runEnv);
         var stderr = new List<string>();
         var any = false;
-        await foreach (var line in CliRunner.StreamAsync(psi, Transcript.Flatten(request.Messages), ct))
+        var text = new System.Text.StringBuilder();
+        await foreach (var line in CliRunner.StreamAsync(psi, Transcript.Flatten(request.Messages) + (request.HostManagedTools ? HostToolProtocol.Instruction(request) : ""), ct))
         {
             if (line.IsStdErr) { stderr.Add(line.Text); continue; }
             any = true;
-            yield return new TextDelta(line.Text + "\n");
+            if (openCode) {
+                foreach (var ev in OpenCodeStreamParser.Parse(line.Text)) {
+                    if (request.HostManagedTools && ev is TextDelta delta) text.Append(delta.Text);
+                    else yield return ev;
+                }
+            } else if (request.HostManagedTools) text.AppendLine(line.Text);
+            else yield return new TextDelta(line.Text + "\n");
         }
+        if (text.Length > 0) foreach (var ev in SseChatParser.ParseContent(text.ToString())) yield return ev;
 
         var err = string.Join("\n", stderr.TakeLast(20));
         if (ClaudeStreamParser.LooksLikeUsageLimit(err)) yield return new UsageLimitHit(Id, err);

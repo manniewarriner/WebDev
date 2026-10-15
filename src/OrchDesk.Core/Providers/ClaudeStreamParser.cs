@@ -86,6 +86,7 @@ public static class ClaudeStreamParser
                 break;
 
             case "result":
+                if (ResponseUsage.Parse(node["usage"]) is { } usage) events.Add(new UsageReported(usage));
                 var isErr = node["is_error"]?.GetValue<bool>() ?? false;
                 var result = node["result"]?.GetValue<string>();
                 if (isErr && LooksLikeUsageLimit(result ?? node["subtype"]?.GetValue<string>()))

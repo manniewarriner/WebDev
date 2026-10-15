@@ -168,4 +168,5 @@
     <Thickness x:Key="Inset.0_8_0_8">0,8,0,8</Thickness>
     <Thickness x:Key="Inset.0_0_0_56">0,0,0,56</Thickness>
     <Thickness x:Key="Inset.24_24_24_16">24,24,24,16</Thickness>
+<Thickness x:Key="Inset.0_16_28_16">0,16,28,16</Thickness>
 </ResourceDictionary>
