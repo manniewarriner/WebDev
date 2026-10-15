@@ -4,7 +4,7 @@
         xmlns:vm="clr-namespace:OrchDesk.App.ViewModels"
         xmlns:ctl="clr-namespace:OrchDesk.App.Controls"
         xmlns:core="clr-namespace:OrchDesk.Core.Overnight;assembly=OrchDesk.Core"
-        Title="OrchDesk" Width="{StaticResource Metric.1180}" Height="{StaticResource Metric.780}" MinWidth="{StaticResource Metric.760}" MinHeight="{StaticResource Metric.520}"
+        Title="OrchDesk" Width="{StaticResource Metric.1180}" Height="{StaticResource Metric.780}" MinWidth="900" MinHeight="{StaticResource Metric.520}"
         Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
         Icon="Assets/orch-app-icon.ico" UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterScreen">
 
