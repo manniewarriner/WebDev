@@ -125,7 +125,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
-        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="SelectionBrush" Value="{DynamicResource PeachBrush}" />
         <Setter Property="Template">
             <Setter.Value>
