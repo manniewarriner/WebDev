@@ -211,6 +211,9 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
 
+    <Style x:Key="Heading28" TargetType="TextBlock" BasedOn="{StaticResource Heading}">
+    </Style>
+
     <Style x:Key="Display36" TargetType="TextBlock" BasedOn="{StaticResource Heading}">
         <Setter Property="FontSize" Value="36" />
         <Setter Property="LineHeight" Value="44" />
