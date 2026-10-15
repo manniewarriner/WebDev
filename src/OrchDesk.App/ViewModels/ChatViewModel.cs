@@ -30,7 +30,7 @@ public sealed partial class ChatViewModel : ObservableObject
     public bool UsesScratchWorkspace => Workspace is null;
     public string? SendBlockedReason => IsBusy ? "Working on the previous message"
         : string.IsNullOrWhiteSpace(Input) ? "Type a message"
-        : !HasAvailableProvider() ? "No model available - connect one in Integrations" : null;
+        : null;
     [ObservableProperty] private string? _composerNotice;
 
     private bool HasAvailableProvider() => SelectedProvider?.Id is { } id
@@ -332,7 +332,7 @@ public sealed partial class ChatViewModel : ObservableObject
             default:
                 // Each run gets a fresh loop/gate (settings may have changed) but carries the history forward.
                 var convo = new Conversation(loop, rotator, EffectiveWorkspace) { PreferredProviderId = SelectedProvider?.Id };
-                if (_conversation is not null) convo.Messages.AddRange(_conversation.Messages);
+                if (_conversation is not null) { convo.Messages.AddRange(_conversation.Messages); convo.StickyProviderId = _conversation.StickyProviderId; }
                 else if (_services.ChatOnly) convo.Messages.Add(ChatMessage.System("You are OrchDesk, a helpful chat assistant. Answer the user directly. No tools are available."));
                 _conversation = convo;
                 return convo.SendAsync(text, ct);
@@ -365,7 +365,7 @@ public sealed partial class ChatViewModel : ObservableObject
         switch (ev)
         {
             case StatusUpdate s when s.Text.StartsWith("Using "):
-                ActiveModel = s.Text[6..];
+                ActiveModel = _conversation?.LastProvider is { } answering ? OrchDesk.Core.Config.ModelDisplayNames.Get(answering.ModelId) + (_conversation.Attempts.Count > 0 ? " ? fell back from " + (_conversation.Attempts.Any(a => a.ProviderId is "remote-pc" or "local-pc") ? "Desktop PC" : _conversation.Attempts[0].ProviderId) : "") : s.Text[6..];
                 if (_current is not null) _current.IsStreaming = false;
                 _current = null;
                 break;
@@ -376,13 +376,13 @@ public sealed partial class ChatViewModel : ObservableObject
                 _current = null;
                 break;
             case ReasoningDelta r:
-                if (_current is null) { _current = new AssistantItem(ActiveModel); Items.Add(_current); }
+                if (_current is null) { _current = new AssistantItem(ActiveModel) { ProviderId = _conversation?.LastProvider?.Id }; Items.Add(_current); }
                 _current.Reasoning += r.Text;
                 IsThinking = true;
                 break;
             case TextDelta d:
                 IsThinking = false;
-                if (_current is null) { _current = new AssistantItem(ActiveModel) { IsStreaming = true }; Items.Add(_current); }
+                if (_current is null) { _current = new AssistantItem(ActiveModel) { ProviderId = _conversation?.LastProvider?.Id, IsStreaming = true }; Items.Add(_current); }
                 _current.IsStreaming = true;
                 _current.Append(d.Text);
                 break;

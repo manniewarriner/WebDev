@@ -112,7 +112,7 @@
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Fallback order (model IDs, first is preferred)" Margin="{StaticResource Inset.0_0_0_4}" />
                     <TextBox Text="{Binding RotationOrder, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource CodeFont}" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Minutes to rest an account after it hits a usage limit" />
-                    <TextBox Text="{Binding LimitCooldownMinutes}" Width="{StaticResource Metric.100}" HorizontalAlignment="Left" />
+                    <CheckBox Content="Prefer free models" IsChecked="{Binding PreferFreeModels}" Margin="{StaticResource Inset.0_12}"/><TextBox Text="{Binding LimitCooldownMinutes}" Width="{StaticResource Metric.100}" HorizontalAlignment="Left" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Maximum tool steps per message" />
                     <TextBox Text="{Binding MaxSteps}" Width="{StaticResource Metric.100}" HorizontalAlignment="Left" />
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Extra commands that may run without asking (one per line, matched by prefix)" />

@@ -205,7 +205,7 @@ public partial class MainWindow : Window
             chat.Items.Add(new ToolItem("demo", "query_metrics", "{ \"period\": \"7 days\", \"metric\": \"p95 latency\" }") { Output = "p95: 180ms → 340ms\nSequential scan on events. Missing index: (account_id, created_at).", IsRunning = false, IsExpanded = true });
             chat.Items.Add(new AssistantItem("Claude Sonnet") { Reasoning = "Compare recent timings with the deployment, then inspect the query plan.", Text = "The increase lines up with Tuesday’s deploy. Adding an index should bring p95 back down without a rollback.", IsStreaming = true });
         }
-        if (page == "reply") { chat.Items.Add(new UserItem("Reply with exactly: pong")); chat.Items.Add(new AssistantItem("Demo") { Text = "pong" }); }
+        if (page == "reply") { chat.Items.Add(new UserItem("Reply with exactly: pong")); chat.Items.Add(new AssistantItem("Qwen 3.5 9B") { ProviderId = "local-pc", Text = "pong" }); }
         if (page == "thinking") { chat.Items.Add(new UserItem("Find the best approach for this project.")); chat.IsBusy = true; chat.IsThinking = true; }
         if (page == "composer") chat.Input = "Review the chat experience in both themes.\n\nMake the input feel natural as the message grows.\nKeep the model selector close to the send action.\nThen run the build and all tests.";
         SetSidebar(page == "sidebar-collapsed", false);

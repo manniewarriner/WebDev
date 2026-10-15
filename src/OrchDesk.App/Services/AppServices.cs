@@ -16,7 +16,7 @@ namespace OrchDesk.App.Services;
 /// </summary>
 public sealed class AppServices
 {
-    private static readonly HttpClient Http = new() { Timeout = Timeout.InfiniteTimeSpan }; // streams can run long; requests use their own tokens
+    private static readonly HttpClient Http = new(new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(4) }) { Timeout = Timeout.InfiniteTimeSpan }; // streams can run long; requests use their own tokens
 
     public ConfigStore Store { get; }
     public ISecretProtector Secrets { get; } = new DpapiSecretProtector();
@@ -80,7 +80,6 @@ public sealed class AppServices
         Tools = ChatOnly ? new ToolRegistry() : ToolRegistry.CreateDefault(Config.WebFetchEnabled);
         var factory = new ProviderFactory(Secrets, Http);
         Providers = _providerOverride ?? factory.CreateAll(Config);
-        if (ChatOnly) Providers = Providers.Where(p => !p.IsAgentic).ToList();
         // Keep limit history across rebuilds so a settings change doesn't forget a provider is cooling down.
         var old = Rotator;
         Rotator = new AccountRotator(ProviderFactory.InRotationOrder(Config, Providers), TimeSpan.FromMinutes(Config.LimitCooldownMinutes));

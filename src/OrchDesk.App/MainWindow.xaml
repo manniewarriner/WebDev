@@ -151,7 +151,7 @@
 
                         <DataTemplate DataType="{x:Type vm:AssistantItem}">
                             <StackPanel Margin="{StaticResource Inset.0_20_28_16}">
-                                <TextBlock Text="{Binding ModelName}" Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_0_0_10}" />
+                                <StackPanel Orientation="Horizontal" Margin="{StaticResource Inset.0_0_0_10}"><ctl:ProviderLogo Provider="{Binding Provider}" Width="{StaticResource Metric.16}" Height="{StaticResource Metric.16}" Margin="{StaticResource Inset.0_0_8_0}"/><TextBlock Text="{Binding ModelName}" Style="{StaticResource Muted}" /></StackPanel>
                                 <Expander Header="Reasoning" Visibility="{Binding Reasoning, Converter={StaticResource HasValue}}" Margin="{StaticResource Inset.0_0_0_12}"><TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.12}" /></Expander>
                                 <TextBlock TextWrapping="Wrap" FontSize="{StaticResource Metric.14}" LineHeight="{StaticResource Metric.23}" Foreground="{DynamicResource TextBrush}"><Run Text="{Binding Text, Mode=OneWay}"/><InlineUIContainer><ctl:MotionGlyph Text="▍" FontSize="{StaticResource Metric.14}" Foreground="{DynamicResource AccentBrush}" Visibility="{Binding IsStreaming, Converter={StaticResource BoolVisible}}" /></InlineUIContainer></TextBlock>
                             </StackPanel>

@@ -52,6 +52,20 @@ public sealed class AccountRotator
     public IModelProvider? Current(IReadOnlySet<string>? exclude = null) =>
         _chain.FirstOrDefault(a => IsUsable(a) && (exclude is null || !exclude.Contains(a.Provider.Id)))?.Provider;
 
+    public async Task RefreshUnknownHealthAsync(CancellationToken ct)
+    {
+        await Task.WhenAll(_chain.Where(a => a.Health == ProviderHealth.Unknown).Select(async a =>
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(4));
+            try { a.Health = await a.Provider.CheckHealthAsync(timeout.Token).WaitAsync(timeout.Token); }
+            catch (Exception) when (!ct.IsCancellationRequested) { a.Health = ProviderHealth.Offline; }
+            a.LastChecked = _time.GetUtcNow();
+            if (a.Health == ProviderHealth.Offline) a.LastOfflineAt = a.LastChecked;
+        }));
+        Changed?.Invoke();
+    }
+
     public void MarkLimitHit(string providerId, string message)
     {
         if (Find(providerId) is not { } a) return;

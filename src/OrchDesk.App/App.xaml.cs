@@ -31,16 +31,34 @@ public partial class App : Application
                     chat.SelectedProvider = chat.ProviderOptions.FirstOrDefault(p => p.Id == id)
                         ?? new OrchDesk.Core.Config.ModelPickerOption(id, id);
                 }
-                chat.Input = options.Text;
-                if (chat.SendCommand.CanExecute(null)) await chat.SendCommand.ExecuteAsync(null);
-                var reply = string.Concat(chat.Items.OfType<AssistantItem>().Select(a => a.Text));
-                var result = reply[..Math.Min(500, reply.Length)];
-                System.IO.Directory.CreateDirectory(storeOverride.Directory);
-                await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), result);
-                Console.WriteLine(result);
-                exit = string.IsNullOrWhiteSpace(reply) ? 1 : 0;
+                chat.SelectedProvider = options.ProviderId is null ? chat.ProviderOptions[0] : chat.SelectedProvider;
+                var results = new List<object>();
+                exit = 0;
+                foreach (var text in options.Texts)
+                {
+                    var watch = System.Diagnostics.Stopwatch.StartNew();
+                    var before = chat.Items.Count;
+                    chat.Input = text;
+                    await chat.SendCommand.ExecuteAsync(null);
+                    var added = chat.Items.Skip(before).ToList();
+                    var reply = string.Concat(added.OfType<AssistantItem>().Select(a => a.Text));
+                    var error = string.Join("; ", added.OfType<ErrorItem>().Select(a => a.Text));
+                    var provider = chat.CurrentConversation?.LastProvider;
+                    if (error.Length == 0 && string.IsNullOrWhiteSpace(reply)) error = "Send failed: provider returned an empty reply.";
+                    var output = error.Length > 0 ? error : $"[{provider?.Id}/{provider?.ModelId}] " + reply;
+                    if (error.Length > 0 || string.IsNullOrWhiteSpace(reply)) { exit = 1; Console.Error.WriteLine(output); }
+                    Console.WriteLine(output);
+                    await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), output + Environment.NewLine);
+                    results.Add(new { provider = provider?.Id, model = provider?.ModelId, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.ToArray() });
+                    if (exit != 0) break;
+                }
+                await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.json"), System.Text.Json.JsonSerializer.Serialize(results, OrchDesk.Core.Config.ConfigStore.Json));
             }
-            catch { /* Provider diagnostics may contain secrets; return only the exit status. */ }
+            catch (Exception ex)
+            {
+                var error = ex is ArgumentException ? ex.Message : "Send failed: provider or configuration unavailable.";
+                Console.Error.WriteLine(error); Console.WriteLine(error);
+            }
             Shutdown(exit);
             return;
         }

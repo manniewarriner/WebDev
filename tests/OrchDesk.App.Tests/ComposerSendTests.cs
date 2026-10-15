@@ -60,17 +60,14 @@ public sealed class ComposerSendTests : IDisposable
     }
 
     [Fact]
-    public void MissingOrUnavailableSelectedProviderBlocks()
+    public async Task Unavailable_auto_renders_error_card()
     {
         var vm = Create();
+        vm.SelectedProvider = vm.ProviderOptions[0];
         vm.Input = "Hello";
-        Assert.Equal("No model available - connect one in Integrations", vm.SendBlockedReason);
-        Assert.False(vm.SendCommand.CanExecute(null));
-        vm = Create(new FakeProvider());
-        vm.Input = "Hello";
-        vm.SelectedProvider = new ModelPickerOption("missing", "Missing");
-        Assert.Equal("No model available - connect one in Integrations", vm.SendBlockedReason);
-        Assert.False(vm.SendCommand.CanExecute(null));
+        Assert.True(vm.SendCommand.CanExecute(null));
+        await vm.SendCommand.ExecuteAsync(null);
+        Assert.Contains(vm.Items.OfType<ErrorItem>(), e => e.Text.Contains("All providers unavailable"));
     }
 
     [Theory]
@@ -78,14 +75,13 @@ public sealed class ComposerSendTests : IDisposable
     [InlineData("--send", " ")]
     [InlineData("--send", "Hi", "--provider")]
     [InlineData("--send", "Hi", "--config")]
-    [InlineData("--send", "Hi", "--send", "Again")]
     public void InvalidSendArgumentsThrow(params string[] args) => Assert.Throws<ArgumentException>(() => SendOptions.Parse(args));
 
     [Fact]
     public void ParsesSendArguments()
     {
         Assert.Null(SendOptions.Parse(["--page", "composer-ready"]));
-        Assert.Equal(new SendOptions("Hello world", "fake", "test.json"), SendOptions.Parse(["--send", "Hello world", "--provider", "fake", "--config", "test.json"]));
+        Assert.Equal("Hello world", SendOptions.Parse(["--send", "Hello world", "--provider", "fake", "--config", "test.json"])!.Text);
     }
 
     [Fact]

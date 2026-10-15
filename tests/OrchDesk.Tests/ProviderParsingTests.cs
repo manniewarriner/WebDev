@@ -116,7 +116,7 @@ public class ProviderParsingTests
 
         Assert.Null(env["ANTHROPIC_BASE_URL"]);
         var args = p.BuildArgs(new ChatRequest([], [], ReadOnly: true), "sess");
-        Assert.Equal(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--resume", "sess"], args);
+        Assert.Equal(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--model", "sonnet", "--resume", "sess"], args);
         Assert.DoesNotContain("--bare", args); // --bare would ignore the subscription login
     }
 

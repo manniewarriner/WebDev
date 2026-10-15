@@ -20,6 +20,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
     // Claude keeps its own conversation state; we remember its session id per folder and --resume it.
     private readonly Dictionary<string, string> _sessions = new(StringComparer.OrdinalIgnoreCase);
 
+    public string ModelId => options.Model ?? "sonnet";
     public string Id { get; } = id;
     public string DisplayName { get; } = displayName;
     public bool IsAgentic => true;
@@ -38,7 +39,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
     {
         var args = new List<string> { "-p", "--output-format", "stream-json", "--verbose" };
         args.AddRange(["--permission-mode", request.ReadOnly ? "plan" : options.PermissionMode]);
-        if (!string.IsNullOrEmpty(options.Model)) args.AddRange(["--model", options.Model]);
+        args.AddRange(["--model", ModelId]);
         if (options.AllowedTools is { Count: > 0 }) args.AddRange(["--allowedTools", string.Join(",", options.AllowedTools)]);
         if (resumeSessionId is not null) args.AddRange(["--resume", resumeSessionId]);
         return args;
@@ -66,7 +67,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
         }
 
         var cwd = request.WorkingDirectory ?? Environment.CurrentDirectory;
-        _sessions.TryGetValue(cwd, out var sessionId);
+        string? sessionId = null; // Every request carries the authoritative transcript, including provider switches.
         // With a live session only the newest user message is sent; otherwise the whole transcript,
         // so a conversation that rotated here from another model keeps its context.
         var prompt = sessionId is not null ? Transcript.LastUserMessage(request.Messages) : Transcript.Flatten(request.Messages);

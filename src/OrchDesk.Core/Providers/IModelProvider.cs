@@ -8,6 +8,7 @@ public interface IModelProvider
 {
     string Id { get; }
     string DisplayName { get; }
+    string ModelId => "default";
 
     /// <summary>
     /// True when the provider runs its own agent (Claude/Codex/OpenCode CLIs) and executes tools itself.

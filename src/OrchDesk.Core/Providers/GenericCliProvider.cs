@@ -11,6 +11,7 @@ public sealed class GenericCliProvider(
     string id, string displayName, string executable, IReadOnlyList<string> args,
     IReadOnlyDictionary<string, string?>? env = null) : IModelProvider
 {
+    public string ModelId => args.SkipWhile(a => a != "--model").Skip(1).FirstOrDefault() ?? "default";
     public string Id { get; } = id;
     public string DisplayName { get; } = displayName;
     public bool IsAgentic => true;

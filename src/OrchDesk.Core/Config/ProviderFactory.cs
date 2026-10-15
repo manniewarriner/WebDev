@@ -59,8 +59,15 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
         }
     }
 
+    public static string? AutoModel(AppConfig config, ProviderConfig provider)
+    {
+        if (!config.PreferFreeModels || provider.Id != "opencode-go") return provider.Model;
+        string[] preferred = ["deepseek-v4.1-flash-free", "mimo-v2.6-flash-free", "nemotron-3.5-lightning-free", "longcat-2.5-preview-free"];
+        return preferred.FirstOrDefault(provider.AvailableModels.Contains) ?? provider.Model;
+    }
+
     public List<IModelProvider> CreateAll(AppConfig config) =>
-        config.Providers.Select(c => Create(c)).OfType<IModelProvider>().ToList();
+        config.Providers.Select(c => Create(c, AutoModel(config, c))).OfType<IModelProvider>().ToList();
 
     /// <summary>Providers in the configured fallback order (unknown/disabled ids are skipped).</summary>
     public static List<IModelProvider> InRotationOrder(AppConfig config, IReadOnlyList<IModelProvider> all) =>

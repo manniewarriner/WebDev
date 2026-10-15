@@ -18,10 +18,18 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
 
     /// <summary>null = Auto (follow the rotation chain). Otherwise try this provider first, then fall back.</summary>
     public string? PreferredProviderId { get; set; }
+    private DateTimeOffset _routingStarted;
+    public TimeSpan FailoverBudget { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan? FirstTokenTimeout { get; set; }
+    public string? StickyProviderId { get; set; }
+    public List<ProviderAttempt> Attempts { get; } = [];
     public IModelProvider? LastProvider { get; private set; }
 
     public async IAsyncEnumerable<ChatEvent> SendAsync(string userText, [EnumeratorCancellation] CancellationToken ct, bool readOnly = false)
     {
+        _routingStarted = DateTimeOffset.UtcNow;
+        await rotator.RefreshUnknownHealthAsync(ct);
+        Attempts.Clear();
         var userMessage = ChatMessage.User(userText);
         Messages.Add(userMessage);
         var ctx = new ToolContext(Workspace);
@@ -32,9 +40,10 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             var provider = PickProvider(tried);
             if (provider is null)
             {
-                yield return new ErrorEvent(tried.Count == 0
-                    ? "No model is available. Check the Accounts panel (PC offline, limits hit, or nothing configured)."
-                    : "Every model in the chain is offline or out of quota right now.");
+                foreach (var account in rotator.Accounts.Where(a => !tried.Contains(a.Provider.Id)))
+                    Attempts.Add(new(account.Provider.Id, account.Provider.ModelId,
+                        account.Health == ProviderHealth.NotConfigured ? "not logged in / not configured" : account.LastLimitHit is not null ? "limit" : "offline"));
+                yield return new ErrorEvent("All providers unavailable: " + (Attempts.Count == 0 ? "none configured" : string.Join("; ", Attempts.Select(a => $"{a.ProviderId}: {a.Reason}"))));
                 yield break;
             }
             tried.Add(provider.Id);
@@ -42,12 +51,16 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             yield return new StatusUpdate($"Using {provider.DisplayName}");
 
             ChatEvent? failover = null;
-            await foreach (var ev in loop.RunAsync(provider, Messages, ctx, ct, readOnly))
+            var answered = false;
+            await foreach (var ev in GuardedRun(provider, ctx, ct, readOnly))
             {
-                if (ev is UsageLimitHit or ProviderUnavailable) { failover = ev; break; }
+                if (ev is UsageLimitHit or ProviderUnavailable or ErrorEvent) { failover = ev; break; }
+                if (ev is TextDelta { Text.Length: > 0 } or ToolCallRequested or Done { FinalText.Length: > 0 }) answered = true;
                 yield return ev;
             }
-            if (failover is null) yield break;
+            if (failover is null && !answered) failover = new ProviderUnavailable(provider.Id, "Empty response");
+            if (failover is null) { StickyProviderId = provider.Id; Attempts.Add(new(provider.Id, provider.ModelId, "answered")); yield break; }
+            Attempts.Add(new(provider.Id, provider.ModelId, failover is UsageLimitHit ? "limit" : failover is ErrorEvent error ? (error.Message.Contains("401") || error.Message.Contains("403") || error.Message.Contains("log", StringComparison.OrdinalIgnoreCase) ? "not logged in" : "error") : "offline / timeout"));
 
             // Undo the partial attempt so the next model starts from the user's message. (Found by reference, not by
             // count: the loop may have inserted a system prompt at the front.)
@@ -61,15 +74,49 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             else
             {
                 rotator.MarkOffline(provider.Id);
-                yield return new StatusUpdate($"{provider.DisplayName} is offline — switching model. ({((ProviderUnavailable)failover).Message})");
+                yield return new StatusUpdate($"{provider.DisplayName} is offline — switching model. ({Attempts[^1].Reason})");
             }
+        }
+    }
+
+    // Bound waiting for provider events independently from a long-running reply/tool execution.
+    private async IAsyncEnumerable<ChatEvent> GuardedRun(IModelProvider provider, ToolContext ctx,
+        [EnumeratorCancellation] CancellationToken ct, bool readOnly)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        await using var events = loop.RunAsync(provider, Messages, ctx, timeout.Token, readOnly).GetAsyncEnumerator(timeout.Token);
+        var first = true;
+        var firstDeadline = DateTimeOffset.UtcNow + (FirstTokenTimeout ?? TimeSpan.FromSeconds(provider.IsLocal || provider.Id == "remote-pc" ? 20 : 6));
+        while (true)
+        {
+            ChatEvent? failure = null;
+            bool more = false;
+            try
+            {
+                var wait = first ? firstDeadline - DateTimeOffset.UtcNow : TimeSpan.FromMinutes(5);
+                if (wait <= TimeSpan.Zero) throw new OperationCanceledException();
+                if (first && !provider.IsLocal && provider.Id != "remote-pc") {
+                    var remaining = FailoverBudget - (DateTimeOffset.UtcNow - _routingStarted);
+                    if (remaining < wait) wait = remaining > TimeSpan.Zero ? remaining : TimeSpan.FromMilliseconds(1);
+                }
+                timeout.CancelAfter(wait);
+                more = await events.MoveNextAsync();
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { failure = new ProviderUnavailable(provider.Id, "Response timed out"); }
+            catch (Exception) when (!ct.IsCancellationRequested) { failure = new ProviderUnavailable(provider.Id, "Provider failed"); }
+            if (failure is not null) { yield return failure; yield break; }
+            if (!more) yield break;
+            if (events.Current is TextDelta or ToolCallRequested or Done) first = false;
+            yield return events.Current;
         }
     }
 
     private IModelProvider? PickProvider(HashSet<string> tried)
     {
-        if (PreferredProviderId is { } id && !tried.Contains(id) && rotator.Find(id) is { } pref && rotator.IsUsable(pref))
+        if ((PreferredProviderId ?? StickyProviderId) is { } id && !tried.Contains(id) && rotator.Find(id) is { } pref && rotator.IsUsable(pref))
             return pref.Provider;
         return rotator.Current(tried);
     }
 }
+
+public sealed record ProviderAttempt(string ProviderId, string Model, string Reason);

@@ -43,7 +43,7 @@ public sealed class ProviderLogo : ContentControl
             : text.Contains("ollama") ? "ollama" : text.Contains("gemma") ? "gemma-color"
             : text.Contains("bonsai") || text.Contains("nemotron") ? "lmstudio"
             : text.Contains("qwen") || text.Contains("local-pc") ? "qwen-color"
-            : text.Contains("lmstudio") || text.Contains("lm studio") ? "lmstudio"
+            : text.Contains("remote-pc") || text.Contains("lmstudio") || text.Contains("lm studio") ? "lmstudio"
             : text.Contains("openai") ? "openai" : text.Contains("anthropic") ? "anthropic" : null;
         if (Provider is ModelPickerOption { Id: null })
         {

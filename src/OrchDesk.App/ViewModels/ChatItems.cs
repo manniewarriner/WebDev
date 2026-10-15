@@ -15,6 +15,8 @@ public sealed class UserItem(string text) : ChatItem
 public sealed partial class AssistantItem(string modelName) : ChatItem
 {
     public string ModelName { get; } = modelName;
+    public string? ProviderId { get; init; }
+    public OrchDesk.Core.Config.ModelPickerOption Provider => new(ProviderId, ProviderId ?? ModelName);
     [ObservableProperty] private bool _isStreaming;
     [ObservableProperty] private string _reasoning = "";
     [ObservableProperty] private string _text = "";

@@ -12,7 +12,8 @@ public sealed record OpenAiCompatOptions(
     string Model,
     string? ApiKey = null,
     IReadOnlyDictionary<string, string>? ExtraHeaders = null,
-    double? Temperature = null);
+    double? Temperature = null,
+    TimeSpan? HeadersTimeout = null);
 
 /// <summary>
 /// Any OpenAI-compatible chat endpoint: local PC models (Ollama, LM Studio, llama.cpp), OpenCode Zen/Go,
@@ -33,6 +34,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
         _http = http;
     }
 
+    public string ModelId => _options.Model;
     public string Id { get; }
     public string DisplayName { get; }
     public bool IsAgentic => false;
@@ -133,7 +135,9 @@ public sealed class OpenAiCompatProvider : IModelProvider
         ChatEvent? failure = null;
         try
         {
-            resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var headersTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            headersTimeout.CancelAfter(_options.HeadersTimeout ?? TimeSpan.FromSeconds(IsLocal || Id == "remote-pc" ? 20 : 6));
+            resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, headersTimeout.Token);
         }
         catch (HttpRequestException ex)
         {

@@ -53,6 +53,7 @@ public sealed class OvernightConfig
 
 public sealed class AppConfig
 {
+    public bool PreferFreeModels { get; set; } = true;
     public bool WebFetchEnabled { get; set; } = true;
     public string? MeshyApiKeyProtected { get; set; }
     public List<ProviderConfig> Providers { get; set; } = [];

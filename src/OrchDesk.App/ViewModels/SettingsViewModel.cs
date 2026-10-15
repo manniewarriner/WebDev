@@ -21,6 +21,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private ProviderEdit? _selected;
     [ObservableProperty] private string _rotationOrder;
     [ObservableProperty] private int _maxSteps;
+    [ObservableProperty] private bool _preferFreeModels;
     [ObservableProperty] private int _limitCooldownMinutes;
     [ObservableProperty] private string _extraAllowedCommands;
     [ObservableProperty] private string _plannerId;
@@ -60,6 +61,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Selected = Providers.FirstOrDefault();
         _rotationOrder = string.Join(", ", c.RotationOrder);
         _maxSteps = c.MaxSteps;
+        _preferFreeModels = c.PreferFreeModels;
         _limitCooldownMinutes = c.LimitCooldownMinutes;
         _extraAllowedCommands = string.Join(Environment.NewLine, c.ExtraAllowedCommands);
         _plannerId = c.Supervisor.PlannerProviderId;
@@ -184,6 +186,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         c.Providers = Providers.Select(p => p.ToConfig(_services.Secrets)).ToList();
         c.RotationOrder = order;
         c.MaxSteps = Math.Clamp(MaxSteps, 1, 200);
+        c.PreferFreeModels = PreferFreeModels;
         c.LimitCooldownMinutes = Math.Clamp(LimitCooldownMinutes, 1, 24 * 60);
         c.ExtraAllowedCommands = SplitList(ExtraAllowedCommands.Replace(",", "\n"));
         c.Supervisor.PlannerProviderId = PlannerId.Trim();
