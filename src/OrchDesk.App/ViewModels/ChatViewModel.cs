@@ -70,6 +70,7 @@ public sealed partial class ChatViewModel : ObservableObject
 
     private void ReloadProviders()
     {
+        ShutdownWhenDone = _services.Config.Overnight.ShutdownWhenDone;
         var keep = SelectedProvider?.Id ?? _services.Config.LastProviderId;
         ProviderOptions.Clear();
         ProviderOptions.Add(new ProviderOption(null, "Auto — PC first, cloud when it's off"));
