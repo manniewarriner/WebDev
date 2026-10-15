@@ -101,7 +101,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             var service = new OrchDesk.Core.Integrations.IntegrationModelSync(http, _services.Secrets, new OrchDesk.Core.Integrations.ClaudeAuthRunner());
             var result = await service.RunAsync(config, sync);
             provider.Status = result.Message;
-            if (!result.Ok) provider.ModelsSyncedAt = null;
+
             if (result.Ok && sync)
             {
                 provider.ModelBaseUrls = config.ModelBaseUrls;
@@ -119,6 +119,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task TestConnectionAsync(ProviderEdit? provider)
     {
+        if (provider?.Kind == ProviderKind.OpenAiCompatible) { await CheckIntegrationAsync(provider, true, false); return; }
         if (provider is null || provider.Testing) return;
         provider.Testing = true; provider.Status = "Testing?";
         try { var result = await Tester().TestAsync(provider.ToConfig(_services.Secrets)); provider.Status = $"{result.Message} ({result.ElapsedMs} ms)"; }

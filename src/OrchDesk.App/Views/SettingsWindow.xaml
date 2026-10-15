@@ -114,7 +114,7 @@
                             </StackPanel>
 
                                         <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                                            <Button Content="Test connection" Command="{Binding DataContext.TestConnectionCommand, ElementName=Root}" CommandParameter="{Binding}" />
+                                            <Button Content="Connect / Sync" Command="{Binding DataContext.TestConnectionCommand, ElementName=Root}" CommandParameter="{Binding}" />
                                             <Button Content="Save" Command="{Binding DataContext.SaveCommand, ElementName=Root}" Margin="8,0,0,0" />
                                         </StackPanel>
                                     </StackPanel>

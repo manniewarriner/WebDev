@@ -18,7 +18,7 @@ public sealed class AppServices
 {
     private static readonly HttpClient Http = new() { Timeout = Timeout.InfiniteTimeSpan }; // streams can run long; requests use their own tokens
 
-    public ConfigStore Store { get; } = new();
+    public ConfigStore Store { get; }
     public ISecretProtector Secrets { get; } = new DpapiSecretProtector();
     public ToolRegistry Tools { get; private set; } = ToolRegistry.CreateDefault();
     public AppConfig Config { get; private set; }
@@ -31,11 +31,13 @@ public sealed class AppServices
 
     public bool IsScreenshot { get; }
 
-    public AppServices(bool screenshot = false)
+    public AppServices(bool screenshot = false, ConfigStore? store = null)
     {
+        Store = store ?? new();
         IsScreenshot = screenshot;
-        Config = screenshot ? AppConfig.CreateDefault() : Store.Load();
-        if (screenshot)
+        var useFixtures = screenshot && (store is null || !File.Exists(Store.FilePath));
+        Config = useFixtures ? AppConfig.CreateDefault() : Store.Load();
+        if (useFixtures)
         {
             // Display-only fixtures: this instance never watches or saves user configuration.
             foreach (var provider in Config.Providers.Where(p => p.Kind == ProviderKind.ClaudeCli || p.Id == "opencode-go"))
@@ -46,7 +48,7 @@ public sealed class AppServices
                     provider.ModelsSyncedAt = DateTimeOffset.Now.AddMinutes(-2);
                 }
         }
-        if (screenshot) { var disconnected = Config.Providers.First(p => p.Id == "claude-outlook"); disconnected.Enabled = false; disconnected.AvailableModels.Clear(); disconnected.ModelsSyncedAt = null; }
+        if (useFixtures) { var disconnected = Config.Providers.First(p => p.Id == "claude-outlook"); disconnected.Enabled = false; disconnected.AvailableModels.Clear(); disconnected.ModelsSyncedAt = null; }
         Queue = new OvernightQueueStore(Path.Combine(Store.Directory, "overnight"));
         ReportsDir = Path.Combine(Store.Directory, "reports");
         Rebuild();
@@ -55,6 +57,15 @@ public sealed class AppServices
             try { Config = Store.Load(); Rebuild(); } catch (IOException) { }
         }));
         Store.Watch();
+        _ = SyncModelsAsync();
+    }
+
+    private async Task SyncModelsAsync()
+    {
+        var config = Config;
+        var sync = new OrchDesk.Core.Integrations.IntegrationModelSync(Http, Secrets, new OrchDesk.Core.Integrations.ClaudeAuthRunner());
+        var results = await Task.WhenAll(config.Providers.Where(p => p.Enabled && p.Kind == ProviderKind.OpenAiCompatible).Select(p => sync.RunAsync(p)));
+        if (ReferenceEquals(config, Config) && results.Any(r => r.Ok)) Save();
     }
 
     public void Rebuild()

@@ -8,6 +8,7 @@ public static class ModelDisplayNames
     {
         if (string.IsNullOrWhiteSpace(id)) return "Automatic";
         var name = id.Split('/').Last();
+        if (name.Equals("gemma-4-e2b", StringComparison.OrdinalIgnoreCase)) return "Gemma 4 E2B";
         foreach (var tier in new[] { "sonnet", "opus", "haiku" })
             if (name.Contains(tier, StringComparison.OrdinalIgnoreCase)) return "Claude " + CultureInfo.InvariantCulture.TextInfo.ToTitleCase(tier);
         name = Regex.Replace(name, @"-qat$", "", RegexOptions.IgnoreCase);

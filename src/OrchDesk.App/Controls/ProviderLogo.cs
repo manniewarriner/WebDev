@@ -36,11 +36,12 @@ public sealed class ProviderLogo : ContentControl
             ModelPickerOption p => (p.Id ?? "", p.Model ?? p.DisplayModel, p.Kind),
             _ => (Provider?.ToString() ?? "", (string?)null, ProviderKind.OpenAiCompatible)
         };
-        var text = (id + " " + model).ToLowerInvariant();
+        var text = (string.IsNullOrWhiteSpace(model) ? id : model).ToLowerInvariant();
         var key = kind == ProviderKind.ClaudeCli || text.Contains("claude") ? "claude-color"
             : kind == ProviderKind.OpenCodeCli || text.Contains("opencode") ? "opencode"
             : kind == ProviderKind.CodexCli || text.Contains("codex") ? "codex-color"
             : text.Contains("ollama") ? "ollama" : text.Contains("gemma") ? "gemma-color"
+            : text.Contains("bonsai") || text.Contains("nemotron") ? "lmstudio"
             : text.Contains("qwen") || text.Contains("local-pc") ? "qwen-color"
             : text.Contains("lmstudio") || text.Contains("lm studio") ? "lmstudio"
             : text.Contains("openai") ? "openai" : text.Contains("anthropic") ? "anthropic" : null;

@@ -8,7 +8,7 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
     // Stable per app run so OpenCode sees one session (its docs ask clients for a steady x-opencode-session).
     private static readonly string SessionId = Guid.NewGuid().ToString("N");
 
-    public IModelProvider? Create(ProviderConfig c, string? modelOverride = null)
+    public IModelProvider? Create(ProviderConfig c, string? modelOverride = null, double? temperature = null)
     {
         if (modelOverride is not null)
         {
@@ -34,7 +34,7 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
                     headers["User-Agent"] = "OrchDesk/0.1";
                 }
                 return new OpenAiCompatProvider(c.Id, c.DisplayName,
-                    new OpenAiCompatOptions(baseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers),
+                    new OpenAiCompatOptions(baseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers, temperature),
                     c.IsLocal, http);
 
             case ProviderKind.ClaudeCli:

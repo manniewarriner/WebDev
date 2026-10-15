@@ -37,7 +37,7 @@ public sealed class IntegrationModelSync(HttpClient http, ISecretProtector secre
     public async Task<ModelSyncResult> RunAsync(ProviderConfig provider, bool sync = true, CancellationToken ct = default)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(45));
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
         try
         {
             List<string> models;
@@ -47,7 +47,24 @@ public sealed class IntegrationModelSync(HttpClient http, ISecretProtector secre
                 if (!await claude.IsLoggedInAsync(provider, timeout.Token)) return new(false, "Claude unavailable or profile not logged in with a subscription.");
                 models = ["sonnet", "opus", "haiku"];
             }
-            else
+            else if (provider.Kind == ProviderKind.OpenAiCompatible && provider.BaseUrl?.Contains("opencode.ai", StringComparison.OrdinalIgnoreCase) != true)
+            {
+                if (!Uri.TryCreate(provider.BaseUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) return new(false, "Enter an HTTP model endpoint.");
+                using var request = new HttpRequestMessage(HttpMethod.Get, provider.BaseUrl!.TrimEnd('/') + "/models");
+                if (secrets.TryUnprotect(provider.ApiKeyProtected) is { Length: > 0 } key) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+                if (secrets.TryUnprotect(provider.AccessClientIdProtected) is { } clientId) request.Headers.TryAddWithoutValidation("CF-Access-Client-Id", clientId);
+                if (secrets.TryUnprotect(provider.AccessClientSecretProtected) is { } clientSecret) request.Headers.TryAddWithoutValidation("CF-Access-Client-Secret", clientSecret);
+                using var response = await http.SendAsync(request, timeout.Token);
+                if (!response.IsSuccessStatusCode) return new(false, $"Model request failed (HTTP {(int)response.StatusCode}).");
+                using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+                models = json.RootElement.GetProperty("data").EnumerateArray()
+                    .Where(item => !item.TryGetProperty("type", out var type) || !type.ToString().Contains("embed", StringComparison.OrdinalIgnoreCase))
+                    .Select(item => item.GetProperty("id").GetString()).OfType<string>()
+                    .Where(id => !string.IsNullOrWhiteSpace(id) && !id.Contains("embed", StringComparison.OrdinalIgnoreCase))
+                    .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+                if (models.Count == 0) return new(false, "Endpoint returned no chat models.");
+            }
+            else if (provider.Kind == ProviderKind.OpenAiCompatible)
             {
                 var key = secrets.TryUnprotect(provider.ApiKeyProtected);
                 if (string.IsNullOrWhiteSpace(key)) return new(false, "Enter an OpenCode API key.");
@@ -71,6 +88,9 @@ public sealed class IntegrationModelSync(HttpClient http, ISecretProtector secre
                 models = models.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
                 if (models.Count == 0) return new(false, "OpenCode returned no models.");
             }
+            else return new(false, "Model discovery is unavailable for this CLI.");
+            models = models.Where(id => !id.Contains("embed", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (models.Count == 0) return new(false, "Endpoint returned no chat models.");
             if (sync) { provider.AvailableModels = models; provider.ModelBaseUrls = modelBaseUrls; provider.ModelsSyncedAt = DateTimeOffset.UtcNow; }
             return new(true, sync ? $"Synced {models.Count} models" : "Connected");
         }

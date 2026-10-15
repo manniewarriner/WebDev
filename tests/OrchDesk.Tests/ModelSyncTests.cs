@@ -26,6 +26,50 @@ public sealed class ModelSyncTests
         public Task<bool> IsLoggedInAsync(ProviderConfig profile, CancellationToken ct) { Profile = profile; return Task.FromResult(authenticated); }
     }
     [Fact]
+    public async Task CompatibleDiscoveryFiltersEmbeddingsAndSendsRelayHeaders()
+    {
+        var secrets = new Secrets();
+        using var http = new HttpClient(new Handler(request =>
+        {
+            Assert.Equal("https://relay.test/v1/models", request.RequestUri!.AbsoluteUri);
+            Assert.Equal("client", Assert.Single(request.Headers.GetValues("CF-Access-Client-Id")));
+            Assert.Equal("token", Assert.Single(request.Headers.GetValues("CF-Access-Client-Secret")));
+            return new(HttpStatusCode.OK) { Content = new StringContent("""{"data":[{"id":"qwen/qwen3.5-9b"},{"id":"gemma-4-e2b"},{"id":"text-embed"},{"id":"hidden","type":"embeddings"},{"id":"gemma-4-e2b"}]}""") };
+        }));
+        var provider = new ProviderConfig { BaseUrl = "https://relay.test/v1/", AvailableModels = ["old"], AccessClientIdProtected = secrets.Protect("client"), AccessClientSecretProtected = secrets.Protect("token") };
+        Assert.True((await new IntegrationModelSync(http, secrets, new Auth(false)).RunAsync(provider)).Ok);
+        Assert.Equal(new[] { "gemma-4-e2b", "qwen/qwen3.5-9b" }, provider.AvailableModels);
+        Assert.NotNull(provider.ModelsSyncedAt);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("{\"data\":[]}")]
+    public async Task CompatibleFailurePreservesCachedListAndTimestamp(string response)
+    {
+        using var http = new HttpClient(new Handler(_ => new(HttpStatusCode.OK) { Content = new StringContent(response) }));
+        var timestamp = DateTimeOffset.UtcNow.AddDays(-1);
+        var provider = new ProviderConfig { BaseUrl = "http://localhost:1234/v1", AvailableModels = ["old"], ModelsSyncedAt = timestamp };
+        Assert.False((await new IntegrationModelSync(http, new Secrets(), new Auth(false)).RunAsync(provider)).Ok);
+        Assert.Equal(new[] { "old" }, provider.AvailableModels);
+        Assert.Equal(timestamp, provider.ModelsSyncedAt);
+    }
+
+    [Fact]
+    public void PickerDeduplicatesEndpointAndModelButKeepsRemoteModels()
+    {
+        var providers = new[] {
+            new ProviderConfig { Id = "local-pc", BaseUrl = "http://localhost/v1", AvailableModels = ["qwen", "gemma"] },
+            new ProviderConfig { Id = "local-pc-gemma", BaseUrl = "http://localhost/v1/", AvailableModels = ["qwen", "gemma", "bonsai-27b"] },
+            new ProviderConfig { Id = "remote-pc", BaseUrl = "https://remote/v1", AvailableModels = ["qwen"] }
+        };
+        var options = ModelPickerOption.Expand(providers);
+        Assert.Equal(4, options.Count);
+        Assert.Equal(3, options.Count(o => o.ProviderGroup == "LM Studio (PC)"));
+        Assert.Single(options.Where(o => o.Id == "remote-pc"));
+    }
+
+    [Fact]
     public async Task OpenCodeMergesGoAndZenWithBearerKey()
     {
         var paths = new List<string>();

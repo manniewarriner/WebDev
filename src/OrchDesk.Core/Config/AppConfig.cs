@@ -99,7 +99,7 @@ public sealed class AppConfig
 }
 
 /// <summary>Loads/saves %APPDATA%\OrchDesk\config.json. Secrets inside are already DPAPI-protected strings.</summary>
-public sealed class ConfigStore(string? directory = null) : IDisposable
+public sealed class ConfigStore(string? directory = null, string? filePath = null) : IDisposable
 {
     public static readonly JsonSerializerOptions Json = new()
     {
@@ -108,9 +108,17 @@ public sealed class ConfigStore(string? directory = null) : IDisposable
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public string Directory { get; } = directory ??
+    public string Directory { get; } = filePath is not null ? Path.GetDirectoryName(Path.GetFullPath(filePath))! : directory ??
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrchDesk");
-    public string FilePath => Path.Combine(Directory, "config.json");
+    public string FilePath { get; } = filePath is not null ? Path.GetFullPath(filePath) : Path.Combine(directory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrchDesk"), "config.json");
+
+    public static ConfigStore FromArgs(string[] args)
+    {
+        var index = Array.FindIndex(args, a => a.Equals("--config", StringComparison.OrdinalIgnoreCase));
+        if (index < 0) return new();
+        if (index + 1 >= args.Length || args[index + 1].StartsWith("--")) throw new ArgumentException("--config requires a path.");
+        return new(filePath: args[index + 1]);
+    }
 
     private FileSystemWatcher? _watcher;
     public event Action? Changed;
@@ -118,7 +126,7 @@ public sealed class ConfigStore(string? directory = null) : IDisposable
     {
         if (_watcher is not null) return;
         System.IO.Directory.CreateDirectory(Directory);
-        _watcher = new FileSystemWatcher(Directory, "config.json") { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName };
+        _watcher = new FileSystemWatcher(Directory, Path.GetFileName(FilePath)) { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName };
         _watcher.Changed += (_, _) => Changed?.Invoke();
         _watcher.Created += (_, _) => Changed?.Invoke();
         _watcher.Renamed += (_, _) => Changed?.Invoke();

@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Text.Json.Nodes;
 using OrchDesk.Core.Models;
 
@@ -25,7 +26,7 @@ public static class SseChatParser
         if (message["reasoning_content"] is JsonValue reasoning && reasoning.TryGetValue<string>(out var thought) && thought.Length > 0)
             yield return new ReasoningDelta(thought);
         if (message["content"] is JsonValue value && value.TryGetValue<string>(out var text) && text.Length > 0)
-            yield return new TextDelta(text);
+            foreach (var ev in ParseContent(text, message["tool_calls"] is not JsonArray { Count: > 0 })) yield return ev;
         if (message["tool_calls"] is JsonArray calls)
             foreach (var call in calls.OfType<JsonObject>())
                 yield return new ToolCallRequested(new ToolCall(call["id"]?.ToString() ?? Guid.NewGuid().ToString("N"),
@@ -33,10 +34,42 @@ public static class SseChatParser
         yield return new Done();
     }
 
+    public static IEnumerable<ChatEvent> ParseContent(string text, bool allowTools = true)
+    {
+        var thoughts = Regex.Matches(text, @"<think(?:ing)?>(.*?)</think(?:ing)?>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        foreach (Match thought in thoughts) yield return new ReasoningDelta(thought.Groups[1].Value);
+        text = Regex.Replace(text, @"<think(?:ing)?>.*?</think(?:ing)?>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        foreach (Match match in Regex.Matches(text, @"<tool_call>(.*?)</tool_call>", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        {
+            ToolCall? call = null;
+            if (allowTools)
+            {
+                try
+                {
+                    var node = JsonNode.Parse(match.Groups[1].Value.Trim());
+                    var function = node?["function"] ?? node;
+                    if (function?["name"]?.GetValue<string>() is { Length: > 0 } name)
+                    {
+                        var args = function["arguments"];
+                        var json = args is JsonValue value && value.TryGetValue<string>(out var raw) ? raw : args?.ToJsonString() ?? "{}";
+                        JsonNode.Parse(json); // malformed arguments must not execute
+                        call = new(node?["id"]?.ToString() ?? Guid.NewGuid().ToString("N"), name, json);
+                    }
+                }
+                catch (System.Text.Json.JsonException) { }
+                catch (InvalidOperationException) { }
+            }
+            if (call is not null) yield return new ToolCallRequested(call);
+        }
+        text = Regex.Replace(text, @"<tool_call>.*?</tool_call>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        if (!string.IsNullOrWhiteSpace(text)) yield return new TextDelta(text);
+    }
+
     public static async IAsyncEnumerable<ChatEvent> ParseAsync(
         IAsyncEnumerable<string> lines, [EnumeratorCancellation] CancellationToken ct = default)
     {
         var thinkingShown = false;
+        var contentText = new StringBuilder();
         var calls = new SortedDictionary<int, (string Id, string Name, StringBuilder Args)>();
 
         await foreach (var raw in lines.WithCancellation(ct))
@@ -66,7 +99,12 @@ public static class SseChatParser
                 yield return new ReasoningDelta(thought);
             }
             if (delta["content"] is JsonValue content && content.TryGetValue<string>(out var text) && text.Length > 0)
-                yield return new TextDelta(text);
+            {
+                // Preserve ordinary streaming; buffer markup from its first fragment so split
+                // reasoning/tool tags never leak into the answer or get executed twice.
+                if (contentText.Length == 0 && !text.Contains('<')) yield return new TextDelta(text);
+                else contentText.Append(text);
+            }
 
             if (delta["tool_calls"] is JsonArray toolCalls)
             {
@@ -86,6 +124,8 @@ public static class SseChatParser
                 }
             }
         }
+
+        foreach (var ev in ParseContent(contentText.ToString(), calls.Count == 0)) yield return ev;
 
         foreach (var (index, acc) in calls)
         {

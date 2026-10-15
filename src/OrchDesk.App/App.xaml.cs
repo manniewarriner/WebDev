@@ -9,6 +9,8 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        OrchDesk.Core.Config.ConfigStore storeOverride;
+        try { storeOverride = OrchDesk.Core.Config.ConfigStore.FromArgs(e.Args); } catch (ArgumentException) { Shutdown(2); return; }
         var sdkFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
         if (System.IO.File.Exists(System.IO.Path.Combine(sdkFolder, "dotnet.exe"))) Environment.SetEnvironmentVariable("PATH", sdkFolder + System.IO.Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
 
@@ -23,7 +25,7 @@ public partial class App : Application
                 if (!System.IO.Directory.Exists(workspace)) throw new ArgumentException("Workspace missing");
                 var until = TimeOnly.ParseExact(Arg("--until") ?? "08:00", "HH:mm", System.Globalization.CultureInfo.InvariantCulture);
                 var deadline = DateTime.Today.Add(until.ToTimeSpan()); if (deadline <= DateTime.Now) deadline = deadline.AddDays(1);
-                var store = new OrchDesk.Core.Config.ConfigStore(); var config = store.Load();
+                var store = storeOverride; var config = store.Load();
                 using var http = new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan };
                 var providers = new OrchDesk.Core.Config.ProviderFactory(new OrchDesk.Core.Config.DpapiSecretProtector(), http).CreateAll(config);
                 var run = new OrchDesk.Core.Overnight.OvernightRun {
@@ -45,7 +47,7 @@ public partial class App : Application
         if (e.Args.Contains("--smoketest", StringComparer.OrdinalIgnoreCase))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            var store = new OrchDesk.Core.Config.ConfigStore();
+            var store = storeOverride;
             using var http = new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan };
             try {
                 var results = await OrchDesk.Core.Verification.IntegrationSmokeRunner.RunAsync(store.Load(), new OrchDesk.Core.Config.DpapiSecretProtector(), http, System.IO.Path.Combine(store.Directory, "smoketest"));
@@ -64,9 +66,9 @@ public partial class App : Application
             var id = providerIndex < 0 ? "local-pc" : providerIndex + 1 < e.Args.Length ? e.Args[providerIndex + 1] : "";
             try {
                 using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(3) };
-                var config = new OrchDesk.Core.Config.ConfigStore().Load();
+                var config = storeOverride.Load();
                 // local-pc is the explicit LM Studio verification target, independent of older saved defaults.
-                var providerConfig = id == "local-pc" ? OrchDesk.Core.Config.AppConfig.CreateDefault().Providers.First(p => p.Id == id)
+                var providerConfig = id == "local-pc" && !e.Args.Contains("--config", StringComparer.OrdinalIgnoreCase) ? OrchDesk.Core.Config.AppConfig.CreateDefault().Providers.First(p => p.Id == id)
                     : config.Providers.FirstOrDefault(p => p.Id == id && p.Kind == OrchDesk.Core.Config.ProviderKind.OpenAiCompatible);
                 var provider = providerConfig is null ? null : new OrchDesk.Core.Config.ProviderFactory(new OrchDesk.Core.Config.DpapiSecretProtector(), http).Create(providerConfig);
                 if (provider is null) {
@@ -97,7 +99,7 @@ public partial class App : Application
         var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
         if (pageIndex >= 0 && page is not ("heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "sidebar-collapsed" or "sidebar-expanded")) { Shutdown(2); return; }
         Motion.Screenshot = screenshotMode;
-        var services = new AppServices(screenshotMode);
+        var services = new AppServices(screenshotMode, !screenshotMode || e.Args.Contains("--config", StringComparer.OrdinalIgnoreCase) ? storeOverride : null);
         var themeIndex = Array.FindIndex(e.Args, a => a.Equals("--theme", StringComparison.OrdinalIgnoreCase));
         if (themeIndex >= 0 && themeIndex + 1 < e.Args.Length) services.Config.Theme = e.Args[themeIndex + 1];
         ApplyTheme(services.Config.Theme);
@@ -105,6 +107,7 @@ public partial class App : Application
         var window = new MainWindow { DataContext = vm };
         MainWindow = window;
         window.Show();
+        await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         Window captureWindow = window;
         if (page == "integrations")
         {
