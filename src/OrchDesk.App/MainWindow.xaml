@@ -122,8 +122,20 @@
                 </StackPanel>
             </Expander>
             <!-- Empty state -->
-            <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460"
-                        Visibility="{Binding Items.Count, Converter={StaticResource ZeroVisible}}">
+            <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Workspace}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Workspace}" Value="">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
                 <TextBlock Style="{StaticResource Heading}" Text="What should we build?" Margin="0,0,0,16" />
                 <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="21"
                            Text="Pick a project folder, then describe the change. OrchDesk reads, edits and tests the code there, and asks you before deleting files, installing packages or pushing." />
