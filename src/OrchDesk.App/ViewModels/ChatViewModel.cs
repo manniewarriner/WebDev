@@ -111,6 +111,24 @@ public sealed partial class ChatViewModel : ObservableObject
     private async Task SendAsync()
     {
         var text = Input.Trim();
+        
+        bool isOvernight = false;
+        string goal = "";
+
+        if (text.Equals("/overnight", StringComparison.OrdinalIgnoreCase) || 
+            text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase))
+        {
+            isOvernight = true;
+            goal = text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase) 
+                ? text[11..].Trim() 
+                : "";
+        }
+
+        if (isOvernight && string.IsNullOrEmpty(goal))
+        {
+            return;
+        }
+
         Input = "";
         Items.Add(new UserItem(text));
         ContentAdded?.Invoke();
@@ -119,8 +137,8 @@ public sealed partial class ChatViewModel : ObservableObject
 
         try
         {
-            if (text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase))
-                await RunOvernightAsync(text[11..].Trim(), _cts.Token);
+            if (isOvernight)
+                await RunOvernightAsync(goal, _cts.Token);
             else await foreach (var ev in StartRun(text, _cts.Token)) Render(ev);
         }
         catch (OperationCanceledException)
