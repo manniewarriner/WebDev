@@ -18,6 +18,9 @@
 
     <!-- Plain button: text on surface, used for most secondary actions. -->
     <Style TargetType="Button">
+        <Style.Resources>
+            <SolidColorBrush x:Key="PressedButtonTextBrush" Color="#2B1D15" />
+        </Style.Resources>
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="FontWeight" Value="Normal" />
@@ -62,7 +65,7 @@
                                 <Condition Property="IsEnabled" Value="True" />
                             </MultiTrigger.Conditions>
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PeachBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource BaseBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource PressedButtonTextBrush}" />
                         </MultiTrigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceBrush}" />
