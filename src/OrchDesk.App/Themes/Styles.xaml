@@ -63,7 +63,6 @@
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceBrush}" />
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
                             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
-                            <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
                             <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
