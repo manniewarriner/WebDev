@@ -6,6 +6,10 @@
     <FontFamily x:Key="DisplayFont">Inter, Segoe UI Variable Display, Segoe UI Semibold</FontFamily>
     <FontFamily x:Key="CodeFont">Cascadia Mono, Consolas</FontFamily>
 
+    <Style TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+    </Style>
+
     <Style x:Key="FocusRing">
         <Setter Property="Control.Template">
             <Setter.Value>
