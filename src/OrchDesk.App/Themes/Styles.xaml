@@ -71,6 +71,13 @@
         <Setter Property="Padding" Value="12,6" />
     </Style>
 
+    <!-- Reusable square icon button: 40x40, inherits GhostButton visuals and template. -->
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="Padding" Value="8" />
+    </Style>
+
     <!-- Left-rail navigation: a radio button that shows a terracotta bar when selected. -->
     <Style x:Key="NavButton" TargetType="RadioButton">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
