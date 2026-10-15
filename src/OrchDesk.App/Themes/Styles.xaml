@@ -232,6 +232,13 @@
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
+    <Style x:Key="Body14" TargetType="TextBlock" BasedOn="{StaticResource Body}">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="LineHeight" Value="20" />
+        <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+    </Style>
+
     <Style x:Key="Muted" TargetType="TextBlock" BasedOn="{StaticResource Body}">
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
         <Setter Property="FontSize" Value="12.5" />
