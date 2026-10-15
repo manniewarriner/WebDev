@@ -43,19 +43,21 @@
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PeachBrush}" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsPressed" Value="False" />
+                                <Condition Property="IsEnabled" Value="True" />
+                            </MultiTrigger.Conditions>
                             <Setter TargetName="Bd" Property="Effect">
                                 <Setter.Value>
                                     <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="2" Opacity="0.20" />
                                 </Setter.Value>
                             </Setter>
-                        </Trigger>
+                        </MultiTrigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
-                            <Setter TargetName="Bd" Property="Effect">
-                                <Setter.Value>
-                                    <x:Null />
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceBrush}" />
@@ -63,11 +65,6 @@
                             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
                             <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
                             <Setter Property="Cursor" Value="Arrow" />
-                            <Setter TargetName="Bd" Property="Effect">
-                                <Setter.Value>
-                                    <x:Null />
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
