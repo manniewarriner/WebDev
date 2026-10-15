@@ -86,6 +86,19 @@
                         <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="13" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="720" />
                     </Button>
                     <StackPanel Orientation="Vertical">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Workspace}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Workspace}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
                         <!-- Row 1: Provider, Modes, Open file, New chat -->
                         <WrapPanel>
                             <ComboBox Width="240" ItemsSource="{Binding ProviderOptions}" SelectedItem="{Binding SelectedProvider}" DisplayMemberPath="Label" ToolTip="Choose your chat or overnight manager model" Margin="0,0,8,8" />
