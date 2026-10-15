@@ -122,9 +122,6 @@ public sealed class ConfigStore(string? directory = null) : IDisposable
         if (!File.Exists(FilePath)) return AppConfig.CreateDefault();
         try {
             var config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Json) ?? AppConfig.CreateDefault();
-            // Add newly supported cards to existing installations without overwriting owner settings.
-            foreach (var provider in AppConfig.CreateDefault().Providers)
-                if (!config.Providers.Any(p => p.Id == provider.Id)) config.Providers.Add(provider);
             foreach (var provider in config.Providers)
                 if (provider.Id == "opencode-go" && provider.BaseUrl?.TrimEnd('/') == "https://opencode.ai/zen/go/v1") provider.BaseUrl = "https://opencode.ai/inference/go/v1";
             return config;

@@ -46,6 +46,21 @@ public class IntegrationTests
         using var http = new HttpClient();
         Assert.False((await new ConnectionTester(http, new Secrets()).TestAsync(new() { Kind = kind, Executable = "orchdesk-missing-cli" })).Ok);
     }
+    [Fact] public async Task RemovedBuiltInProviderStaysRemovedAfterReload()
+    {
+        using var dir = new TempDir(); using var store = new ConfigStore(dir.Path);
+        var original = AppConfig.CreateDefault();
+        Assert.Contains(original.Providers, p => p.Id == "local-pc");
+
+        // Remove a built-in provider and save
+        original.Providers.RemoveAll(p => p.Id == "local-pc");
+        store.Save(original);
+
+        // Reload and verify the removal persists (do not re-add missing providers)
+        var loaded = store.Load();
+        Assert.DoesNotContain(loaded.Providers, p => p.Id == "local-pc");
+    }
+
     [Fact] public async Task ConfigNotifiesInAppAndExternalChanges()
     {
         using var dir = new TempDir(); using var store = new ConfigStore(dir.Path);
