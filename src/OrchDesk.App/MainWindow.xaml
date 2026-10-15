@@ -103,6 +103,19 @@
             </Border>
 
             <Expander Grid.Row="1" Header="File editor" VerticalAlignment="Top" Background="{DynamicResource SurfaceBrush}">
+                <Expander.Style>
+                    <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding EditorPath}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding EditorPath}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Expander.Style>
                 <StackPanel Margin="16">
                     <DockPanel><Button DockPanel.Dock="Right" Content="Save" Command="{Binding SaveFileCommand}" /><TextBlock Text="{Binding EditorPath}" TextTrimming="CharacterEllipsis" /></DockPanel>
                     <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" Height="260" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource CodeFont}" />
