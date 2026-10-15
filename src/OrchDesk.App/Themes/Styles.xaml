@@ -1,5 +1,5 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:services="clr-namespace:OrchDesk.App.Services">
     <!-- Brushes are DynamicResource so swapping Dark.xaml/Light.xaml at runtime re-colours everything. -->
 
     <FontFamily x:Key="UiFont">Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
@@ -256,7 +256,7 @@
                     <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"><Path Data="M 0,0 L 4,4 L 8,0" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" /></Border></ControlTemplate></ToggleButton.Template>
                 </ToggleButton>
                 <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" Margin="12,8,32,8" VerticalAlignment="Center" />
-                <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade" HorizontalOffset="-8">
+                <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="None" HorizontalOffset="-8">
                     <Border Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Padding="0,8" Margin="8,8,8,8">
                         <Border.Effect>
                             <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="2" Opacity="0.25" />
@@ -373,7 +373,7 @@
         <Setter Property="Padding" Value="24" />
         <Setter Property="RenderTransform">
             <Setter.Value>
-                <TranslateTransform Y="8" />
+                <TranslateTransform Y="0" />
             </Setter.Value>
         </Setter>
         <Setter Property="Effect">
@@ -381,16 +381,7 @@
                 <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="4" Opacity="0.25" />
             </Setter.Value>
         </Setter>
-        <Style.Triggers>
-            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                <BeginStoryboard>
-                    <Storyboard>
-                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.15" />
-                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="8" To="0" Duration="0:0:0.15" />
-                    </Storyboard>
-                </BeginStoryboard>
-            </EventTrigger>
-        </Style.Triggers>
+        <Setter Property="services:Motion.RevealOnLoad" Value="True" />
     </Style>
 
     <Style x:Key="ComposerInput" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">

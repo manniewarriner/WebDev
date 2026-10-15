@@ -26,6 +26,7 @@ public class OvernightRoundTests
         var runner = new OvernightRoundRunner(runs.Path, ToolRegistry.CreateDefault(false).Add(verify), new PermissionPolicy());
         var run = new OvernightRun { ManagerId = "manager", WorkerIds = ["worker"], Goal = "Write result", Workspace = repo.Path, MaxRounds = 1, MaxSteps = 4 };
         await runner.RunAsync(run, [manager, worker], default);
+        Assert.True(run.Status != "Needs attention", run.Summary);
         Assert.Equal(green, run.TestsPassed);
         Assert.Equal("work", (await Git(repo.Path, "branch", "--show-current")).Output.Trim());
         Assert.Equal(green, before != (await Git(repo.Path, "rev-parse", "HEAD")).Output);
@@ -52,6 +53,7 @@ public class OvernightRoundTests
         var runner = new OvernightRoundRunner(runs.Path, ToolRegistry.CreateDefault(false).Add(verify), new PermissionPolicy());
         var run = new OvernightRun { ManagerId = "manager", WorkerIds = ["worker"], Goal = "Write result", Workspace = repo.Path, MaxRounds = 1, MaxSteps = 4 };
         await runner.RunAsync(run, [manager, worker], default);
+        Assert.True(run.Status != "Needs attention", run.Summary);
         Assert.Equal(expectedStatus, run.Status);
     }
 

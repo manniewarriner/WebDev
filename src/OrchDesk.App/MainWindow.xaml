@@ -15,16 +15,19 @@
     </Window.Resources>
     <Grid PreviewMouseDown="DismissModelPicker">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="224" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!-- ───────── Left rail ───────── -->
-        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
-            <DockPanel Margin="0,24,0,16">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,0,0,32"><Image Source="Assets/orch-app-icon-512.png" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,10,0" /><TextBlock Text="OrchDesk" VerticalAlignment="Center" FontFamily="{StaticResource DisplayFont}" FontSize="24" /></StackPanel>
+        <Border x:Name="Sidebar" Width="224" ClipToBounds="True" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="0,16,0,16">
+                <Button DockPanel.Dock="Top" Content="☰" Click="ToggleSidebar" ToolTip="Collapse or expand sidebar" HorizontalAlignment="Left" Margin="12,0,0,16" Style="{StaticResource GhostButton}" />
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,0,0,32"><Image Source="Assets/orch-app-icon-512.png" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,10,0" /><TextBlock x:Name="SidebarTitle" Text="OrchDesk" VerticalAlignment="Center" FontFamily="{StaticResource DisplayFont}" FontSize="24" /></StackPanel>
 
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,0">
+                <Button x:Name="AvatarButton" DockPanel.Dock="Bottom" Click="OpenAccountMenu" HorizontalAlignment="Left" Margin="12,12,0,0" Padding="0" Background="Transparent" BorderThickness="0"><Border x:Name="AvatarRing" Width="40" Height="40" CornerRadius="20" BorderThickness="2" BorderBrush="#8A8F98" Padding="3"><Grid><Ellipse x:Name="AvatarImage"/><TextBlock x:Name="AvatarInitials" Text="MW" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" /></Grid></Border></Button>
+                <StackPanel x:Name="RailFooter" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="8,0"><Button Content="◷" ToolTip="Recent chats" Click="ToggleSidebar" Style="{StaticResource GhostButton}"/><Button Content="⚙" ToolTip="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}"/><Button Content="◐" ToolTip="Switch theme" Command="{Binding ToggleThemeCommand}" Style="{StaticResource GhostButton}"/></StackPanel>
+                <StackPanel x:Name="SidebarFooter" DockPanel.Dock="Bottom" Margin="16,0">
                     <TextBlock>
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Muted}">
@@ -58,14 +61,15 @@
                 </StackPanel>
 
                 <StackPanel>
-                    <RadioButton Style="{StaticResource NavButton}" GroupName="nav"
+                    <RadioButton ToolTip="Chat" Style="{StaticResource NavButton}" GroupName="nav"
                                  IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Chat}">
-                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8F2;" Margin="0,0,16,0" FontSize="16" /><TextBlock Text="Chat" /></StackPanel>
+                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8F2;" Margin="0,0,16,0" FontSize="16" /><TextBlock x:Name="ChatNavLabel" Text="Chat" /></StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource NavButton}" GroupName="nav"
+                    <RadioButton Style="{StaticResource NavButton}" GroupName="nav" ToolTip="Models and accounts"
                                  IsChecked="{Binding Page, Converter={StaticResource PageEquals}, ConverterParameter=Accounts}">
-                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE713;" Margin="0,0,16,0" FontSize="16" /><TextBlock Text="Models &amp; accounts" /></StackPanel>
+                        <StackPanel Orientation="Horizontal"><TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE713;" Margin="0,0,16,0" FontSize="16" /><TextBlock x:Name="AccountsNavLabel" Text="Models &amp; accounts" /></StackPanel>
                     </RadioButton>
+                    <StackPanel x:Name="HistoryPanel" Margin="20,32,12,0"><TextBlock Text="RECENT CHATS" Style="{StaticResource Muted}" FontSize="10" Margin="0,0,0,12"/><TextBox x:Name="HistorySearch" TextChanged="HistorySearchChanged" ToolTip="Search chat titles" Height="30" Padding="6,3" Margin="0,0,0,6"/><ctl:FilterBar x:Name="HistoryFilters" Margin="0,0,0,8"/><ItemsControl x:Name="HistoryList"><ItemsControl.ItemTemplate><DataTemplate><Button Tag="{Binding}" Click="RestoreChat" HorizontalContentAlignment="Left" Style="{StaticResource GhostButton}" MaxWidth="180" ToolTip="{Binding Title}"><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -81,9 +85,9 @@
             </Grid.RowDefinitions>
 
             <!-- Header: folder, mode, model -->
-            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,16">
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,10">
                 <StackPanel>
-                    <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" ToolTip="Change project folder" Margin="-8,0,0,8">
+                    <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" ToolTip="Change project folder" Margin="-8,0,0,2">
                         <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource CodeFont}" FontSize="13" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="720" />
                     </Button>
                     <StackPanel Orientation="Vertical">
@@ -116,23 +120,8 @@
                                 </Button.Style>
                             </Button>
                             <Button Content="New chat" Command="{Binding NewChatCommand}" Style="{StaticResource GhostButton}" Margin="0,0,8,8" />
-                        </WrapPanel>
-                        <!-- Row 2: Overnight run, Shutdown PC -->
-                        <WrapPanel>
-                            <WrapPanel.Style>
-                                <Style TargetType="WrapPanel">
-                                    <Setter Property="IsEnabled" Value="True" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Workspace}" Value="{x:Null}">
-                                            <Setter Property="IsEnabled" Value="False" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Workspace}" Value="">
-                                            <Setter Property="IsEnabled" Value="False" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </WrapPanel.Style>
-                            <Button Content="Prepare overnight prompt" Command="{Binding OvernightSkillCommand}" Margin="0,0,8,8" />
+                        <!-- Overnight actions -->
+                            <Button Content="Overnight" Command="{Binding OvernightSkillCommand}" Margin="0,0,8,8" />
                             <CheckBox Content="Shutdown PC when done" IsChecked="{Binding ShutdownWhenDone}" ToolTip="For /overnight runs only; shutdown follows the morning summary with a 120 second delay" Margin="0,0,8,8" VerticalAlignment="Center" />
                         </WrapPanel>
                     </StackPanel>
@@ -158,6 +147,8 @@
                     <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" Height="260" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource CodeFont}" />
                 </StackPanel>
             </Expander>
+            <ctl:EvervaultBackground x:Name="ChatBackdrop" Grid.Row="2" />
+            <ctl:FilterBar x:Name="JobFilters" Visibility="Collapsed" Grid.Row="1" HorizontalAlignment="Right" Margin="16,2"/>
             <!-- Empty state -->
             <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460">
                 <StackPanel.Style>
@@ -173,14 +164,15 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock Style="{StaticResource Heading}" Text="What should we build?" Margin="0,0,0,16" />
+                <TextBlock Style="{StaticResource Heading}" Text="What should we build?" Margin="0,0,0,16" /><ctl:ActivityHeatmap x:Name="HomeActivity" Margin="0,0,0,20"/>
                 <TextBlock Style="{StaticResource Body}" Foreground="{DynamicResource MutedBrush}" LineHeight="21"
                            Text="Pick a project folder, then describe the change. OrchDesk reads, edits and tests the code there, and asks you before deleting files, installing packages or pushing." />
                 <Button Content="Choose a folder" Command="{Binding PickFolderCommand}" HorizontalAlignment="Left" Margin="0,24,0,0" Style="{StaticResource AccentButton}" />
             </StackPanel>
 
             <!-- Conversation -->
-            <ScrollViewer x:Name="ChatScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,8">
+            <ScrollViewer x:Name="ChatScroll" ScrollChanged="ThreadScrolled" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,8">
+                <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ScrollViewer.Resources>
                 <ItemsControl ItemsSource="{Binding Items}" MaxWidth="820" Margin="32,16" Focusable="False">
                     <ItemsControl.Resources>
                         <DataTemplate DataType="{x:Type vm:UserItem}">
@@ -191,53 +183,27 @@
                         </DataTemplate>
 
                         <DataTemplate DataType="{x:Type vm:AssistantItem}">
-                            <Border Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="16,16,16,4" Padding="16" Margin="0,16,40,8">
+                            <StackPanel Margin="0,20,28,16">
+                                <TextBlock Text="{Binding ModelName}" Style="{StaticResource Muted}" Margin="0,0,0,10" />
+                                <Expander Header="Reasoning" Visibility="{Binding Reasoning, Converter={StaticResource HasValue}}" Margin="0,0,0,12"><TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="12" /></Expander>
+                                <TextBlock TextWrapping="Wrap" FontSize="14" LineHeight="23" Foreground="{DynamicResource TextBrush}"><Run Text="{Binding Text, Mode=OneWay}"/><InlineUIContainer><ctl:MotionGlyph Text="▍" FontSize="14" Foreground="{DynamicResource AccentBrush}" Visibility="{Binding IsStreaming, Converter={StaticResource BoolVisible}}" /></InlineUIContainer></TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm:ToolItem}">
+                            <Border CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Background="{DynamicResource RaisedBrush}" Margin="0,6,28,8">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding ModelName}" Style="{StaticResource Muted}" Margin="0,0,0,8" />
-                                    <TextBox Style="{StaticResource MessageText}" Text="{Binding Text, Mode=OneWay}" />
+                                    <Button Command="{Binding ToggleCommand}" HorizontalContentAlignment="Stretch" Padding="14,10" Style="{StaticResource GhostButton}" ToolTip="Expand tool arguments and result">
+                                        <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Duration}" Foreground="{DynamicResource MutedBrush}" Margin="12,0"/><TextBlock DockPanel.Dock="Right" Text="⌄"/><ctl:MotionGlyph DockPanel.Dock="Left" Text="◌" Spin="True" Margin="0,0,10,0" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisible}}"/><TextBlock DockPanel.Dock="Left" Text="{Binding StateIcon}" Margin="0,0,10,0" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisible}, ConverterParameter=invert}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/><Style.Triggers><DataTrigger Binding="{Binding IsError}" Value="True"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" /></DockPanel>
+                                    </Button>
+                                    <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolVisible}}" Margin="14,0,14,14">
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="-14,0,-14,12"/>
+                                        <TextBlock Text="ARGUMENTS" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
+                                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="10"><TextBox Style="{StaticResource CodeText}" Text="{Binding Arguments, Mode=OneWay}" /></Border>
+                                        <TextBlock Text="RESULT" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,12,0,8"/>
+                                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="10"><ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto"><TextBox Style="{StaticResource CodeText}" Text="{Binding Output, Mode=OneWay}" /></ScrollViewer></Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
-                        </DataTemplate>
-
-                        <!-- Tool calls are a quiet trace: one line with a peach rule; click to see output. -->
-                        <DataTemplate DataType="{x:Type vm:ToolItem}">
-                            <StackPanel Margin="0,0">
-                                <Button Command="{Binding ToggleCommand}" Cursor="Hand" HorizontalAlignment="Left" ToolTip="Show output">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="Rule" BorderBrush="{DynamicResource PeachBrush}" BorderThickness="2,0,0,0" Padding="8,0" Background="Transparent">
-                                                <ContentPresenter />
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsKeyboardFocused" Value="True">
-                                                    <Setter TargetName="Rule" Property="Background" Value="{DynamicResource SurfaceBrush}" />
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                    <TextBlock FontSize="13" Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxWidth="740">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsError}" Value="True">
-                                                        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Button>
-                                <Border Visibility="{Binding IsExpanded, Converter={StaticResource BoolVisible}}" Margin="16,0,0,8"
-                                        Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="8,8">
-                                    <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
-                                        <TextBox Style="{StaticResource CodeText}" Text="{Binding Output, Mode=OneWay}" />
-                                    </ScrollViewer>
-                                </Border>
-                            </StackPanel>
                         </DataTemplate>
 
                         <DataTemplate DataType="{x:Type vm:StatusItem}">
@@ -281,6 +247,8 @@
                 </ItemsControl>
             </ScrollViewer>
 
+            <StackPanel Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="32,0,0,12" Visibility="{Binding IsThinking, Converter={StaticResource BoolVisible}}"><ctl:ThinkingMark IsThinking="True"/><TextBlock Text="Thinking" Style="{StaticResource Muted}" Margin="4,4,0,0"/></StackPanel>
+            <Button x:Name="JumpLatest" Grid.Row="2" Content="↓  Jump to latest" Visibility="Collapsed" Click="JumpToLatest" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12" Panel.ZIndex="5" />
             <!-- Composer -->
             <Border Grid.Row="3" Padding="32,16,32,24">
                 <Border MaxWidth="820" CornerRadius="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"><Grid>
@@ -290,10 +258,10 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="Composer" Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                             Grid.ColumnSpan="2" TextWrapping="Wrap" MinHeight="68" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="16" Style="{StaticResource ComposerInput}"
+                             Grid.ColumnSpan="2" TextWrapping="Wrap" MinLines="1" MaxLines="8" MinHeight="44" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="16" Style="{StaticResource ComposerInput}"
                              PreviewKeyDown="Composer_PreviewKeyDown" AutomationProperties.Name="Message"
                              ToolTip="Enter to send · Shift+Enter for a new line" />
-                    <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="12,0,0,12" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><ctl:ProviderLogo Provider="{Binding SelectedProvider}" Width="16" Height="16" Margin="0,0,8,0" /><TextBlock Text="{Binding SelectedProvider.Label}" /><TextBlock Text="&#x2304;" Margin="12,0,0,0" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
+                    <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="12,0,0,12" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><ctl:ProviderLogo Provider="{Binding SelectedProvider}" Width="16" Height="16" Margin="0,0,8,0" /><TextBlock x:Name="ModelNameLabel" Text="{Binding SelectedProvider.ModelName}" /><TextBlock Text="&#x2304;" Margin="12,0,0,0" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
                     <Grid Grid.Column="1" Grid.Row="1" Margin="16,0,12,12" VerticalAlignment="Bottom">
                         <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource AccentButton}" MinWidth="76" Height="40"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" />
@@ -302,16 +270,17 @@
                     </Grid>
                 </Grid></Border>
             </Border>
-            <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="360" MaxHeight="520" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="44,0,0,84" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
+            <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="600" MaxHeight="440" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="44,0,0,84" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
                 <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.3" /></Border.Effect>
-                <DockPanel>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><DockPanel>
+                    <ctl:FilterBar x:Name="ModelFilters" DockPanel.Dock="Top" Margin="6,2,6,8"/><Grid DockPanel.Dock="Top" Margin="6,6,6,8"><TextBox x:Name="ModelSearch" Padding="10,8" TextChanged="SearchModels" PreviewKeyDown="SearchKeyDown" AutomationProperties.Name="Search models" ToolTip="Search models"/><TextBlock Text="Search models…" IsHitTestVisible="False" Margin="12,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=ModelSearch}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid>
                     <TextBlock DockPanel.Dock="Top" Text="Choose a model" FontFamily="{StaticResource DisplayFont}" Margin="12,8,12,12" FontSize="15" FontWeight="SemiBold" />
-                    <ListBox ItemsSource="{Binding Source={StaticResource GroupedModels}}" SelectedItem="{Binding SelectedProvider}" SelectionChanged="ModelPicked" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource ModelPickerItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox x:Name="ModelList" PreviewKeyDown="ModelKeyDown" MouseMove="PreviewModel" GotKeyboardFocus="FocusModel" ItemsSource="{Binding Source={StaticResource GroupedModels}}" SelectionChanged="ModelPicked" PreviewMouseLeftButtonUp="ConfirmPointerModel" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource ModelPickerItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ListBox.Resources>
                         <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ModelName}" Margin="22,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate></ListBox.ItemTemplate>
                         <ListBox.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate><StackPanel Orientation="Horizontal" Margin="16,6,0,2"><ctl:ProviderLogo Provider="{Binding Items[0]}" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,8,0" /><TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="12" /></StackPanel></DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ListBox.GroupStyle>
                     </ListBox>
-                </DockPanel>
+                </DockPanel><Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="18,16"><StackPanel><TextBlock x:Name="ProfileName" FontFamily="{StaticResource DisplayFont}" FontSize="18" TextWrapping="Wrap"/><TextBlock Text="Approximate model profile" Style="{StaticResource Muted}" FontSize="10" Margin="0,8,0,24"/><TextBlock Text="Speed" Style="{StaticResource Muted}"/><Border Height="5" Background="{DynamicResource BorderBrush}" CornerRadius="2" Margin="0,8,0,20"><Border x:Name="SpeedBar" Background="{DynamicResource AccentBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".7"/></Border.RenderTransform></Border></Border><TextBlock Text="Cost · higher is pricier" Style="{StaticResource Muted}" FontSize="11"/><Border Height="5" Background="{DynamicResource BorderBrush}" CornerRadius="2" Margin="0,8,0,20"><Border x:Name="CostBar" Background="{DynamicResource PeachBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".6"/></Border.RenderTransform></Border></Border><TextBlock x:Name="ContextLabel" Style="{StaticResource Muted}"/><Border Height="5" Background="{DynamicResource BorderBrush}" CornerRadius="2" Margin="0,8,0,16"><Border x:Name="ContextBar" Background="{DynamicResource AccentBrush}" RenderTransformOrigin="0,.5"><Border.RenderTransform><ScaleTransform ScaleX=".8"/></Border.RenderTransform></Border></Border><TextBlock Text="Relative estimates. Local speed depends on hardware." Style="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border></Grid>
             </Border>
         </Grid>
 
@@ -365,5 +334,14 @@
                 </ItemsControl>
             </StackPanel>
         </ScrollViewer>
+        <Border x:Name="WelcomeOverlay" Grid.Column="0" Grid.ColumnSpan="2" Panel.ZIndex="100" Visibility="Collapsed" Background="{DynamicResource BaseBrush}">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460">
+                <Image Source="Assets/Icon/icon-256.png" RenderOptions.BitmapScalingMode="HighQuality" Width="96" Height="96" HorizontalAlignment="Left" Margin="0,0,0,30"/>
+                <TextBlock Text="Welcome to OrchDesk" FontFamily="{StaticResource DisplayFont}" FontSize="34" Margin="0,0,0,16"/>
+                <TextBlock Text="Your workspace, your models. Connect a provider and turn your next idea into working code." Style="{StaticResource Body}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,32"/>
+                <StackPanel Orientation="Horizontal"><ctl:ShinyButton Content="Continue" Click="CompleteWelcome"/><Button Content="Skip for now" Click="SkipWelcome" Style="{StaticResource GhostButton}" Margin="16,0,0,0"/></StackPanel>
+                <TextBlock Text="You can connect providers at any time in Settings." Style="{StaticResource Muted}" Margin="0,20,0,0"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>

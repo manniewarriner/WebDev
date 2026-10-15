@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>OrchDesk</AssemblyName>
     <RootNamespace>OrchDesk.App</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.3.0</Version>
     <!-- Lets this project compile on Linux/CI for checks; it still only runs on Windows. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!-- Single-file publish: WPF's native DLLs must be bundled and self-extracted. Trimming is unsupported for WPF. -->
@@ -29,6 +29,7 @@
     <Resource Include="Assets\orch-app-icon.ico" />
     <Resource Include="Assets\orch-app-icon-512.png" />
     <Resource Include="Assets\Fonts\*.ttf" />
+    <Resource Include="Assets\Icon\*.png" />
     <ProjectReference Include="..\OrchDesk.Core\OrchDesk.Core.csproj" />
   </ItemGroup>
 

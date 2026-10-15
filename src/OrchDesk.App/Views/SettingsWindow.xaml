@@ -138,6 +138,7 @@
                 </ScrollViewer>
             </TabItem>
 
+            <TabItem Header="Appearance"><StackPanel Margin="16"><TextBlock Text="Profile" Style="{StaticResource Heading}"/><TextBlock Text="Display name" Margin="0,16,0,6"/><TextBox Text="{Binding DisplayName}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="240"/><TextBlock Text="Initials" Margin="0,12,0,6"/><TextBox Text="{Binding Initials}" MaxLength="3" Width="100" HorizontalAlignment="Left"/><Button Content="Change picture" Click="ChangePicture" HorizontalAlignment="Left" Margin="0,12,0,24"/><TextBlock Text="Motion" Style="{StaticResource Heading}" /><CheckBox Content="Reduce motion" IsThreeState="True" IsChecked="{Binding ReduceMotion}" Margin="0,20,0,8" /><TextBlock Text="Indeterminate follows Windows animation settings. Checked reduces motion; unchecked enables it." TextWrapping="Wrap" MaxWidth="520" Style="{StaticResource Muted}" /><Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Margin="0,20,0,0" /></StackPanel></TabItem>
             <TabItem Header="Fallback &amp; safety">
                 <StackPanel Margin="8,12" MaxWidth="620" HorizontalAlignment="Left">
                     <TextBlock Style="{StaticResource FieldLabel}" Text="Fallback order (model IDs, first is preferred)" Margin="0,0,0,4" />
@@ -175,6 +176,6 @@
                     <TextBlock Style="{StaticResource Muted}" Margin="0,16,0,0" Text="The step budget is set under General. Runs checkpoint automatically; risky actions are queued for morning review." />
                 </StackPanel>
             </TabItem>
-        </TabControl>
+        <TabItem Header="About"><StackPanel Margin="16"><TextBlock Text="OrchDesk 0.3.0" Style="{StaticResource Heading}"/><TextBlock Text="A workspace for your ideas and models." Style="{StaticResource Muted}" Margin="0,12,0,24"/><Button x:Name="UpdateButton" Content="Check for updates" Click="CheckUpdates" HorizontalAlignment="Left"/><TextBlock Text="Updates are downloaded only after you choose to install." Style="{StaticResource Muted}" Margin="0,12,0,0"/></StackPanel></TabItem></TabControl>
     </DockPanel>
 </Window>

@@ -29,6 +29,7 @@ public sealed partial class ChatViewModel : ObservableObject
     [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand), nameof(StopCommand))] private bool _isBusy;
     [ObservableProperty] private OrchDesk.Core.Config.ModelPickerOption? _selectedProvider;
     [ObservableProperty] private ChatMode _mode = ChatMode.Chat;
+    [ObservableProperty] private bool _isThinking;
     [ObservableProperty] private string _activeModel = "";
     [ObservableProperty] private bool _shutdownWhenDone;
 
@@ -135,6 +136,7 @@ public sealed partial class ChatViewModel : ObservableObject
         Items.Add(new UserItem(text));
         ContentAdded?.Invoke();
         IsBusy = true;
+        IsThinking = true;
         _cts = new CancellationTokenSource();
 
         try
@@ -154,7 +156,9 @@ public sealed partial class ChatViewModel : ObservableObject
         finally
         {
             foreach (var a in Items.OfType<ApprovalItem>().Where(a => a.IsPending)) a.Cancel();
-            foreach (var t in Items.OfType<ToolItem>().Where(t => t.IsRunning)) t.IsRunning = false;
+            foreach (var t in Items.OfType<ToolItem>().Where(t => t.IsRunning)) { t.IsError = true; t.Output ??= "Interrupted before a result was returned."; t.IsRunning = false; }
+            foreach (var answer in Items.OfType<AssistantItem>()) answer.IsStreaming = false;
+            IsThinking = false;
             IsBusy = false;
             _current = null;
             _cts.Dispose();
@@ -193,8 +197,17 @@ public sealed partial class ChatViewModel : ObservableObject
         var skill = new OrchDesk.Core.Overnight.OvernightRoundRunner(RunsDirectory, _services.Tools, _services.CreatePolicy());
         skill.Progress += Render;
         Items.Add(new StatusItem("Overnight run ? manager " + manager.DisplayName));
-        var summary = await skill.RunAsync(run, _services.Providers, ct);
-        var item = new AssistantItem(manager.DisplayName); item.Append(summary); Items.Add(item);
+        var job = new ToolItem(run.Id, "Overnight · " + goal, System.Text.Json.JsonSerializer.Serialize(new { goal, run.MaxRounds, run.TestCommand }));
+        Items.Add(job);
+        try
+        {
+            var summary = await skill.RunAsync(run, _services.Providers, ct);
+            job.Output = summary;
+            job.IsError = run.Status is "Needs attention" or "Deadline reached";
+            var item = new AssistantItem(manager.DisplayName); item.Append(summary); Items.Add(item);
+        }
+        catch { job.IsError = true; job.Output = "Run interrupted; checkpoint retained."; throw; }
+        finally { job.IsRunning = false; }
     }
 
     public async Task ResumeOvernightAsync()
@@ -215,7 +228,8 @@ public sealed partial class ChatViewModel : ObservableObject
                 await RunOvernightAsync(run.Goal, _cts.Token, run);
             }
             catch (Exception) { Items.Add(new ErrorItem("Overnight checkpoint retained; manager could not resume.")); }
-            finally { IsBusy = false; _cts?.Dispose(); _cts = null; }
+            finally { IsThinking = false;
+            IsBusy = false; _cts?.Dispose(); _cts = null; }
         }
     }
 
@@ -230,6 +244,22 @@ public sealed partial class ChatViewModel : ObservableObject
         _cts?.Cancel();
         _conversation = null;
         Items.Clear();
+    }
+
+    public Conversation? CurrentConversation => _conversation;
+
+    public void Restore(ChatItem[] items, Conversation? conversation)
+    {
+        if (IsBusy) return;
+        _conversation = conversation;
+        if (_conversation is null && Workspace is not null) {
+            var gate = new PermissionGate(_services.CreatePolicy(), ApproveAsync);
+            _conversation = new Conversation(_services.CreateLoop(gate), _services.CreateRunRotator(SelectedProvider), Workspace);
+            foreach (var item in items) { if(item is UserItem u) _conversation.Messages.Add(ChatMessage.User(u.Text)); else if(item is AssistantItem a) _conversation.Messages.Add(ChatMessage.Assistant(a.Text)); }
+        }
+        Items.Clear();
+        foreach (var item in items) Items.Add(item);
+        ContentAdded?.Invoke();
     }
 
     private IAsyncEnumerable<ChatEvent> StartRun(string text, CancellationToken ct)
@@ -282,21 +312,34 @@ public sealed partial class ChatViewModel : ObservableObject
         {
             case StatusUpdate s when s.Text.StartsWith("Using "):
                 ActiveModel = s.Text[6..];
+                if (_current is not null) _current.IsStreaming = false;
                 _current = null;
                 break;
             case StatusUpdate s:
+                if (s.Text == "Thinking...") { IsThinking = true; break; }
                 Items.Add(new StatusItem(s.Text));
+                if (_current is not null) _current.IsStreaming = false;
                 _current = null;
                 break;
-            case TextDelta d:
+            case ReasoningDelta r:
                 if (_current is null) { _current = new AssistantItem(ActiveModel); Items.Add(_current); }
+                _current.Reasoning += r.Text;
+                IsThinking = true;
+                break;
+            case TextDelta d:
+                IsThinking = false;
+                if (_current is null) { _current = new AssistantItem(ActiveModel) { IsStreaming = true }; Items.Add(_current); }
+                _current.IsStreaming = true;
                 _current.Append(d.Text);
                 break;
             case ToolCallRequested r:
+                IsThinking = false;
+                if (_current is not null) _current.IsStreaming = false;
                 _current = null;
                 Items.Add(new ToolItem(r.Call.Id, ToolTitles.Describe(r.Call.Name, r.Call.ArgumentsJson), r.Call.ArgumentsJson));
                 break;
             case ToolCallResult r:
+                IsThinking = true;
                 var tool = Items.OfType<ToolItem>().LastOrDefault(t => t.CallId == r.CallId);
                 if (tool is null) { tool = new ToolItem(r.CallId, r.Name == "tests" ? "Ran the tests" : r.Name, ""); Items.Add(tool); }
                 tool.Output = r.Output;
@@ -312,6 +355,9 @@ public sealed partial class ChatViewModel : ObservableObject
                 break;
             case ProviderUnavailable p:
                 Items.Add(new ErrorItem(p.Message));
+                break;
+            case Done when _current is not null:
+                _current.IsStreaming = false;
                 break;
             case Done d when _current is null && !string.IsNullOrWhiteSpace(d.FinalText) && Items.LastOrDefault() is not AssistantItem:
                 Items.Add(new StatusItem(d.FinalText!));

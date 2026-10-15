@@ -1,3 +1,17 @@
+## Install OrchDesk
+
+Download [OrchDesk for Windows](https://github.com/manniewarriner/WebDev/releases/latest), or install for your Windows user without administrator rights:
+
+```powershell
+powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://raw.githubusercontent.com/manniewarriner/WebDev/orchdesk/self-improve/installer/Install-OrchDesk.ps1 | iex"
+```
+
+Installs to `%LOCALAPPDATA%\OrchDesk`, with Desktop and Start Menu shortcuts. Company policies may still restrict unsigned applications or PowerShell scripts; this installer does not change those policies.
+
+Update through **Settings → Check for updates**, or run the installed `installer\Install-OrchDesk.ps1 -Update`. For offline installation use `-Source <path-to-OrchDesk.exe>`. An existing executable is backed up as `OrchDesk.exe.bak`.
+
+Uninstall through Windows Installed apps or run `installer\Uninstall-OrchDesk.ps1`. Settings in `%APPDATA%\OrchDesk` are preserved unless you pass `-Purge`.
+
 # OrchDesk
 
 OrchDesk is a Windows desktop coding assistant that works like Claude Code but can use several models. You choose a project folder and describe a change. The model you pick reads the code, edits it, builds it and runs the tests until the job is done. It asks you before anything risky.

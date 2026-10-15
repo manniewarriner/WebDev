@@ -22,6 +22,8 @@ public static class SseChatParser
         }
         var message = (node?["choices"] as JsonArray)?.FirstOrDefault()?["message"];
         if (message is null) { yield return new ErrorEvent("Missing completion message."); yield break; }
+        if (message["reasoning_content"] is JsonValue reasoning && reasoning.TryGetValue<string>(out var thought) && thought.Length > 0)
+            yield return new ReasoningDelta(thought);
         if (message["content"] is JsonValue value && value.TryGetValue<string>(out var text) && text.Length > 0)
             yield return new TextDelta(text);
         if (message["tool_calls"] is JsonArray calls)
@@ -58,10 +60,10 @@ public static class SseChatParser
             if (delta is null) continue;
 
             // Reasoning is separate from the answer; never mix thinking into tool arguments or transcript.
-            if (delta["reasoning_content"] is JsonValue reasoning && reasoning.TryGetValue<string>(out var thought) && thought.Length > 0 && !thinkingShown)
+            if (delta["reasoning_content"] is JsonValue reasoning && reasoning.TryGetValue<string>(out var thought) && thought.Length > 0)
             {
-                thinkingShown = true;
-                yield return new StatusUpdate("Thinking...");
+                if (!thinkingShown) { thinkingShown = true; yield return new StatusUpdate("Thinking..."); }
+                yield return new ReasoningDelta(thought);
             }
             if (delta["content"] is JsonValue content && content.TryGetValue<string>(out var text) && text.Length > 0)
                 yield return new TextDelta(text);

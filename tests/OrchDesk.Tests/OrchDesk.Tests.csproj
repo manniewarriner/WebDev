@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../../src/OrchDesk.App/ViewModels/ChatItems.cs" Link="ViewModels/ChatItems.cs" />
     <Compile Include="../../src/OrchDesk.App/ViewModels/ProviderEdit.cs" Link="ViewModels/ProviderEdit.cs" />
   </ItemGroup>
 

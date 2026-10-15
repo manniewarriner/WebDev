@@ -60,6 +60,11 @@ public sealed class AppConfig
     public List<string> RotationOrder { get; set; } = [];
     public int LimitCooldownMinutes { get; set; } = 300;
     public int MaxSteps { get; set; } = 40;
+    public bool? ReduceMotion { get; set; }
+    public bool FirstRunCompleted { get; set; }
+    public string DisplayName { get; set; } = "MW";
+    public string Initials { get; set; } = "MW";
+    public bool SidebarCollapsed { get; set; }
     public string Theme { get; set; } = "Dark";
     public string? LastWorkspace { get; set; }
     public string? LastProviderId { get; set; }

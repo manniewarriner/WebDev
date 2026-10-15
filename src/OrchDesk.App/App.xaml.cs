@@ -95,7 +95,8 @@ public partial class App : Application
         var screenshotMode = e.Args.Contains("--screenshot", StringComparer.OrdinalIgnoreCase);
         var pageIndex = Array.FindIndex(e.Args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
         var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
-        if (pageIndex >= 0 && page is not ("integrations" or "picker")) { Shutdown(2); return; }
+        if (pageIndex >= 0 && page is not ("heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "sidebar-collapsed" or "sidebar-expanded")) { Shutdown(2); return; }
+        Motion.Screenshot = screenshotMode;
         var services = new AppServices(screenshotMode);
         var themeIndex = Array.FindIndex(e.Args, a => a.Equals("--theme", StringComparison.OrdinalIgnoreCase));
         if (themeIndex >= 0 && themeIndex + 1 < e.Args.Length) services.Config.Theme = e.Args[themeIndex + 1];
@@ -110,7 +111,7 @@ public partial class App : Application
             captureWindow = new Views.SettingsWindow(new SettingsViewModel(services)) { Owner = window };
             captureWindow.Show();
         }
-        else if (page == "picker") window.OpenModelPicker();
+        else if (screenshotMode) window.PrepareScreenshot(page);
 
         var screenshotIndex = Array.FindIndex(e.Args, a => a.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         if (screenshotIndex >= 0)
@@ -153,5 +154,6 @@ public partial class App : Application
         var dicts = Current.Resources.MergedDictionaries;
         var uri = new Uri(theme == "Light" ? "Themes/Light.xaml" : "Themes/Dark.xaml", UriKind.Relative);
         dicts[0] = new ResourceDictionary { Source = uri };
+        Motion.Refresh();
     }
 }

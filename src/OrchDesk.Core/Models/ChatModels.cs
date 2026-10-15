@@ -36,6 +36,7 @@ public sealed record ChatRequest(
 
 /// <summary>Streamed output from a provider or the agent loop.</summary>
 public abstract record ChatEvent;
+public sealed record ReasoningDelta(string Text) : ChatEvent;
 public sealed record TextDelta(string Text) : ChatEvent;
 public sealed record ToolCallRequested(ToolCall Call) : ChatEvent;
 public sealed record ToolCallResult(string CallId, string Name, string Output, bool IsError = false) : ChatEvent;

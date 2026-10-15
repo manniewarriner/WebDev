@@ -33,10 +33,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _pushBranches;
     [ObservableProperty] private string? _error;
     [ObservableProperty] private string? _savedMessage;
+    [ObservableProperty] private bool? _reduceMotion;
     [ObservableProperty] private bool _webFetchEnabled;
     [ObservableProperty] private bool _shutdownWhenDone;
     [ObservableProperty] private string _webStatus = "Not tested";
     [ObservableProperty] private string _meshyStatus = "Not tested";
+    public AppServices Services => _services;
+    [ObservableProperty] private string _displayName = "MW";
+    [ObservableProperty] private string _initials = "MW";
     public string? NewMeshyKey { get; set; }
 
     public event Action? Saved;
@@ -47,6 +51,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _webFetchEnabled = services.Config.WebFetchEnabled;
         _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         var c = services.Config;
+        _reduceMotion = c.ReduceMotion;
+        _displayName = c.DisplayName; _initials = c.Initials;
         Providers = new(c.Providers.Select(p => new ProviderEdit(p)));
         foreach (var builtin in AppConfig.CreateDefault().Providers.Where(p => p.Id is "claude-gmail" or "claude-outlook" or "opencode-go"))
             if (!Providers.Any(p => p.Id == builtin.Id)) { builtin.Enabled = false; Providers.Add(new(builtin)); }
@@ -166,6 +172,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
 
         var c = _services.Config;
+        c.ReduceMotion = ReduceMotion;
+        c.DisplayName = DisplayName.Trim(); c.Initials = string.IsNullOrWhiteSpace(Initials) ? "MW" : Initials.Trim()[..Math.Min(3,Initials.Trim().Length)];
+        OrchDesk.App.Services.Motion.ReduceMotion = ReduceMotion;
+        OrchDesk.App.Services.Motion.Refresh();
         c.WebFetchEnabled = WebFetchEnabled;
         c.Overnight.ShutdownWhenDone = ShutdownWhenDone;
         if (!string.IsNullOrWhiteSpace(NewMeshyKey)) c.MeshyApiKeyProtected = _services.Secrets.Protect(NewMeshyKey);

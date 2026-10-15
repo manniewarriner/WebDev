@@ -60,6 +60,8 @@ public static class ClaudeStreamParser
                     var blockType = block?["type"]?.GetValue<string>();
                     if (blockType == "text")
                         events.Add(new TextDelta(block!["text"]?.GetValue<string>() ?? ""));
+                    else if (blockType == "thinking")
+                        events.Add(new ReasoningDelta(block!["thinking"]?.GetValue<string>() ?? ""));
                     else if (blockType == "tool_use")
                         events.Add(new ToolCallRequested(new ToolCall(
                             block!["id"]?.GetValue<string>() ?? "",

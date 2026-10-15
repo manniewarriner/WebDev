@@ -5,7 +5,7 @@ using OrchDesk.Core.Permissions;
 namespace OrchDesk.App.ViewModels;
 
 /// <summary>Base for every row in the chat list; MainWindow picks a DataTemplate by the concrete type.</summary>
-public abstract class ChatItem : ObservableObject;
+public abstract class ChatItem : ObservableObject { public DateTimeOffset Timestamp {get;init;} = DateTimeOffset.Now; }
 
 public sealed class UserItem(string text) : ChatItem
 {
@@ -15,6 +15,8 @@ public sealed class UserItem(string text) : ChatItem
 public sealed partial class AssistantItem(string modelName) : ChatItem
 {
     public string ModelName { get; } = modelName;
+    [ObservableProperty] private bool _isStreaming;
+    [ObservableProperty] private string _reasoning = "";
     [ObservableProperty] private string _text = "";
     public void Append(string delta) => Text += delta;
 }
@@ -22,6 +24,11 @@ public sealed partial class AssistantItem(string modelName) : ChatItem
 /// <summary>One tool call shown as a single trace line ("Reading Program.cs"); click to expand its output.</summary>
 public sealed partial class ToolItem(string callId, string title, string arguments) : ChatItem
 {
+    private readonly System.Diagnostics.Stopwatch _watch = System.Diagnostics.Stopwatch.StartNew();
+    public string Duration => $"{_watch.Elapsed.TotalSeconds:0.0}s";
+    public string StateIcon => IsRunning ? "\u25cc" : IsError ? "\u2715" : "\u2713";
+    partial void OnIsRunningChanged(bool value) { if (!value) _watch.Stop(); OnPropertyChanged(nameof(Duration)); OnPropertyChanged(nameof(StateIcon)); }
+    partial void OnIsErrorChanged(bool value) => OnPropertyChanged(nameof(StateIcon));
     public string CallId { get; } = callId;
     public string Title { get; } = title;
     public string Arguments { get; } = arguments;

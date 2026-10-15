@@ -1,43 +1,180 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
+using System.Collections.ObjectModel;
 using OrchDesk.App.ViewModels;
+using OrchDesk.App.Services;
+using OrchDesk.Core.Config;
 
 namespace OrchDesk.App;
 
 public partial class MainWindow : Window
 {
+    private bool _stickToBottom = true;
+    private bool _collapsed;
+    private readonly ObservableCollection<ChatSnapshot> _history = [];
+    public sealed record ChatSnapshot(string Title, ChatItem[] Items, OrchDesk.Core.Orchestration.Conversation? Conversation) { public DateTimeOffset Date {get;init;} = DateTimeOffset.Now; public string Model {get;init;} = ""; public string? Workspace {get;init;} }
     public MainWindow()
     {
         InitializeComponent();
+        InitializeFollowup();
+        HistoryList.ItemsSource = _history;
         DataContextChanged += (_, _) =>
         {
             if (DataContext is not MainViewModel vm) return;
-            // Follow the conversation as it streams, unless the user has scrolled up to read.
-            vm.Chat.ContentAdded += () =>
-            {
-                if (ChatScroll.VerticalOffset >= ChatScroll.ScrollableHeight - 80) ChatScroll.ScrollToEnd();
+            Motion.ReduceMotion = vm.Services.Config.ReduceMotion;
+            SetSidebar(vm.Services.Config.SidebarCollapsed, false);
+            vm.Chat.ContentAdded += FollowContent;
+            vm.Chat.PropertyChanged += (_, e) => {
+                if (e.PropertyName == nameof(ChatViewModel.SelectedProvider)) Motion.Reveal(ModelNameLabel);
+            };
+            vm.Chat.Items.CollectionChanged += (_, e) => {
+                if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset) { _stickToBottom = true; JumpLatest.Visibility = Visibility.Collapsed; return; }
+                Dispatcher.BeginInvoke(() => {
+                    var title = vm.Chat.Items.OfType<UserItem>().FirstOrDefault()?.Text;
+                    if (title is null) return;
+                    var snapshot = new ChatSnapshot(title, vm.Chat.Items.ToArray(), vm.Chat.CurrentConversation) {Model=vm.Chat.SelectedProvider?.ModelName??"",Date=vm.Chat.Items.First().Timestamp,Workspace=vm.Chat.Workspace};
+                    var previous = _history.FirstOrDefault(h => h.Items.FirstOrDefault() == snapshot.Items.FirstOrDefault());
+                    if (previous is not null) _history.Remove(previous);
+                    _history.Insert(0, snapshot);
+                    while (_history.Count > 8) _history.RemoveAt(_history.Count - 1);
+                }, DispatcherPriority.Background);
             };
         };
-        Loaded += (_, _) => Composer.Focus();
+        Loaded += (_, _) => { Composer.Focus(); Motion.Changed += MotionChanged; };
+        ModelPickerOverlay.IsVisibleChanged += (_, _) => { if (!ModelPickerOverlay.IsVisible) StopPickerAnimations(); };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) Sidebar.BeginAnimation(WidthProperty, null); };
+        Closed += (_, _) => { Motion.Changed -= MotionChanged; if (DataContext is MainViewModel vm) vm.Chat.ContentAdded -= FollowContent; };
     }
-
-    public void OpenModelPicker() => ModelPickerOverlay.Visibility = Visibility.Visible;
-
-    private void ToggleModelPicker(object sender, RoutedEventArgs e) =>
-        ModelPickerOverlay.Visibility = ModelPickerOverlay.IsVisible ? Visibility.Collapsed : Visibility.Visible;
-
-    private void ModelPicked(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void StopPickerAnimations()
     {
-        if (IsLoaded) ModelPickerOverlay.Visibility = Visibility.Collapsed;
+        Motion.StopReveal(ModelPickerOverlay);
+        foreach (var bar in new[] { SpeedBar, CostBar, ContextBar })
+            ((ScaleTransform)bar.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, null);
     }
+    private void MotionChanged()
+    {
+        if (Motion.Enabled) return;
+        StopPickerAnimations();
+        Motion.StopReveal(ModelNameLabel);
+        Sidebar.BeginAnimation(WidthProperty, null);
+    }
+    private void FollowContent() => Dispatcher.BeginInvoke(() => { if (_stickToBottom) ChatScroll.ScrollToEnd(); }, DispatcherPriority.Loaded);
+    private void ThreadScrolled(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.ExtentHeightChange == 0) _stickToBottom = ChatScroll.ScrollableHeight - ChatScroll.VerticalOffset < 32;
+        if (_stickToBottom && e.ExtentHeightChange != 0) ChatScroll.ScrollToEnd();
+        JumpLatest.Visibility = !_stickToBottom && ChatScroll.ScrollableHeight > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+    private void JumpToLatest(object sender, RoutedEventArgs e) { _stickToBottom = true; ChatScroll.ScrollToEnd(); JumpLatest.Visibility = Visibility.Collapsed; }
+    public void OpenModelPicker()
+    {
+        ModelPickerOverlay.Width = Math.Min(600, Math.Max(340, ActualWidth - Sidebar.Width - 72));
+        ModelPickerOverlay.Visibility = Visibility.Visible;
+        ModelList.SelectedItem = (DataContext as MainViewModel)?.Chat.SelectedProvider;
+        ShowProfile((DataContext as MainViewModel)?.Chat.SelectedProvider);
+        Motion.Reveal(ModelPickerOverlay);
+        ModelSearch.Focus();
+    }
+    private void ToggleModelPicker(object sender, RoutedEventArgs e) { if (ModelPickerOverlay.IsVisible) ClosePicker(); else OpenModelPicker(); }
+    private void ClosePicker() { ModelPickerOverlay.Visibility = Visibility.Collapsed; ModelPickerButton.Focus(); }
+    private void ModelPicked(object sender, SelectionChangedEventArgs e)
+    {
+        if (ModelList is null) return;
+        ShowProfile(ModelList.SelectedItem as ModelPickerOption);
+        // Arrow keys preview; Enter or a pointer click confirms.
 
+    }
+    private void SearchModels(object sender, TextChangedEventArgs e)
+    {
+        if (Resources["GroupedModels"] is not CollectionViewSource source || source.View is null) return;
+        var query = ModelSearch.Text.Trim();
+        var predicate = OrchDesk.Core.Filtering.FilterModel.BuildPredicate<ModelPickerOption>(ModelFilters.Filters, ModelField);
+        source.View.Filter = item => item is ModelPickerOption p && (ModelFilters.Filters.Count == 0 || p.Id is not null) && predicate(p) && (p.Label.Contains(query, StringComparison.OrdinalIgnoreCase) || p.ModelName.Contains(query, StringComparison.OrdinalIgnoreCase));
+    }
+    private void SearchKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) { ClosePicker(); e.Handled = true; }
+        if (e.Key != Key.Down) return;
+        if (ModelList.Items.Count > 0) { ModelList.SelectedIndex = 0; ModelList.UpdateLayout(); (ModelList.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem)?.Focus(); }
+        e.Handled = true;
+    }
+    private void ConfirmModel() { if (DataContext is MainViewModel vm && ModelList.SelectedItem is ModelPickerOption option) vm.Chat.SelectedProvider = option; ClosePicker(); }
+    private void ConfirmPointerModel(object sender, MouseButtonEventArgs e) { if (ItemsControl.ContainerFromElement(ModelList, e.OriginalSource as DependencyObject) is ListBoxItem) ConfirmModel(); }
+    private void ModelKeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) { ConfirmModel(); e.Handled = true; } else if (e.Key == Key.Escape) { ClosePicker(); e.Handled = true; } }
+    private void PreviewModel(object sender, MouseEventArgs e)
+    {
+        var row = ItemsControl.ContainerFromElement(ModelList, e.OriginalSource as DependencyObject) as ListBoxItem;
+        if (row?.DataContext is ModelPickerOption option) ShowProfile(option);
+    }
+    private void FocusModel(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        var row = ItemsControl.ContainerFromElement(ModelList, e.NewFocus as DependencyObject) as ListBoxItem;
+        ShowProfile(row?.DataContext as ModelPickerOption ?? ModelList.SelectedItem as ModelPickerOption);
+    }
+    private ModelPickerOption? _preview;
+    private void ShowProfile(ModelPickerOption? option)
+    {
+        if (option is null || ProfileName is null || _preview == option) return;
+        _preview = option; ProfileName.Text = option.ModelName;
+        var profile = ModelProfiles.Get(option.Model ?? option.DisplayModel);
+        ContextLabel.Text = "Context · " + profile.ContextLabel;
+        foreach (var (bar, value) in new[] { (SpeedBar, profile.Speed), (CostBar, profile.Cost), (ContextBar, profile.Context) }) {
+            var scale = (ScaleTransform)bar.RenderTransform;
+            var from = scale.ScaleX;
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, null); scale.ScaleX = value;
+            if (Motion.Enabled && ModelPickerOverlay.IsVisible) scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(from, value, TimeSpan.FromMilliseconds(220)) { FillBehavior = FillBehavior.Stop });
+        }
+    }
     private void DismissModelPicker(object sender, MouseButtonEventArgs e)
     {
-        if (ModelPickerOverlay.IsVisible && !ModelPickerOverlay.IsMouseOver && !ModelPickerButton.IsMouseOver)
-            ModelPickerOverlay.Visibility = Visibility.Collapsed;
+        if (ModelPickerOverlay.IsVisible && !ModelPickerOverlay.IsMouseOver && !ModelPickerButton.IsMouseOver) ModelPickerOverlay.Visibility = Visibility.Collapsed;
     }
-
-    /// <summary>Enter sends; Shift+Enter inserts a new line.</summary>
+    private void ToggleSidebar(object sender, RoutedEventArgs e)
+    {
+        SetSidebar(!_collapsed, true);
+        if (DataContext is MainViewModel vm) { vm.Services.Config.SidebarCollapsed = _collapsed; if (!vm.Services.IsScreenshot) vm.Services.Store.Save(vm.Services.Config); }
+    }
+    private void SetSidebar(bool collapsed, bool animate)
+    {
+        _collapsed = collapsed;
+        var from = Sidebar.ActualWidth > 0 ? Sidebar.ActualWidth : Sidebar.Width;
+        Sidebar.BeginAnimation(WidthProperty, null); Sidebar.Width = collapsed ? 64 : 224;
+        RailFooter.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var label in new FrameworkElement[] { SidebarTitle, ChatNavLabel, AccountsNavLabel, SidebarFooter, HistoryPanel }) label.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (animate && Motion.Enabled) Sidebar.BeginAnimation(WidthProperty, new DoubleAnimation(from, Sidebar.Width, TimeSpan.FromMilliseconds(230)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }, FillBehavior = FillBehavior.Stop });
+    }
+    private void RestoreChat(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ChatSnapshot snapshot } || DataContext is not MainViewModel vm || vm.Chat.IsBusy) return;
+        if(snapshot.Workspace is not null)vm.Chat.Workspace=snapshot.Workspace;
+        vm.Chat.Restore(snapshot.Items, snapshot.Conversation);
+    }
+    public void PrepareScreenshot(string? page)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        var chat = vm.Chat;
+        if (page is "thread" or "sidebar-expanded" or "sidebar-collapsed") Height = 860;
+        chat.Workspace = @"C:\Projects\OrchDesk";
+        chat.SelectedProvider = chat.ProviderOptions.FirstOrDefault(p => p.Model == "sonnet") ?? chat.SelectedProvider;
+        PrepareFollowupScreenshot(page);
+        if (page is "thread" or "sidebar-expanded" or "sidebar-collapsed") {
+            chat.Items.Add(new UserItem("Investigate the latency regression and suggest a fix."));
+            chat.Items.Add(new ToolItem("demo", "query_metrics", "{ \"period\": \"7 days\", \"metric\": \"p95 latency\" }") { Output = "p95: 180ms → 340ms\nSequential scan on events. Missing index: (account_id, created_at).", IsRunning = false, IsExpanded = true });
+            chat.Items.Add(new AssistantItem("Claude Sonnet") { Reasoning = "Compare recent timings with the deployment, then inspect the query plan.", Text = "The increase lines up with Tuesday’s deploy. Adding an index should bring p95 back down without a rollback.", IsStreaming = true });
+        }
+        if (page == "thinking") { chat.Items.Add(new UserItem("Find the best approach for this project.")); chat.IsBusy = true; chat.IsThinking = true; }
+        if (page == "composer") chat.Input = "Review the chat experience in both themes.\n\nMake the input feel natural as the message grows.\nKeep the model selector close to the send action.\nThen run the build and all tests.";
+        SetSidebar(page == "sidebar-collapsed", false);
+        if (page is "selector" or "picker") OpenModelPicker();
+        if (page is "thread" or "sidebar-expanded" or "sidebar-collapsed") { _stickToBottom = false; Dispatcher.BeginInvoke(() => { ChatScroll.ScrollToTop(); JumpLatest.Visibility = Visibility.Collapsed; }, DispatcherPriority.ContextIdle); }
+        FocusManager.SetFocusedElement(this, ModelPickerButton);
+        ModelPickerButton.Focus();
+    }
     private void Composer_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
