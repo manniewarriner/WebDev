@@ -97,9 +97,10 @@ public sealed partial class ChatViewModel : ObservableObject
     [RelayCommand]
     private void PickFolder()
     {
+        if (IsBusy) return;
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Choose the project folder OrchDesk may work in" };
         if (Workspace is not null) dlg.InitialDirectory = Workspace;
-        if (dlg.ShowDialog() == true)
+        if (dlg.ShowDialog() == true && !IsBusy)
         {
             Workspace = dlg.FolderName;
             Items.Add(new StatusItem($"Working in {Workspace}"));
