@@ -144,7 +144,18 @@ public sealed partial class ChatViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OvernightSkill() => Input = "/overnight " + Input;
+    private void OvernightSkill()
+    {
+        var lowerInput = Input.TrimStart();
+        if (lowerInput.Equals("/overnight", StringComparison.OrdinalIgnoreCase) || 
+            lowerInput.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase))
+        {
+            // Already prefixed, leave unchanged to preserve goal text and whitespace.
+            return;
+        }
+
+        Input = "/overnight " + Input;
+    }
 
     private string RunsDirectory => Path.Combine(_services.Store.Directory, "runs");
     private async Task RunOvernightAsync(string goal, CancellationToken ct, OrchDesk.Core.Overnight.OvernightRun? existing = null)
