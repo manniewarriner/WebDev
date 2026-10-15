@@ -73,7 +73,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
-        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Padding" Value="12,8" />
     </Style>
 
     <!-- Reusable square icon button: 40x40, inherits GhostButton visuals and template. -->
