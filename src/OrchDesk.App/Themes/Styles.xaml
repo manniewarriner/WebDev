@@ -99,7 +99,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="CaretBrush" Value="{DynamicResource PeachBrush}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource PeachBrush}" />
-        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Padding" Value="12,8" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
