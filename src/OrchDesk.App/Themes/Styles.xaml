@@ -171,7 +171,7 @@
     </Style>
     <Style TargetType="ComboBox">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
