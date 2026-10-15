@@ -45,7 +45,6 @@
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PeachBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="CornerRadius" Value="4"/>
                             <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
