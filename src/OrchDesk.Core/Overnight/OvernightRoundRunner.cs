@@ -16,6 +16,7 @@ public sealed class OvernightRoundRunner(string directory, ToolRegistry tools, P
     public async Task<string> RunAsync(OvernightRun run, IReadOnlyList<IModelProvider> providers, CancellationToken ct)
     {
         var manager = providers.FirstOrDefault(p => p.Id == run.ManagerId) ?? throw new InvalidOperationException("Manager is not configured");
+        if (manager.IsAgentic) throw new InvalidOperationException("Unattended managers must use host-controlled API tools.");
         var workers = (run.WorkerIds.Count == 0 ? new List<string> { run.ManagerId } : run.WorkerIds).Select(id => providers.FirstOrDefault(p => p.Id == id) ?? throw new InvalidOperationException("Worker is not configured: " + id)).ToList();
         if (workers.Any(p => p.IsAgentic)) throw new InvalidOperationException("Unattended workers must use host-controlled API tools.");
         var folder = Path.Combine(directory, run.Id); Directory.CreateDirectory(folder);
