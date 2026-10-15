@@ -18,8 +18,6 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
 
     /// <summary>null = Auto (follow the rotation chain). Otherwise try this provider first, then fall back.</summary>
     public string? PreferredProviderId { get; set; }
-    private DateTimeOffset _routingStarted;
-    public TimeSpan FailoverBudget { get; set; } = TimeSpan.FromSeconds(10);
     public TimeSpan? FirstTokenTimeout { get; set; }
     public string? StickyProviderId { get; set; }
     public List<ProviderAttempt> Attempts { get; } = [];
@@ -27,8 +25,7 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
 
     public async IAsyncEnumerable<ChatEvent> SendAsync(string userText, [EnumeratorCancellation] CancellationToken ct, bool readOnly = false)
     {
-        _routingStarted = DateTimeOffset.UtcNow;
-        await rotator.RefreshUnknownHealthAsync(ct);
+        ct.ThrowIfCancellationRequested();
         Attempts.Clear();
         var userMessage = ChatMessage.User(userText);
         Messages.Add(userMessage);
@@ -86,7 +83,7 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         await using var events = loop.RunAsync(provider, Messages, ctx, timeout.Token, readOnly).GetAsyncEnumerator(timeout.Token);
         var first = true;
-        var firstDeadline = DateTimeOffset.UtcNow + (FirstTokenTimeout ?? TimeSpan.FromSeconds(provider.IsLocal || provider.Id == "remote-pc" ? 20 : 6));
+        var firstDeadline = DateTimeOffset.UtcNow + (FirstTokenTimeout ?? TimeSpan.FromSeconds(20));
         while (true)
         {
             ChatEvent? failure = null;
@@ -95,10 +92,6 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             {
                 var wait = first ? firstDeadline - DateTimeOffset.UtcNow : TimeSpan.FromMinutes(5);
                 if (wait <= TimeSpan.Zero) throw new OperationCanceledException();
-                if (first && !provider.IsLocal && provider.Id != "remote-pc") {
-                    var remaining = FailoverBudget - (DateTimeOffset.UtcNow - _routingStarted);
-                    if (remaining < wait) wait = remaining > TimeSpan.Zero ? remaining : TimeSpan.FromMilliseconds(1);
-                }
                 timeout.CancelAfter(wait);
                 more = await events.MoveNextAsync();
             }
@@ -106,16 +99,16 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             catch (Exception) when (!ct.IsCancellationRequested) { failure = new ProviderUnavailable(provider.Id, "Provider failed"); }
             if (failure is not null) { yield return failure; yield break; }
             if (!more) yield break;
-            if (events.Current is TextDelta or ToolCallRequested or Done) first = false;
+            if (events.Current is TextDelta { Text.Length: > 0 } or ToolCallRequested or Done { FinalText.Length: > 0 }) first = false;
             yield return events.Current;
         }
     }
 
     private IModelProvider? PickProvider(HashSet<string> tried)
     {
-        if ((PreferredProviderId ?? StickyProviderId) is { } id && !tried.Contains(id) && rotator.Find(id) is { } pref && rotator.IsUsable(pref))
+        if ((PreferredProviderId ?? StickyProviderId) is { } id && !tried.Contains(id) && rotator.Find(id) is { } pref && rotator.IsUsable(pref, forSend: true))
             return pref.Provider;
-        return rotator.Current(tried);
+        return rotator.Current(tried, forSend: true);
     }
 }
 

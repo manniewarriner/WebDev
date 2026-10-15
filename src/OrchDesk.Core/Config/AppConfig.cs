@@ -58,7 +58,7 @@ public sealed class AppConfig
     public string? MeshyApiKeyProtected { get; set; }
     public List<ProviderConfig> Providers { get; set; } = [];
     /// <summary>Fallback order used by "Auto" mode.</summary>
-    public List<string> RotationOrder { get; set; } = [];
+    public List<string> RotationOrder { get; set; } = ["remote-pc", "claude-outlook", "opencode-go"];
     public int LimitCooldownMinutes { get; set; } = 300;
     public int MaxSteps { get; set; } = 40;
     public bool? ReduceMotion { get; set; }
@@ -95,7 +95,7 @@ public sealed class AppConfig
                 new() { Id = "opencode-cli", DisplayName = "OpenCode CLI", Kind = ProviderKind.OpenCodeCli, Executable = "opencode", Enabled = false },
                 new() { Id = "codex", DisplayName = "Codex CLI", Kind = ProviderKind.CodexCli, Executable = "codex", Enabled = false },
             ],
-            RotationOrder = ["local-pc", "claude-outlook", "claude-gmail", "opencode-go"],
+            RotationOrder = ["remote-pc", "claude-outlook", "opencode-go", "local-pc", "claude-gmail"],
         };
     }
 }

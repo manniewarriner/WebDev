@@ -112,6 +112,84 @@ public class AutoRoutingTests
         Assert.Single(convo.Attempts);
     }
 
+    private sealed class TestSecrets : ISecretProtector
+    {
+        public string Protect(string value) => "protected:" + value;
+        public string Unprotect(string value) => value["protected:".Length..];
+    }
+
+    private sealed class ConfiguredChatHandler(string id) : HttpMessageHandler
+    {
+        public int Calls { get; private set; }
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Calls++;
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal("https://configured.test/v1/chat/completions", request.RequestUri!.AbsoluteUri);
+            Assert.Equal("test-key", request.Headers.Authorization?.Parameter);
+            if (id == "remote-pc")
+            {
+                Assert.Equal("test-id", request.Headers.GetValues("CF-Access-Client-Id").Single());
+                Assert.Equal("test-secret", request.Headers.GetValues("CF-Access-Client-Secret").Single());
+            }
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
+                Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"pong\"},\"finish_reason\":\"stop\"}]}", System.Text.Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    [Theory]
+    [InlineData("remote-pc")]
+    [InlineData("opencode-go")]
+    public async Task Config_override_credentials_and_chat_route_are_used_for_health_and_send(string id)
+    {
+        using var dir = new TempDir();
+        using var store = ConfigStore.FromArgs(["--config", Path.Combine(dir.Path, "copy.json")]);
+        var secrets = new TestSecrets();
+        store.Save(new AppConfig { Providers = [new() {
+            Id = id, Kind = ProviderKind.OpenAiCompatible, BaseUrl = "https://configured.test/v1", Model = "configured",
+            ApiKeyProtected = secrets.Protect("test-key"), AccessClientIdProtected = secrets.Protect("test-id"),
+            AccessClientSecretProtected = secrets.Protect("test-secret")
+        }] });
+        var handler = new ConfiguredChatHandler(id);
+        using var http = new HttpClient(handler);
+        var provider = new ProviderFactory(secrets, http).CreateAll(store.Load()).Single();
+        Assert.Equal(ProviderHealth.Online, await provider.CheckHealthAsync(default));
+        var convo = Create(dir.Path, provider);
+        var events = await convo.SendAsync("ping", default).ToListAsync();
+        Assert.Contains(events, e => e is TextDelta { Text: "pong" });
+        Assert.Equal(2, handler.Calls); // one explicit diagnostic probe and one real send; no preflight
+    }
+
+    [Theory]
+    [InlineData(ProviderHealth.NotConfigured)]
+    [InlineData(ProviderHealth.Offline)]
+    public async Task Diagnostic_health_does_not_gate_real_send(ProviderHealth health)
+    {
+        using var dir = new TempDir();
+        var provider = new FakeProvider("remote-pc", _ => FakeProvider.Say("pong")) { Health = health };
+        var rotator = new AccountRotator([provider]);
+        await rotator.RefreshHealthAsync(default);
+        var convo = new Conversation(new AgentLoop(new ToolRegistry(), new PermissionGate(new PermissionPolicy(), null)), rotator, dir.Path);
+        var events = await convo.SendAsync("ping", default).ToListAsync();
+        Assert.Contains(events, e => e is TextDelta { Text: "pong" });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Default_rotation_starts_with_remote_then_claude_then_opencode(bool preferFree)
+    {
+        var config = AppConfig.CreateDefault();
+        config.PreferFreeModels = preferFree;
+        var providers = new[] { "opencode-go", "claude-outlook", "remote-pc" }
+            .Select(id => (IModelProvider)new FakeProvider(id)).ToList();
+        Assert.Equal(new[] { "remote-pc", "claude-outlook", "opencode-go" },
+            ProviderFactory.InRotationOrder(config, providers).Select(p => p.Id));
+        Assert.Equal(new[] { "remote-pc", "claude-outlook", "opencode-go" },
+            ProviderFactory.InRotationOrder(new AppConfig(), providers).Select(p => p.Id));
+    }
+
     private sealed class SilentProvider : IModelProvider
     {
         public string Id => "silent";

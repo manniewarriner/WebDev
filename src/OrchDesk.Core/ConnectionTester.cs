@@ -26,7 +26,7 @@ public sealed class ConnectionTester(HttpClient http, ISecretProtector secrets)
             IModelProvider? provider;
             try { provider = new ProviderFactory(secrets, http).Create(config); }
             finally { config.Enabled = enabled; }
-            if (provider is null || await provider.CheckHealthAsync(token) != ProviderHealth.Online) return false;
+            if (provider is null) return false;
             bool text = false, failed = false;
             await foreach (var ev in provider.StreamChatAsync(new ChatRequest([ChatMessage.User("Reply with OK.")], []), token)) {
                 text |= ev is TextDelta { Text.Length: > 0 };

@@ -12,7 +12,7 @@ public class IntegrationTests
     }
     [Theory]
     [InlineData("local-pc")][InlineData("local-gemma")][InlineData("remote-pc")][InlineData("ollama")][InlineData("opencode-go")]
-    public async Task HttpProvidersTestModelsAndRealChatWithHeaders(string id)
+    public async Task HttpProvidersTestRealChatWithHeaders(string id)
     {
         var calls = new List<string>();
         using var http = new HttpClient(new Handler(r => {
@@ -23,7 +23,7 @@ public class IntegrationTests
             return new(HttpStatusCode.OK) { Content = new StringContent(r.Method == HttpMethod.Get ? "{}" : "{\"choices\":[{\"message\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}", Encoding.UTF8, "application/json") };
         }));
         var result = await new ConnectionTester(http, new Secrets()).TestAsync(new() { Id = id, BaseUrl = "https://relay.test/v1", Model = "qwen", ApiKeyProtected = "key", AccessClientIdProtected = "client", AccessClientSecretProtected = "secret" });
-        Assert.True(result.Ok); Assert.Equal(new[] { "/v1/models", "/v1/chat/completions" }, calls);
+        Assert.True(result.Ok); Assert.Equal(new[] { "/v1/chat/completions" }, calls);
     }
     [Fact] public async Task FailureNeverLeaksCredentials()
     {

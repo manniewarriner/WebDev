@@ -21,6 +21,6 @@ public interface IModelProvider
 
     IAsyncEnumerable<ChatEvent> StreamChatAsync(ChatRequest request, CancellationToken ct);
 
-    /// <summary>Cheap reachability check (e.g. GET /models, or CLI on PATH). Must not throw.</summary>
+    /// <summary>Diagnostic availability check using the chat route or CLI configuration. Must not gate sends.</summary>
     Task<ProviderHealth> CheckHealthAsync(CancellationToken ct);
 }

@@ -122,8 +122,8 @@ public sealed class ModelSyncTests
     {
         using var http = new HttpClient(new Handler(request =>
         {
-            Assert.Equal("https://opencode.ai/zen/v1/models", request.RequestUri!.AbsoluteUri);
-            return new(HttpStatusCode.OK);
+            Assert.Equal("https://opencode.ai/zen/v1/chat/completions", request.RequestUri!.AbsoluteUri);
+            return new(HttpStatusCode.OK) { Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}", System.Text.Encoding.UTF8, "application/json") };
         }));
         var config = new ProviderConfig { Id = "opencode-go", BaseUrl = "https://opencode.ai/inference/go/v1", Model = "go-model",
             ModelBaseUrls = new() { ["zen-free"] = "https://opencode.ai/zen/v1" } };

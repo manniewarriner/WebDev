@@ -54,16 +54,21 @@ public sealed class OpenAiCompatProvider : IModelProvider
     {
         if (string.IsNullOrWhiteSpace(_options.BaseUrl) || string.IsNullOrWhiteSpace(_options.Model))
             return ProviderHealth.NotConfigured;
+        // Probe the actual chat route with the same client, credentials and headers as a send.
+        // Some relays expose chat only; /models is not an availability contract.
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(4));
-            using var req = new HttpRequestMessage(HttpMethod.Get, Url("/models"));
-            AddHeaders(req);
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
-            // Access login pages can return HTTP 200; they are not a working model endpoint.
-            return resp.IsSuccessStatusCode && resp.Content.Headers.ContentType?.MediaType != "text/html"
-                ? ProviderHealth.Online : ProviderHealth.Offline;
+            timeout.CancelAfter(TimeSpan.FromSeconds(20));
+            await foreach (var ev in StreamChatAsync(new([ChatMessage.User("ping")], []), timeout.Token))
+            {
+                if (ev is ErrorEvent error && (error.Message.Contains("401") || error.Message.Contains("403")))
+                    return ProviderHealth.NotConfigured;
+                if (ev is ProviderUnavailable or ErrorEvent) return ProviderHealth.Offline;
+                if (ev is TextDelta { Text.Length: > 0 } or Done or ToolCallRequested or UsageLimitHit)
+                    return ProviderHealth.Online;
+            }
+            return ProviderHealth.Offline;
         }
         catch (Exception) when (!ct.IsCancellationRequested)
         {
@@ -136,7 +141,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
         try
         {
             using var headersTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            headersTimeout.CancelAfter(_options.HeadersTimeout ?? TimeSpan.FromSeconds(IsLocal || Id == "remote-pc" ? 20 : 6));
+            headersTimeout.CancelAfter(_options.HeadersTimeout ?? TimeSpan.FromSeconds(20));
             resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, headersTimeout.Token);
         }
         catch (HttpRequestException ex)

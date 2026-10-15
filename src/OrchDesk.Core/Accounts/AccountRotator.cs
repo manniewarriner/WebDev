@@ -8,14 +8,15 @@ public sealed class AccountState
     public ProviderHealth Health { get; set; } = ProviderHealth.Unknown;
     public DateTimeOffset? LastLimitHit { get; set; }
     public string? LastLimitMessage { get; set; }
+    /// <summary>Last real send failure; diagnostic probes do not start the send cooldown.</summary>
     public DateTimeOffset? LastOfflineAt { get; set; }
     public DateTimeOffset? LastChecked { get; set; }
 }
 
 /// <summary>
 /// Keeps the ordered fallback chain (e.g. Local PC → Claude Outlook → Claude Gmail → OpenCode) and picks the first
-/// usable entry. An account is skipped while it's cooling down after a usage limit, or while its health
-/// check says it's offline (e.g. the desktop PC is switched off). Re-checks happen on a timer from the UI/runner.
+/// usable entry. Sends skip accounts cooling down after a real request failed or hit a usage limit.
+/// Diagnostic health checks inform the UI without preventing a real send attempt.
 /// </summary>
 public sealed class AccountRotator
 {
@@ -39,18 +40,18 @@ public sealed class AccountRotator
 
     public AccountState? Find(string providerId) => _chain.FirstOrDefault(a => a.Provider.Id == providerId);
 
-    public bool IsUsable(AccountState a)
+    public bool IsUsable(AccountState a, bool forSend = false)
     {
         var now = _time.GetUtcNow();
-        if (a.Health == ProviderHealth.NotConfigured) return false;
+        if (!forSend && a.Health == ProviderHealth.NotConfigured) return false;
         if (a.LastLimitHit is { } hit && now - hit < LimitCooldown) return false;
         if (a.Health == ProviderHealth.Offline && a.LastOfflineAt is { } off && now - off < OfflineRetryAfter) return false;
         return true;
     }
 
     /// <summary>First usable provider in chain order, optionally skipping ones already tried for this message.</summary>
-    public IModelProvider? Current(IReadOnlySet<string>? exclude = null) =>
-        _chain.FirstOrDefault(a => IsUsable(a) && (exclude is null || !exclude.Contains(a.Provider.Id)))?.Provider;
+    public IModelProvider? Current(IReadOnlySet<string>? exclude = null, bool forSend = false) =>
+        _chain.FirstOrDefault(a => IsUsable(a, forSend) && (exclude is null || !exclude.Contains(a.Provider.Id)))?.Provider;
 
     public async Task RefreshUnknownHealthAsync(CancellationToken ct)
     {
@@ -61,7 +62,6 @@ public sealed class AccountRotator
             try { a.Health = await a.Provider.CheckHealthAsync(timeout.Token).WaitAsync(timeout.Token); }
             catch (Exception) when (!ct.IsCancellationRequested) { a.Health = ProviderHealth.Offline; }
             a.LastChecked = _time.GetUtcNow();
-            if (a.Health == ProviderHealth.Offline) a.LastOfflineAt = a.LastChecked;
         }));
         Changed?.Invoke();
     }
@@ -95,7 +95,6 @@ public sealed class AccountRotator
             var h = await a.Provider.CheckHealthAsync(ct);
             a.Health = h;
             a.LastChecked = _time.GetUtcNow();
-            if (h == ProviderHealth.Offline) a.LastOfflineAt = a.LastChecked;
         }));
         Changed?.Invoke();
     }

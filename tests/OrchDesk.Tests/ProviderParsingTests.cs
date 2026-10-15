@@ -137,7 +137,7 @@ public class ProviderParsingTests
         using var dir = new TempDir();
         var store = new ConfigStore(dir.Path);
         var cfg = store.Load();
-        Assert.Equal("local-pc", cfg.RotationOrder[0]);
+        Assert.Equal("remote-pc", cfg.RotationOrder[0]);
         cfg.Theme = "Light";
         store.Save(cfg);
         Assert.Equal("Light", new ConfigStore(dir.Path).Load().Theme);
