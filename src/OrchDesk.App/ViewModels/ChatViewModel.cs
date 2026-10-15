@@ -88,6 +88,8 @@ public sealed partial class ChatViewModel : ObservableObject
     partial void OnWorkspaceChanged(string? value)
     {
         _conversation = null;
+        EditorPath = "";
+        EditorText = "";
         _services.Config.LastWorkspace = value;
         _services.Store.Save(_services.Config);
     }
