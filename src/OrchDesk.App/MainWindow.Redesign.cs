@@ -19,8 +19,8 @@ public partial class MainWindow
     private readonly List<(PaletteCommand Command, Action Run)> _commands = [];
     private Brush Brush(string key) => (Brush)FindResource(key + "Brush");
     private TextBlock Label(string text, string tone = "Text", double size = 14) { TextBlock label = new TextBlock(); label.Text = text; label.SetResourceReference(TextBlock.ForegroundProperty, tone + "Brush"); label.SetResourceReference(TextBlock.FontSizeProperty, size == 11 ? "Type.Label" : size == 13 ? "Type.Small" : size == 15 ? "Type.Large" : size == 24 ? "Type.H2" : "Type.Body"); label.TextWrapping = TextWrapping.Wrap; label.LineHeight = size * 1.5; return label; }
-    private TextBlock HeadingText(string text) { var t = Label(text, size: 24); t.FontFamily = (FontFamily)FindResource("DisplayFont"); t.Margin = new Thickness(0, 0, 0, 16); return t; }
-    private Button ActionButton(string text, Action action, bool primary = false) { var b = new Button { Content = text, Margin = new Thickness(0, 8, 8, 0) }; if (primary) b.Style = (Style)FindResource("AccentButton"); b.Click += (_, _) => action(); return b; }
+    private TextBlock HeadingText(string text) { var t = Label(text, size: 24); t.FontFamily = (FontFamily)FindResource("UiFont"); t.Margin = new Thickness(0, 0, 0, 16); return t; }
+    private Button ActionButton(string text, Action action, bool primary = false) { var b = new Button { Content = text, Margin = (Thickness)FindResource("Inset.0_8_8_0"), MinHeight = 36 }; if (primary) b.Style = (Style)FindResource("AccentButton"); b.Click += (_, _) => action(); return b; }
     private Border Card(UIElement content) => new() { Child = content, Style = (Style)FindResource("Card"), Margin = new Thickness(0, 0, 0, 12) };
     private void InitializeRedesign()
     {
@@ -42,9 +42,10 @@ public partial class MainWindow
     }
     private void UpdateToolbar()
     {
-        var compact = ActualWidth < 1100;
+        var compact = ActualWidth - Sidebar.ActualWidth < 900;
         CommandsAction.Visibility = UsageAction.Visibility = FilesAction.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        MoreActions.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
+        MoreActions.Visibility = Visibility.Visible;
+        ApplyLayout();
         ModelPickerOverlay.Width = Math.Min(600, Math.Max(320, ActualWidth - Sidebar.ActualWidth - 72));
     }
     private void OpenMoreActions(object sender, RoutedEventArgs e)
@@ -54,6 +55,8 @@ public partial class MainWindow
         menu.SetResourceReference(Control.ForegroundProperty, "TextBrush");
         menu.SetResourceReference(Control.BorderBrushProperty, "BorderBrush");
         void Add(string title, Action action) { var item = new MenuItem { Header = title }; item.SetResourceReference(Control.ForegroundProperty, "TextBrush"); item.Click += (_, _) => action(); menu.Items.Add(item); }
+        Add("Delete chat", () => { if (DataContext is MainViewModel vm && vm.Chat.Items.FirstOrDefault() is { } first && _history.FirstOrDefault(h => h.Items.FirstOrDefault() == first) is { } chat) ConfirmDeleteChat(chat); });
+        menu.Items.Add(new Separator());
         Add("Usage", ShowUsage); Add("Files", ShowFiles); Add("Commands  Ctrl+K", ShowPalette);
         MoreActions.ContextMenu = menu; menu.PlacementTarget = MoreActions; menu.IsOpen = true;
     }
@@ -68,8 +71,8 @@ public partial class MainWindow
         _modal.Children.Add(new Border { Background = Brush("Overlay"), IsHitTestVisible = false });
         _modal.MouseDown += (_, e) => { if (e.OriginalSource == _modal) DismissModal(); };
         var stack = new StackPanel();
-        var heading = new DockPanel(); var close = ActionButton("Esc  ×", DismissModal); DockPanel.SetDock(close, Dock.Right); heading.Children.Add(close); heading.Children.Add(HeadingText(title)); stack.Children.Add(heading);
-        var panel = new Border { Child = new ScrollViewer { Content = stack, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = Math.Max(320, ActualHeight - 160) }, Width = width, Padding = new Thickness(24), CornerRadius = (CornerRadius)FindResource("Radius.Dialog"), Background = Brush("Surface"), BorderBrush = Brush("Border"), BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        var heading = new DockPanel(); var close = ActionButton("×", DismissModal); close.ToolTip = "Close · Esc"; close.Style = (Style)FindResource("GhostButton"); close.Margin = new Thickness(8, 0, 0, 0); close.Height = 32; close.MinHeight = 32; close.Padding = new Thickness(8, 0, 8, 0); DockPanel.SetDock(close, Dock.Right); heading.Children.Add(close); heading.Children.Add(HeadingText(title)); stack.Children.Add(heading);
+        var panel = new Border { Child = new ScrollViewer { Content = stack, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = Math.Max(320, ActualHeight - 160) }, Width = Math.Min(width, Math.Max(320, ActualWidth - 48)), Padding = new Thickness(24), CornerRadius = (CornerRadius)FindResource("Radius.Dialog"), Background = Brush("Surface"), BorderBrush = Brush("Border"), BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         panel.Effect = (Effect)FindResource("Shadow.Card"); _modal.Children.Add(panel); ShellRoot.Children.Add(_modal); KeyboardNavigation.SetTabNavigation(_modal, KeyboardNavigationMode.Cycle); if (animate) Motion.Morph(panel, _returnFocus); return stack;
     }
     private void DismissModal()
@@ -105,7 +108,7 @@ public partial class MainWindow
         Add("theme", "Switch appearance", "Settings", () => vm.ToggleThemeCommand.Execute(null), "dark / light");
         foreach (var option in vm.Chat.ProviderOptions) { var model = option; Add("model:" + model.Label, model.Label, "Models", () => vm.Chat.SelectedProvider = model, "model"); }
         var body = ShowModal("Where would you like to go?");
-        var search = new TextBox { Margin = new Thickness(0, 0, 0, 16), ToolTip = "Search models, files, overnight runs, settings", MinHeight = 48 }; AutomationPropertiesSet(search, "Search commands"); search.SetResourceReference(TextBox.CaretBrushProperty, "AccentBrush"); search.ToolTip = "Search commands or models"; var searchHost = new Grid(); searchHost.Children.Add(search); var placeholder = Label("Search models, files, runs, settings...", "Muted", 14); placeholder.IsHitTestVisible = false; placeholder.VerticalAlignment = VerticalAlignment.Center; placeholder.Margin = new Thickness(16, 0, 8, 16); searchHost.Children.Add(placeholder); body.Children.Add(searchHost); search.TextChanged += (_, _) => placeholder.Visibility = search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var search = new TextBox { Margin = new Thickness(0, 0, 0, 16), ToolTip = "Search models, files, overnight runs, settings", MinHeight = 48 }; AutomationPropertiesSet(search, "Search commands"); search.SetResourceReference(TextBox.CaretBrushProperty, "AccentBrush"); search.ToolTip = "Search commands or models"; var searchHost = new Grid(); searchHost.Children.Add(search); var placeholder = Label("Search models, files, runs, settings...", "Muted", 14); placeholder.IsHitTestVisible = false; placeholder.VerticalAlignment = VerticalAlignment.Center; placeholder.Margin = new Thickness(16, 0, 8, 0); searchHost.Children.Add(placeholder); body.Children.Add(searchHost); search.TextChanged += (_, _) => placeholder.Visibility = search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         var list = new ListBox { Margin = new Thickness(0, 0, 0, 16), BorderThickness = new Thickness(0), Background = Brushes.Transparent, Foreground = Brush("Text"), MaxHeight = 315, ItemContainerStyle = (Style)FindResource("ModelPickerItem"), HorizontalContentAlignment = HorizontalAlignment.Stretch };
         body.Children.Add(list);
         void Refresh() { list.Items.Clear(); foreach (var command in PaletteCommand.Search(_commands.Select(c => c.Command), search.Text)) { var row = new DockPanel { Margin = new Thickness(0, 8, 0, 8), Tag = command.Id }; var chip = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 0, 0) }; chip.Children.Add(Label(command.Category, "Muted", 11)); foreach (var argument in command.Arguments) chip.Children.Add(new Border { Background = Brush("Raised"), CornerRadius = (CornerRadius)FindResource("Radius.Pill"), Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(8, 0, 0, 0), Child = Label(argument, "Muted", 11) }); DockPanel.SetDock(chip, Dock.Right); row.Children.Add(chip); row.Children.Add(Label(command.Title)); list.Items.Add(row); } list.SelectedIndex = list.Items.Count > 0 ? 0 : -1; }
@@ -142,7 +145,7 @@ public partial class MainWindow
         body.Children.Add(Label("LOCAL ACTIVITY & ACCOUNT HEALTH", "Muted", 11));
         var usage = vm.Services.UseDemo ? new[] { new ProviderUsage("claude-gmail", 84, 6, 122), new ProviderUsage("local-pc", 32, 3, 48) } : UsageAggregator.Read(vm.Services.Store.Directory);
         var totals = new UniformGrid { Columns = 3, Margin = new Thickness(0, 16, 0, 12) };
-        foreach (var (caption, value) in new[] { ("Messages", usage.Sum(u => u.Messages)), ("Runs", usage.Sum(u => u.Runs)), ("Tool steps", usage.Sum(u => u.Steps)) }) { var metric = new StackPanel(); metric.Children.Add(Label(caption, "Muted", 13)); metric.Children.Add(HeadingText(value.ToString())); var metricCard = Card(metric); metricCard.Margin = new Thickness(0, 0, 8, 12); metricCard.Padding = new Thickness(16); totals.Children.Add(metricCard); } body.Children.Add(totals);
+        foreach (var (caption, value) in new[] { ("Messages", usage.Sum(u => u.Messages)), ("Runs", usage.Sum(u => u.Runs)), ("Tool steps", usage.Sum(u => u.Steps)) }) { var metric = new StackPanel(); metric.Children.Add(Label(caption, "Muted", 13)); metric.Children.Add(HeadingText(value.ToString())); var metricCard = Card(metric); metricCard.Margin = new Thickness(0, 0, 8, 12); metricCard.Padding = new Thickness(16); metricCard.MinHeight = 96; totals.Children.Add(metricCard); } body.Children.Add(totals);
         var budget = vm.Services.UseDemo ? new RunBudget(26, 40, 3, 4, "Completed") : RunBudget.ReadLatest(vm.Services.Store.Directory);
         if (budget is not null) {
             var panel = new StackPanel(); panel.Children.Add(Label("LATEST RUN  /  " + budget.Status, "Muted", 11));
@@ -213,6 +216,11 @@ public partial class MainWindow
     public void PrepareRedesignScreenshot(string? page)
     {
         if (DataContext is not MainViewModel vm) return;
+        if (page is "delete-confirm" or "delete-undo") {
+            var sample = new ChatSnapshot("Review the workspace layout", [new UserItem("Review the workspace layout")], null);
+            vm.Chat.Restore(sample.Items, null); _history.Add(sample);
+            if (page == "delete-confirm") ConfirmDeleteChat(sample); else DeleteChat(sample);
+        }
         if (page == "home" && vm.Services.UseDemo) vm.Chat.Workspace = null;
         switch (page) {
             case "accounts": vm.Page = "Accounts"; break;

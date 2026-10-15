@@ -35,6 +35,11 @@ public class ClickableAuditTests
                 var vm = new MainViewModel(services, new SuppliedFolderPicker(Path.Combine(store.Directory, "picked")));
                 var window = new MainWindow { DataContext = vm, Width = 900, Height = 680 };
                 app.MainWindow = window; window.Show(); Pump(window);
+                foreach (var name in new[] { "CommandsAction", "UsageAction", "FilesAction", "MoreActions" }) {
+                    var control = (Control)window.FindName(name);
+                    Assert.Equal(32, control.Height);
+                }
+                Assert.Equal(Visibility.Visible, ((Button)window.FindName("MoreActions")).Visibility);
                 Directory.CreateDirectory(store.Directory);
                 vm.Chat.Workspace = store.Directory;
                 Directory.CreateDirectory(Path.Combine(store.Directory, "picked"));
@@ -43,7 +48,7 @@ public class ClickableAuditTests
                 while (!selftest.IsCompleted && DateTime.UtcNow < deadline) { Pump(window); Thread.Sleep(10); }
                 Assert.True(selftest.IsCompletedSuccessfully, $"UI selftest did not complete: busy={vm.Chat.IsBusy}, input={vm.Chat.Input.Length}, items={string.Join(",", vm.Chat.Items.Select(i => i.GetType().Name))}, blocked={vm.Chat.SendBlockedReason}");
                 Assert.Contains("\"passed\":true", File.ReadAllText(Path.Combine(store.Directory, "ui-selftest.json")));
-                foreach (var page in new[] { "home", "thinking", "reply", "picker", "palette", "connect-dialog", "overnight-setup", "usage", "file-tree", "diff", "code-block", "toasts", "welcome", "accounts" }) {
+                foreach (var page in new[] { "home", "thinking", "reply", "picker", "palette", "connect-dialog", "overnight-setup", "usage", "file-tree", "diff", "code-block", "toasts", "welcome", "accounts", "delete-confirm", "delete-undo", "composer-modes" }) {
                     // Separate screenshot fixtures retain modal state; close them before the next surface.
                     typeof(MainWindow).GetMethod("CloseModal", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, null);
                     vm.Chat.IsBusy = false; vm.Chat.IsThinking = false; vm.Chat.Items.Clear(); vm.Page = "Chat";
@@ -55,6 +60,17 @@ public class ClickableAuditTests
                     }
                 }
                 vm.Chat.IsBusy = false; vm.Chat.Items.Clear(); Pump(window);
+                var snapshot = new MainWindow.ChatSnapshot("Delete test chat", [new UserItem("Delete test chat")], null);
+                var history = (System.Collections.ObjectModel.ObservableCollection<MainWindow.ChatSnapshot>)typeof(MainWindow).GetField("_history", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+                history.Add(snapshot);
+                typeof(MainWindow).GetMethod("DeleteChat", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [snapshot]); Pump(window);
+                Assert.DoesNotContain(snapshot, history);
+                Assert.DoesNotContain(snapshot, ((ItemsControl)window.FindName("HistoryList")).Items.Cast<object>());
+                var undo = Walk(window, new HashSet<DependencyObject>()).OfType<Button>().Last(b => Equals(b.Content, "Undo"));
+                undo.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)); Pump(window);
+                Assert.Contains(snapshot, history);
+                Assert.Contains(snapshot, ((ItemsControl)window.FindName("HistoryList")).Items.Cast<object>());
+                vm.Chat.Items.Clear(); Pump(window);
                 Assert.Equal(ChatViewState.Home, vm.Chat.ViewState);
                 foreach (var name in new[] { "MoreActions", "AvatarButton" }) {
                     var button = (Button)window.FindName(name);

@@ -23,6 +23,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitializeFollowup();
         InitializeRedesign();
+        ApplyLayout();
         HistoryList.ItemsSource = _history;
         DataContextChanged += (_, _) =>
         {
@@ -39,7 +40,7 @@ public partial class MainWindow : Window
                 if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset) { _stickToBottom = true; JumpLatest.Visibility = Visibility.Collapsed; return; }
                 Dispatcher.BeginInvoke(() => {
                     var title = vm.Chat.Items.OfType<UserItem>().FirstOrDefault()?.Text;
-                    if (title is null) return;
+                    if (title is null || (vm.Chat.Items.FirstOrDefault() is { } firstItem && _deletedChats.Contains(firstItem))) return;
                     var snapshot = new ChatSnapshot(title, vm.Chat.Items.ToArray(), vm.Chat.CurrentConversation) {Model=vm.Chat.SelectedProvider?.ModelName??"",Date=vm.Chat.Items.First().Timestamp,Workspace=vm.Chat.Workspace,ProviderId=vm.Chat.SelectedProvider?.Id};
                     var previous = _history.FirstOrDefault(h => h.Items.FirstOrDefault() == snapshot.Items.FirstOrDefault());
                     if (previous is not null) _history.Remove(previous);

@@ -40,8 +40,8 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        <Setter Property="Padding" Value="16,8" />
-        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Padding" Value="{StaticResource Inset.16_4}" />
+        <Setter Property="MinHeight" Value="36" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
         <Setter Property="Template">
@@ -145,7 +145,7 @@
                     <Grid Background="Transparent" Height="40">
                         <Rectangle x:Name="Bar" Width="3" HorizontalAlignment="Left" Margin="0,8" RadiusX="1.5" RadiusY="1.5"
                                    Fill="{DynamicResource AccentBrush}" Visibility="Hidden" />
-                        <ContentPresenter Margin="18,0,0,0" VerticalAlignment="Center" />
+                        <ContentPresenter Margin="{StaticResource Inset.16_0_0_0}" VerticalAlignment="Center" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
@@ -180,8 +180,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="CaretBrush" Value="{DynamicResource PeachBrush}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource PeachBrush}" />
-        <Setter Property="Padding" Value="16,8" />
-        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Padding" Value="{StaticResource Inset.16_4}" />
+        <Setter Property="MinHeight" Value="36" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -228,14 +228,14 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Padding" Value="{StaticResource Inset.16_4}" />
         <Setter Property="CaretBrush" Value="{DynamicResource PeachBrush}" />
     </Style>
 
     <Style TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
-        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Padding" Value="{StaticResource Inset.16_4}" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
             <Border x:Name="Item" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="{StaticResource Radius.Input}"><ContentPresenter /></Border>
             <ControlTemplate.Triggers>
@@ -256,7 +256,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="MinHeight" Value="36" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
             <Grid>
@@ -297,7 +297,7 @@
 
 
     <Style x:Key="Heading" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
         <Setter Property="FontSize" Value="24" />
         <Setter Property="LineHeight" Value="32" />
         <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
