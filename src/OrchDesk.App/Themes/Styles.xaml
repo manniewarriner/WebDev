@@ -93,6 +93,17 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
         <Setter Property="Padding" Value="12,8" />
+        <Style.Triggers>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsMouseOver" Value="True" />
+                    <Condition Property="IsPressed" Value="False" />
+                    <Condition Property="IsEnabled" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource UserBubbleBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            </MultiTrigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Reusable square icon button: 40x40, inherits GhostButton visuals and template. -->
