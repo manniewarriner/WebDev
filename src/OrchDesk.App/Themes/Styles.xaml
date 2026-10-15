@@ -211,7 +211,7 @@
 
     <Style x:Key="FieldLabel" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
-        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
         <Setter Property="Margin" Value="0,16,0,8" />
     </Style>
