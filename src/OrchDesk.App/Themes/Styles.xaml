@@ -106,10 +106,14 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                         </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity" Value="0.8" />
+                        </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Bar" Property="Opacity" Value="0.4" />
                             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
                             <Setter Property="Cursor" Value="Arrow" />
+                            <Setter Property="Opacity" Value="1" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
