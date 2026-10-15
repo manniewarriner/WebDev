@@ -27,6 +27,8 @@
 
   <ItemGroup>
     <Resource Include="Assets\orch-app-icon.ico" />
+    <Resource Include="Assets\orch-app-icon-512.png" />
+    <Resource Include="Assets\Fonts\*.ttf" />
     <ProjectReference Include="..\OrchDesk.Core\OrchDesk.Core.csproj" />
   </ItemGroup>
 

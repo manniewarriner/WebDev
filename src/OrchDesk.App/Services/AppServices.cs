@@ -46,6 +46,7 @@ public sealed class AppServices
                     provider.ModelsSyncedAt = DateTimeOffset.Now.AddMinutes(-2);
                 }
         }
+        if (screenshot) { var disconnected = Config.Providers.First(p => p.Id == "claude-outlook"); disconnected.Enabled = false; disconnected.AvailableModels.Clear(); disconnected.ModelsSyncedAt = null; }
         Queue = new OvernightQueueStore(Path.Combine(Store.Directory, "overnight"));
         ReportsDir = Path.Combine(Store.Directory, "reports");
         Rebuild();

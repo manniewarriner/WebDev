@@ -92,11 +92,14 @@ public sealed partial class AccountsViewModel : ObservableObject
         RefreshAll();
     }
 
+    public OrchDesk.Core.Config.ProviderConfig? ActiveProvider => _services.Config.Providers.FirstOrDefault(p => p.Id == _services.Rotator.Current()?.Id);
+
     private void RefreshAll()
     {
         System.Windows.Application.Current?.Dispatcher.Invoke(() =>
         {
             foreach (var r in Rows) r.Refresh();
+            OnPropertyChanged(nameof(ActiveProvider));
             ActiveName = _services.Rotator.Current()?.DisplayName ?? "Nothing available";
         });
     }

@@ -22,11 +22,7 @@
         <!-- ───────── Left rail ───────── -->
         <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel Margin="0,24,0,16">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="24,0,0,24">
-                    <ctl:ThinkingMark IsThinking="{Binding Chat.IsBusy}" VerticalAlignment="Center" />
-                </StackPanel>
-                <TextBlock DockPanel.Dock="Top" Text="OrchDesk" Margin="24,0,0,32" FontFamily="{StaticResource DisplayFont}"
-                           FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,0,0,32"><Image Source="Assets/orch-app-icon-512.png" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,10,0" /><TextBlock Text="OrchDesk" VerticalAlignment="Center" FontFamily="{StaticResource DisplayFont}" FontSize="24" /></StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,0">
                     <TextBlock>
@@ -41,7 +37,7 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <TextBlock Text="{Binding Accounts.ActiveName}" Style="{StaticResource Body}" Margin="0,8,0,16" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,16"><ctl:ProviderLogo Provider="{Binding Accounts.ActiveProvider}" Width="18" Height="18" Margin="0,0,8,0" /><TextBlock Text="{Binding Accounts.ActiveName}" Style="{StaticResource Body}" /></StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Style="{StaticResource GhostButton}" Margin="-8,0,0,0" />
                         <Button Command="{Binding ToggleThemeCommand}" Style="{StaticResource GhostButton}" ToolTip="Switch light/dark">
@@ -297,7 +293,7 @@
                              Grid.ColumnSpan="2" TextWrapping="Wrap" MinHeight="68" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="16" Style="{StaticResource ComposerInput}"
                              PreviewKeyDown="Composer_PreviewKeyDown" AutomationProperties.Name="Message"
                              ToolTip="Enter to send · Shift+Enter for a new line" />
-                    <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="12,0,0,12" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding SelectedProvider.Label}" /><TextBlock Text="&#x2304;" Margin="12,0,0,0" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
+                    <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="12,0,0,12" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><ctl:ProviderLogo Provider="{Binding SelectedProvider}" Width="16" Height="16" Margin="0,0,8,0" /><TextBlock Text="{Binding SelectedProvider.Label}" /><TextBlock Text="&#x2304;" Margin="12,0,0,0" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
                     <Grid Grid.Column="1" Grid.Row="1" Margin="16,0,12,12" VerticalAlignment="Bottom">
                         <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource AccentButton}" MinWidth="76" Height="40"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" />
@@ -306,14 +302,14 @@
                     </Grid>
                 </Grid></Border>
             </Border>
-            <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="360" MaxHeight="460" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="44,0,0,84" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
+            <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="360" MaxHeight="520" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="44,0,0,84" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8">
                 <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.3" /></Border.Effect>
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="Choose a model" Margin="12,8,12,12" FontSize="15" FontWeight="SemiBold" />
+                    <TextBlock DockPanel.Dock="Top" Text="Choose a model" FontFamily="{StaticResource DisplayFont}" Margin="12,8,12,12" FontSize="15" FontWeight="SemiBold" />
                     <ListBox ItemsSource="{Binding Source={StaticResource GroupedModels}}" SelectedItem="{Binding SelectedProvider}" SelectionChanged="ModelPicked" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource ModelPickerItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ListBox.Resources>
-                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ModelName}" TextTrimming="CharacterEllipsis" /></DataTemplate></ListBox.ItemTemplate>
-                        <ListBox.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate><TextBlock Text="{Binding Name}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="16,10,0,4" /></DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ListBox.GroupStyle>
+                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ModelName}" Margin="22,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate></ListBox.ItemTemplate>
+                        <ListBox.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate><StackPanel Orientation="Horizontal" Margin="16,6,0,2"><ctl:ProviderLogo Provider="{Binding Items[0]}" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,8,0" /><TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="12" /></StackPanel></DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ListBox.GroupStyle>
                     </ListBox>
                 </DockPanel>
             </Border>

@@ -9,6 +9,7 @@
                 <!-- Index 0 is the colour theme; App.ApplyTheme swaps it. -->
                 <ResourceDictionary Source="Themes/Dark.xaml" />
                 <ResourceDictionary Source="Themes/Styles.xaml" />
+                <ResourceDictionary Source="Assets/ProviderLogos.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <local:PageEqualsConverter x:Key="PageEquals" />
             <local:PageVisibilityConverter x:Key="PageVisible" />

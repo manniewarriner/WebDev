@@ -114,7 +114,7 @@ public sealed class ModelSyncTests
         config.Providers.Single(p => p.Id == "claude-gmail").AvailableModels = ["sonnet", "opus", "haiku"];
         var options = ModelPickerOption.Expand(config.Providers);
         Assert.Equal(3, options.Count(o => o.Id == "claude-gmail"));
-        Assert.Contains(options, o => o.Label == "Claude (Gmail) · sonnet");
+        Assert.Contains(options, o => o.Label == "Claude (Gmail) · Claude Sonnet");
         Assert.Single(options.Where(o => o.Id == "local-pc" && o.Model is null));
         Assert.DoesNotContain(options, o => o.Id == "remote-pc");
         config.Providers.Single(p => p.Id == "remote-pc").Enabled = true;
