@@ -29,12 +29,16 @@ public sealed class AppServices
 
     public event Action? Rebuilt;
 
+    public bool ChatOnly { get; }
+    private readonly IReadOnlyList<IModelProvider>? _providerOverride;
     public bool IsScreenshot { get; }
     public bool UseDemo { get; }
     public Task StartupSync { get; private set; } = Task.CompletedTask;
 
-    public AppServices(bool screenshot = false, ConfigStore? store = null, bool? demo = null)
+    public AppServices(bool screenshot = false, ConfigStore? store = null, bool? demo = null, bool chatOnly = false, IReadOnlyList<IModelProvider>? providers = null)
     {
+        ChatOnly = chatOnly;
+        _providerOverride = providers;
         Store = store ?? new();
         IsScreenshot = screenshot;
         var useFixtures = UseDemo = screenshot && (demo ?? store is null);
@@ -54,6 +58,7 @@ public sealed class AppServices
         Queue = new OvernightQueueStore(Path.Combine(Store.Directory, "overnight"));
         ReportsDir = Path.Combine(Store.Directory, "reports");
         Rebuild();
+        if (chatOnly) return;
         if (screenshot) { if (!UseDemo) StartupSync = SyncModelsAsync(); return; }
         Store.Changed += () => System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => {
             try { Config = Store.Load(); Rebuild(); } catch (IOException) { }
@@ -72,9 +77,10 @@ public sealed class AppServices
 
     public void Rebuild()
     {
-        Tools = ToolRegistry.CreateDefault(Config.WebFetchEnabled);
+        Tools = ChatOnly ? new ToolRegistry() : ToolRegistry.CreateDefault(Config.WebFetchEnabled);
         var factory = new ProviderFactory(Secrets, Http);
-        Providers = factory.CreateAll(Config);
+        Providers = _providerOverride ?? factory.CreateAll(Config);
+        if (ChatOnly) Providers = Providers.Where(p => !p.IsAgentic).ToList();
         // Keep limit history across rebuilds so a settings change doesn't forget a provider is cooling down.
         var old = Rotator;
         Rotator = new AccountRotator(ProviderFactory.InRotationOrder(Config, Providers), TimeSpan.FromMinutes(Config.LimitCooldownMinutes));
@@ -85,7 +91,7 @@ public sealed class AppServices
 
     public AccountRotator CreateRunRotator(ModelPickerOption? selected)
     {
-        if (selected?.Model is null) return Rotator;
+        if (_providerOverride is not null || ChatOnly || selected?.Model is null) return Rotator;
         var factory = new ProviderFactory(Secrets, Http);
         var providers = Config.Providers.Select(c => factory.Create(c, c.Id == selected.Id ? selected.Model : null)).OfType<IModelProvider>().ToList();
         var result = new AccountRotator(ProviderFactory.InRotationOrder(Config, providers), TimeSpan.FromMinutes(Config.LimitCooldownMinutes));

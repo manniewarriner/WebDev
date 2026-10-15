@@ -19,14 +19,40 @@ public sealed partial class ChatViewModel : ObservableObject
     private readonly AppServices _services;
     private Conversation? _conversation;
     private CancellationTokenSource? _cts;
+    private readonly string _scratchWorkspace;
+    private OrchDesk.Core.Accounts.AccountRotator? _observedRotator;
+    public string EffectiveWorkspace => Workspace ?? _scratchWorkspace;
+    public bool UsesScratchWorkspace => Workspace is null;
+    public string? SendBlockedReason => IsBusy ? "Working on the previous message"
+        : string.IsNullOrWhiteSpace(Input) ? "Type a message"
+        : !HasAvailableProvider() ? "No model available - connect one in Integrations" : null;
+    [ObservableProperty] private string? _composerNotice;
+
+    private bool HasAvailableProvider() => SelectedProvider?.Id is { } id
+        ? _services.Rotator.Find(id) is { } account && _services.Rotator.IsUsable(account)
+        : _services.Rotator.Current() is not null;
+
+    private void RefreshSendState()
+    {
+        OnPropertyChanged(nameof(SendBlockedReason));
+        SendCommand.NotifyCanExecuteChanged();
+    }
+
+    public void TrySend()
+    {
+        if (SendBlockedReason is null) SendCommand.Execute(null);
+        else if (!string.IsNullOrWhiteSpace(Input)) ComposerNotice = SendBlockedReason;
+    }
+    partial void OnInputChanged(string value) { ComposerNotice = null; }
+
 
     public ObservableCollection<ChatItem> Items { get; } = [];
     public ObservableCollection<OrchDesk.Core.Config.ModelPickerOption> ProviderOptions { get; } = [];
     public IReadOnlyList<ChatMode> Modes { get; } = [ChatMode.Chat, ChatMode.CostRouter];
 
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand))] private string _input = "";
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand)), NotifyPropertyChangedFor(nameof(WorkspaceLabel))] private string? _workspace;
-    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand), nameof(StopCommand))] private bool _isBusy;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SendBlockedReason)), NotifyCanExecuteChangedFor(nameof(SendCommand))] private string _input = "";
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(SendCommand)), NotifyPropertyChangedFor(nameof(WorkspaceLabel), nameof(UsesScratchWorkspace), nameof(EffectiveWorkspace))] private string? _workspace;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SendBlockedReason)), NotifyCanExecuteChangedFor(nameof(SendCommand), nameof(StopCommand))] private bool _isBusy;
     [ObservableProperty] private OrchDesk.Core.Config.ModelPickerOption? _selectedProvider;
     [ObservableProperty] private ChatMode _mode = ChatMode.Chat;
     [ObservableProperty] private bool _isThinking;
@@ -60,9 +86,10 @@ public sealed partial class ChatViewModel : ObservableObject
     /// <summary>Raised whenever content is added so the view can keep the list scrolled to the bottom.</summary>
     public event Action? ContentAdded;
 
-    public ChatViewModel(AppServices services)
+    public ChatViewModel(AppServices services, string? scratchWorkspace = null)
     {
         _services = services;
+        _scratchWorkspace = scratchWorkspace ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents", "OrchDesk", "Scratch");
         _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         _services.Rebuilt += ReloadProviders;
         ReloadProviders();
@@ -78,11 +105,16 @@ public sealed partial class ChatViewModel : ObservableObject
         ProviderOptions.Add(new OrchDesk.Core.Config.ModelPickerOption(null, "Auto — PC first, cloud when it's off"));
         foreach (var p in OrchDesk.Core.Config.ModelPickerOption.Expand(_services.Config.Providers)) ProviderOptions.Add(p);
         SelectedProvider = ProviderOptions.FirstOrDefault(o => o.Id == keep && (keepModel is null || o.Model == keepModel)) ?? ProviderOptions[0];
+        if (_observedRotator is not null) _observedRotator.Changed -= RefreshSendState;
+        _observedRotator = _services.Rotator;
+        _observedRotator.Changed += RefreshSendState;
+        RefreshSendState();
         _conversation = null; // pick up the new rotation chain on the next message; history is kept in Items only
     }
 
     partial void OnSelectedProviderChanged(OrchDesk.Core.Config.ModelPickerOption? value)
     {
+        RefreshSendState();
         _services.Config.LastProviderId = value?.Id;
         if (_conversation is not null) _conversation.PreferredProviderId = value?.Id;
     }
@@ -113,17 +145,18 @@ public sealed partial class ChatViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSend))]
     private async Task SendAsync()
     {
+        if (!CanSend()) return;
         var text = Input.Trim();
-        
+
         bool isOvernight = false;
         string goal = "";
 
-        if (text.Equals("/overnight", StringComparison.OrdinalIgnoreCase) || 
-            text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase))
+        if (!_services.ChatOnly && (text.Equals("/overnight", StringComparison.OrdinalIgnoreCase) ||
+            text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase)))
         {
             isOvernight = true;
-            goal = text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase) 
-                ? text[11..].Trim() 
+            goal = text.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase)
+                ? text[11..].Trim()
                 : "";
         }
 
@@ -141,6 +174,7 @@ public sealed partial class ChatViewModel : ObservableObject
 
         try
         {
+            Directory.CreateDirectory(EffectiveWorkspace);
             if (isOvernight)
                 await RunOvernightAsync(goal, _cts.Token);
             else await foreach (var ev in StartRun(text, _cts.Token)) Render(ev);
@@ -171,7 +205,7 @@ public sealed partial class ChatViewModel : ObservableObject
     private void OvernightSkill()
     {
         var lowerInput = Input.TrimStart();
-        if (lowerInput.Equals("/overnight", StringComparison.OrdinalIgnoreCase) || 
+        if (lowerInput.Equals("/overnight", StringComparison.OrdinalIgnoreCase) ||
             lowerInput.StartsWith("/overnight ", StringComparison.OrdinalIgnoreCase))
         {
             // Already prefixed, leave unchanged to preserve goal text and whitespace.
@@ -189,7 +223,7 @@ public sealed partial class ChatViewModel : ObservableObject
         if (manager is null) throw new InvalidOperationException("Configure an API manager model for overnight runs.");
         ActiveModel = manager.DisplayName;
         var run = existing ?? new OrchDesk.Core.Overnight.OvernightRun {
-            Goal = goal, Workspace = Workspace!, ManagerId = manager.Id,
+            Goal = goal, Workspace = EffectiveWorkspace, ManagerId = manager.Id,
             TestCommand = _services.Config.Supervisor.TestCommand, MaxSteps = _services.Config.MaxSteps,
             WorkerIds = [_services.Config.Supervisor.WorkerProviderId], MaxRounds = _services.Config.Supervisor.MaxRounds, ShutdownWhenDone = ShutdownWhenDone,
             Deadline = DateTimeOffset.UtcNow.AddMinutes(_services.Config.Overnight.MaxMinutesPerTask)
@@ -233,7 +267,7 @@ public sealed partial class ChatViewModel : ObservableObject
         }
     }
 
-    private bool CanSend() => !IsBusy && Workspace is not null && !string.IsNullOrWhiteSpace(Input);
+    private bool CanSend() => SendBlockedReason is null;
 
     [RelayCommand(CanExecute = nameof(IsBusy))]
     private void Stop() => _cts?.Cancel();
@@ -252,9 +286,9 @@ public sealed partial class ChatViewModel : ObservableObject
     {
         if (IsBusy) return;
         _conversation = conversation;
-        if (_conversation is null && Workspace is not null) {
+        if (_conversation is null) {
             var gate = new PermissionGate(_services.CreatePolicy(), ApproveAsync);
-            _conversation = new Conversation(_services.CreateLoop(gate), _services.CreateRunRotator(SelectedProvider), Workspace);
+            _conversation = new Conversation(_services.CreateLoop(gate), _services.CreateRunRotator(SelectedProvider), EffectiveWorkspace);
             foreach (var item in items) { if(item is UserItem u) _conversation.Messages.Add(ChatMessage.User(u.Text)); else if(item is AssistantItem a) _conversation.Messages.Add(ChatMessage.Assistant(a.Text)); }
         }
         Items.Clear();
@@ -274,12 +308,13 @@ public sealed partial class ChatViewModel : ObservableObject
             case ChatMode.CostRouter:
                 var tiers = sup.CostTiers.Select(id => rotator.Find(id)).Where(a => a is not null && rotator.IsUsable(a)).Select(a => a!.Provider).ToList();
                 if (tiers.Count == 0) return One(new ErrorEvent("No cost-router tiers are available. Check Settings → Supervisor."));
-                return new CostRouter(loop).RunAsync(text, tiers, sup.TestCommand, Workspace!, ct);
+                return new CostRouter(loop).RunAsync(text, tiers, sup.TestCommand, EffectiveWorkspace, ct);
 
             default:
                 // Each run gets a fresh loop/gate (settings may have changed) but carries the history forward.
-                var convo = new Conversation(loop, rotator, Workspace!) { PreferredProviderId = SelectedProvider?.Id };
+                var convo = new Conversation(loop, rotator, EffectiveWorkspace) { PreferredProviderId = SelectedProvider?.Id };
                 if (_conversation is not null) convo.Messages.AddRange(_conversation.Messages);
+                else if (_services.ChatOnly) convo.Messages.Add(ChatMessage.System("You are OrchDesk, a helpful chat assistant. Answer the user directly. No tools are available."));
                 _conversation = convo;
                 return convo.SendAsync(text, ct);
         }

@@ -8,6 +8,25 @@ namespace OrchDesk.App.Services;
 
 public static class Motion
 {
+    public static readonly DependencyProperty AnimateSendProperty = DependencyProperty.RegisterAttached(
+        "AnimateSend", typeof(bool), typeof(Motion), new PropertyMetadata(false, (d, e) => {
+            if (d is not Button button) return;
+            if ((bool)e.NewValue) button.IsEnabledChanged += SendEnabledChanged;
+            else button.IsEnabledChanged -= SendEnabledChanged;
+        }));
+    public static bool GetAnimateSend(DependencyObject element) => (bool)element.GetValue(AnimateSendProperty);
+    public static void SetAnimateSend(DependencyObject element, bool value) => element.SetValue(AnimateSendProperty, value);
+    private static void SendEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is not Button button) return;
+        var from = button.Opacity;
+        button.BeginAnimation(UIElement.OpacityProperty, null);
+        var target = button.IsEnabled ? 1d : .65;
+        button.Opacity = target;
+        if (Enabled && button.IsVisible)
+            button.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(from, target, TimeSpan.FromMilliseconds(150)) { FillBehavior = FillBehavior.Stop });
+    }
+
     public static readonly DependencyProperty AnimateSwitchProperty = DependencyProperty.RegisterAttached("AnimateSwitch", typeof(bool), typeof(Motion), new PropertyMetadata(false, (d, e) => {
         if (d is not CheckBox box) return;
         if ((bool)e.NewValue) { box.Checked += SwitchChanged; box.Unchecked += SwitchChanged; box.Indeterminate += SwitchChanged; }

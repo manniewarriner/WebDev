@@ -240,6 +240,10 @@
             <Button x:Name="JumpLatest" Grid.Row="2" Content="↓  Jump to latest" Visibility="Collapsed" Click="JumpToLatest" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="{StaticResource Inset.0_0_0_12}" Panel.ZIndex="5" />
             <!-- Composer -->
             <Border Grid.Row="3" Padding="{StaticResource Inset.32_16_32_24}">
+                <StackPanel MaxWidth="{StaticResource Metric.820}">
+                    <TextBlock Foreground="{DynamicResource MutedBrush}" FontSize="{StaticResource Metric.11}" Margin="{StaticResource Inset.0_0_0_8}" TextWrapping="Wrap" Visibility="{Binding UsesScratchWorkspace, Converter={StaticResource BoolVisible}}"><Run Text="No project folder - using Documents\OrchDesk\Scratch. "/><Hyperlink Command="{Binding PickFolderCommand}" Foreground="{DynamicResource MutedBrush}">Choose a folder</Hyperlink></TextBlock>
+                    <TextBlock Text="{Binding ComposerNotice}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+
                 <Border MaxWidth="{StaticResource Metric.820}" CornerRadius="{StaticResource Radius.Dialog}" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.1}"><Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
@@ -253,12 +257,13 @@
                     <TextBlock Grid.ColumnSpan="2" Text="Ask OrchDesk to build, fix or explain..." IsHitTestVisible="False" Margin="{StaticResource Inset.16}" VerticalAlignment="Top" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Composer}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                     <Button x:Name="ModelPickerButton" Grid.Row="1" Click="ToggleModelPicker" HorizontalAlignment="Left" Margin="{StaticResource Inset.12_0_0_12}" ToolTip="Choose a model"><StackPanel Orientation="Horizontal"><ctl:ProviderLogo Provider="{Binding SelectedProvider}" Width="{StaticResource Metric.16}" Height="{StaticResource Metric.16}" Margin="{StaticResource Inset.0_0_8_0}" /><TextBlock x:Name="ModelNameLabel" Text="{Binding SelectedProvider.ModelName}" /><TextBlock Text="&#x2304;" Margin="{StaticResource Inset.12_0_0_0}" Foreground="{DynamicResource MutedBrush}" /></StackPanel></Button>
                     <Grid Grid.Column="1" Grid.Row="1" Margin="{StaticResource Inset.16_0_12_12}" VerticalAlignment="Bottom">
-                        <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource AccentButton}" MinWidth="{StaticResource Metric.76}" Height="{StaticResource Metric.40}"
+                        <Button Content="Send" Command="{Binding SendCommand}" Style="{StaticResource SendButton}" ToolTip="{Binding SendBlockedReason}" ToolTipService.ShowOnDisabled="True" MinWidth="{StaticResource Metric.76}" Height="{StaticResource Metric.40}"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}, ConverterParameter=invert}" />
                         <Button Content="Stop" Command="{Binding StopCommand}" MinWidth="{StaticResource Metric.76}" Height="{StaticResource Metric.40}"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVisible}}" />
                     </Grid>
                 </Grid></Border>
+                </StackPanel>
             </Border>
             <Border x:Name="ModelPickerOverlay" Grid.Row="2" Grid.RowSpan="2" Panel.ZIndex="20" Visibility="Collapsed" Width="{StaticResource Metric.600}" MaxHeight="{StaticResource Metric.440}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="{StaticResource Inset.44_0_0_84}" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.1}" CornerRadius="{StaticResource Radius.Dialog}" Padding="{StaticResource Inset.8}">
                 <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.3" /></Border.Effect>

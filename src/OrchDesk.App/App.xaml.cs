@@ -10,10 +10,40 @@ public partial class App : Application
     {
         base.OnStartup(e);
         OrchDesk.Core.Config.ConfigStore storeOverride;
-        try { storeOverride = OrchDesk.Core.Config.ConfigStore.FromArgs(e.Args); } catch (ArgumentException) { Shutdown(2); return; }
+        try { storeOverride = OrchDesk.Core.Config.ConfigStore.FromArgs(e.Args); } catch (ArgumentException) { Shutdown(e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase) ? 1 : 2); return; }
         var sdkFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
         if (System.IO.File.Exists(System.IO.Path.Combine(sdkFolder, "dotnet.exe"))) Environment.SetEnvironmentVariable("PATH", sdkFolder + System.IO.Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
 
+
+        if (e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var exit = 1;
+            try
+            {
+                System.IO.Directory.CreateDirectory(storeOverride.Directory);
+                await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), "");
+                var options = OrchDesk.Core.Config.SendOptions.Parse(e.Args)!;
+                var sendServices = new AppServices(store: storeOverride, chatOnly: true);
+                var chat = new ChatViewModel(sendServices);
+                if (options.ProviderId is { } id)
+                {
+                    chat.SelectedProvider = chat.ProviderOptions.FirstOrDefault(p => p.Id == id)
+                        ?? new OrchDesk.Core.Config.ModelPickerOption(id, id);
+                }
+                chat.Input = options.Text;
+                if (chat.SendCommand.CanExecute(null)) await chat.SendCommand.ExecuteAsync(null);
+                var reply = string.Concat(chat.Items.OfType<AssistantItem>().Select(a => a.Text));
+                var result = reply[..Math.Min(500, reply.Length)];
+                System.IO.Directory.CreateDirectory(storeOverride.Directory);
+                await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), result);
+                Console.WriteLine(result);
+                exit = string.IsNullOrWhiteSpace(reply) ? 1 : 0;
+            }
+            catch { /* Provider diagnostics may contain secrets; return only the exit status. */ }
+            Shutdown(exit);
+            return;
+        }
 
         if (e.Args.Contains("--overnight-goal", StringComparer.OrdinalIgnoreCase))
         {
@@ -97,7 +127,7 @@ public partial class App : Application
         var screenshotMode = e.Args.Contains("--screenshot", StringComparer.OrdinalIgnoreCase);
         var pageIndex = Array.FindIndex(e.Args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
         var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
-        if (pageIndex >= 0 && page is not ("accounts" or "settings-appearance" or "settings-about" or "heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
+        if (pageIndex >= 0 && page is not ("accounts" or "settings-appearance" or "settings-about" or "heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "selector" or "composer" or "composer-empty" or "composer-ready" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
         Motion.Screenshot = screenshotMode;
         var services = new AppServices(screenshotMode, storeOverride, OrchDesk.Core.Config.ScreenshotOptions.UseDemo(e.Args));
         if (screenshotMode && !services.UseDemo) await services.StartupSync;

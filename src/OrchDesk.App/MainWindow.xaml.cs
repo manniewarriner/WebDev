@@ -159,6 +159,15 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainViewModel vm) return;
         var chat = vm.Chat;
+        if (page is "composer-empty" or "composer-ready")
+        {
+            WelcomeOverlay.Visibility = Visibility.Collapsed;
+            chat.Workspace = null;
+            chat.Items.Clear();
+            chat.Input = page == "composer-ready" ? "Help me plan my next project." : "";
+            SetSidebar(false, false);
+            return;
+        }
         if (page is "thread" or "sidebar-expanded" or "sidebar-collapsed") Height = 860;
         if (!vm.Services.UseDemo)
         {
@@ -188,6 +197,6 @@ public partial class MainWindow : Window
     {
         if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
         e.Handled = true;
-        if (DataContext is MainViewModel { Chat.SendCommand: var send } && send.CanExecute(null)) send.Execute(null);
+        if (DataContext is MainViewModel vm) vm.Chat.TrySend();
     }
 }
