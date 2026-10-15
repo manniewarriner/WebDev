@@ -8,7 +8,7 @@
     <Color x:Key="TextColor">#F3E6DA</Color>
     <Color x:Key="MutedColor">#B39A86</Color>
     <Color x:Key="AccentColor">#C8643B</Color>
-    <Color x:Key="AccentTextColor">#FFF4EC</Color>
+    <Color x:Key="AccentTextColor">#1E1612</Color>
     <Color x:Key="PeachColor">#F0B48E</Color>
     <Color x:Key="DangerColor">#E36B55</Color>
     <Color x:Key="SuccessColor">#9BC08A</Color>
