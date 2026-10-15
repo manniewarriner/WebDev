@@ -19,6 +19,7 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
 
     /// <summary>null = Auto (follow the rotation chain). Otherwise try this provider first, then fall back.</summary>
     public string? PreferredProviderId { get; set; }
+    public ModelUsageTracker? UsageTracker { get; set; }
     public TimeSpan? FirstTokenTimeout { get; set; }
     public string? StickyProviderId { get; set; }
     public List<ProviderAttempt> Attempts { get; } = [];
@@ -46,6 +47,9 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             }
             tried.Add(provider.Id);
             LastProvider = provider;
+            UsageTracker?.Start(provider);
+            ResponseUsage? measured = null;
+            var output = new System.Text.StringBuilder();
             var watch = System.Diagnostics.Stopwatch.StartNew();
             yield return new StatusUpdate($"Using {provider.DisplayName}");
 
@@ -53,6 +57,8 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             var answered = false;
             await foreach (var ev in GuardedRun(provider, ctx, ct, readOnly))
             {
+                if (ev is UsageReported report) measured = report.Usage;
+                if (ev is TextDelta delta) output.Append(delta.Text);
                 if (ev is ModelAttemptFailed modelFailure)
                 {
                     Attempts.Add(new(provider.Id, modelFailure.Model, modelFailure.Reason, modelFailure.ExceptionType, modelFailure.HttpStatus, modelFailure.ElapsedMs));
@@ -62,6 +68,8 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
                 if (ev is TextDelta { Text.Length: > 0 } or ToolCallRequested or Done { FinalText.Length: > 0 }) answered = true;
                 yield return ev;
             }
+            UsageTracker?.Complete(provider, measured ?? ResponseUsage.Estimate(userText, output.ToString()));
+            if (failover is UsageLimitHit || failover?.HttpStatus == 429) UsageTracker?.Backoff(provider, failover.RetryAfter);
             if (failover is null && !answered) failover = new ProviderUnavailable(provider.Id, "Empty response");
             if (failover is null) { StickyProviderId = provider.Id; Attempts.Add(new(provider.Id, provider.ModelId, "answered", ElapsedMs: watch.ElapsedMilliseconds)); yield break; }
             Attempts.Add(new(provider.Id, provider.ModelId, failover is UsageLimitHit ? "limit" : failover is ErrorEvent error ? (error.Message.Contains("401") || error.Message.Contains("403") || error.Message.Contains("log", StringComparison.OrdinalIgnoreCase) ? "not logged in" : "error") : "offline / timeout", failover.ExceptionType, failover.HttpStatus, watch.ElapsedMilliseconds));
@@ -115,6 +123,7 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
 
     private IModelProvider? PickProvider(HashSet<string> tried)
     {
+        if (PreferredProviderId is null && UsageTracker is not null) return UsageTracker.Pick(rotator.Accounts.Where(a => rotator.IsUsable(a, forSend: true) && !tried.Contains(a.Provider.Id)).Select(a => a.Provider));
         if ((PreferredProviderId ?? StickyProviderId) is { } id && !tried.Contains(id) && rotator.Find(id) is { } pref && rotator.IsUsable(pref, forSend: true))
             return pref.Provider;
         return rotator.Current(tried, forSend: true);

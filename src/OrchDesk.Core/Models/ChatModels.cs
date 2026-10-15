@@ -40,6 +40,7 @@ public abstract record ChatEvent
 {
     public string? ExceptionType { get; init; }
     public int? HttpStatus { get; init; }
+    public TimeSpan? RetryAfter { get; init; }
 }
 public sealed record StreamActivity : ChatEvent;
 public sealed record ModelAttemptFailed(string Model, string Reason, long ElapsedMs) : ChatEvent;

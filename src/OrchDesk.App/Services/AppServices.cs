@@ -18,6 +18,7 @@ public sealed class AppServices
 {
     private static readonly HttpClient Http = new(new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(4) }) { Timeout = Timeout.InfiniteTimeSpan }; // streams can run long; requests use their own tokens
 
+    public OrchDesk.Core.Orchestration.ModelUsageTracker Usage { get; private set; } = null!;
     public ConfigStore Store { get; }
     public ISecretProtector Secrets { get; } = new DpapiSecretProtector();
     public ToolRegistry Tools { get; private set; } = ToolRegistry.CreateDefault();
@@ -40,6 +41,7 @@ public sealed class AppServices
         ChatOnly = chatOnly;
         _providerOverride = providers;
         Store = store ?? new();
+        Usage = new(Store.Directory);
         IsScreenshot = screenshot;
         var useFixtures = UseDemo = screenshot && (demo ?? store is null);
         Config = useFixtures ? AppConfig.CreateDefault() : Store.Load();
@@ -109,6 +111,16 @@ public sealed class AppServices
                 }
         };
         return result;
+    }
+
+    public IReadOnlyList<IModelProvider> AutoModels()
+    {
+        if (_providerOverride is not null) return _providerOverride;
+        var factory = new ProviderFactory(Secrets, Http);
+        return Config.Providers.Where(c => c.Enabled).SelectMany(c =>
+            (c.Kind == ProviderKind.ClaudeCli ? new[] { "opus", "haiku" } : c.AvailableModels.Count > 0 ? c.AvailableModels.ToArray() : new[] { c.Model ?? "" })
+            .Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase) && !m.EndsWith("-free", StringComparison.OrdinalIgnoreCase))
+            .Select(m => factory.Create(c, m))).OfType<IModelProvider>().ToList();
     }
 
     public void Save()

@@ -142,6 +142,21 @@
                 <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBar}" /></ScrollViewer.Resources>
                 <ItemsControl ItemsSource="{Binding Items}" MaxWidth="{StaticResource Metric.820}" Margin="{StaticResource Inset.24_16}" Focusable="False">
                     <ItemsControl.Resources>
+                        <DataTemplate DataType="{x:Type vm:TeamItem}">
+                            <Border Padding="{StaticResource Inset.16}" Margin="{StaticResource Inset.0_0_0_16}" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource RaisedBrush}" CornerRadius="{StaticResource Round.8}"><StackPanel>
+                                <TextBlock Text="{Binding Header}" FontSize="{StaticResource Metric.14}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding ThoughtSummary}" ToolTip="{Binding UsageTooltip}" FontSize="{StaticResource Metric.13}" Margin="{StaticResource Inset.0_8}"/>
+                                <ItemsControl ItemsSource="{Binding Cards}"><ItemsControl.ItemTemplate><DataTemplate>
+                                    <Border Padding="{StaticResource Inset.16}" Margin="{StaticResource Inset.0_0_0_8}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource Round.8}"><StackPanel>
+                                        <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontSize="{StaticResource Metric.11}"/><TextBlock Text="{Binding Title}" FontSize="{StaticResource Metric.14}" TextWrapping="Wrap"/></DockPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="{StaticResource Inset.0_4}"><TextBlock Text="{Binding Role}" FontSize="{StaticResource Metric.11}"/><TextBlock Text="{Binding Model}" FontSize="{StaticResource Metric.11}" Margin="{StaticResource Inset.8_0_0_0}"/></StackPanel>
+                                        <TextBlock Text="{Binding ThoughtSummary}" ToolTip="{Binding Tooltip}" FontSize="{StaticResource Metric.13}" Foreground="{DynamicResource MutedBrush}"/>
+                                        <Expander Header="Output / review" Margin="{StaticResource Inset.0_8_0_0}"><TextBlock Text="{Binding Output}" TextWrapping="Wrap" FontSize="{StaticResource Metric.13}"/></Expander>
+                                    </StackPanel></Border>
+                                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                                <Expander Header="Per-model usage"><TextBlock Text="{Binding ModelUsage}" FontSize="{StaticResource Metric.12}" TextWrapping="Wrap"/></Expander>
+                            </StackPanel></Border>
+                        </DataTemplate>
                         <DataTemplate DataType="{x:Type vm:UserItem}">
                             <Border Background="{DynamicResource UserBubbleBrush}" CornerRadius="{StaticResource Round.16_16_4_16}" Padding="{StaticResource Inset.16}"
                                     HorizontalAlignment="Right" MaxWidth="{StaticResource Metric.600}" Margin="{StaticResource Inset.80_16_0_8}">

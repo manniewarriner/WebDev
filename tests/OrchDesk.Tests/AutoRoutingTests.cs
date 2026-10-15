@@ -74,7 +74,7 @@ public class AutoRoutingTests
     }
 
     [Theory]
-    [InlineData(true, "mimo-v2.6-flash-free")]
+    [InlineData(true, "configured")]
     [InlineData(false, "configured")]
     public void Free_preference_uses_only_synced_models(bool prefer, string expected)
     {
@@ -229,7 +229,7 @@ public class AutoRoutingTests
     }
 
     [Fact]
-    public async Task Failed_free_model_preserves_key_and_retries_configured_model()
+    public async Task AutoNeverAttemptsFreeModelsEvenWithLegacyPreference()
     {
         using var dir = new TempDir();
         var handler = new FreeFallbackHandler();
@@ -242,10 +242,9 @@ public class AutoRoutingTests
         var convo = Create(dir.Path, provider);
         var events = await convo.SendAsync("ping", default).ToListAsync();
         Assert.Contains(events, e => e is TextDelta { Text: "pong" });
-        Assert.Equal(new[] { "mimo-v2.6-flash-free", "configured" }, handler.Models);
+        Assert.Equal(new[] { "configured" }, handler.Models);
         Assert.Equal("configured", provider.ModelId);
-        Assert.Equal(401, convo.Attempts[0].HttpStatus);
-        Assert.Equal("preferred model rejected", convo.Attempts[0].Reason);
+        Assert.Equal("answered", convo.Attempts[0].Reason);
     }
 
     private sealed class FreeFallbackHandler : HttpMessageHandler
@@ -256,7 +255,7 @@ public class AutoRoutingTests
             Assert.Equal("test-key", request.Headers.Authorization?.Parameter);
             var json = System.Text.Json.Nodes.JsonNode.Parse(await request.Content!.ReadAsStringAsync(ct));
             Models.Add(json!["model"]!.GetValue<string>());
-            return Models.Count == 1 ? new(HttpStatusCode.Unauthorized) : new(HttpStatusCode.OK) {
+            return new(HttpStatusCode.OK) {
                 Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"pong\"}}]}", System.Text.Encoding.UTF8, "application/json")
             };
         }

@@ -41,6 +41,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _webStatus = "Not tested";
     [ObservableProperty] private string _meshyStatus = "Not tested";
     public AppServices Services => _services;
+    public OrchDesk.Core.Orchestration.TeamConfig Team { get; private set; } = new();
     [ObservableProperty] private string _displayName = "MW";
     [ObservableProperty] private string _initials = "MW";
     public string? NewMeshyKey { get; set; }
@@ -53,6 +54,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _webFetchEnabled = services.Config.WebFetchEnabled;
         _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         var c = services.Config;
+        Team = System.Text.Json.JsonSerializer.Deserialize<OrchDesk.Core.Orchestration.TeamConfig>(System.Text.Json.JsonSerializer.Serialize(c.WorkspaceTeams.GetValueOrDefault(AppConfig.WorkspaceKey(c.LastWorkspace ?? Environment.CurrentDirectory)) ?? c.Team))!;
         _reduceMotion = c.ReduceMotion;
         _displayName = c.DisplayName; _initials = c.Initials;
         Providers = new(c.Providers.Select(p => new ProviderEdit(p)));
@@ -186,7 +188,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         c.Providers = Providers.Select(p => p.ToConfig(_services.Secrets)).ToList();
         c.RotationOrder = order;
         c.MaxSteps = Math.Clamp(MaxSteps, 1, 200);
-        c.PreferFreeModels = PreferFreeModels;
+        c.PreferFreeModels = false;
+        c.WorkspaceTeams[AppConfig.WorkspaceKey(c.LastWorkspace ?? Environment.CurrentDirectory)] = Team;
         c.LimitCooldownMinutes = Math.Clamp(LimitCooldownMinutes, 1, 24 * 60);
         c.ExtraAllowedCommands = SplitList(ExtraAllowedCommands.Replace(",", "\n"));
         c.Supervisor.PlannerProviderId = PlannerId.Trim();

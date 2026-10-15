@@ -162,7 +162,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
             {
                 // Do not expose response bodies: upstream errors may contain credentials.
                 if (resp.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.PaymentRequired)
-                    yield return new UsageLimitHit(Id, $"HTTP {(int)resp.StatusCode}") { HttpStatus = (int)resp.StatusCode };
+                    yield return new UsageLimitHit(Id, $"HTTP {(int)resp.StatusCode}") { HttpStatus = (int)resp.StatusCode, RetryAfter = resp.Headers.RetryAfter?.Delta ?? (resp.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow) };
                 else if ((int)resp.StatusCode >= 500 || resp.StatusCode is HttpStatusCode.BadGateway)
                     yield return new ProviderUnavailable(Id, $"HTTP {(int)resp.StatusCode}") { HttpStatus = (int)resp.StatusCode };
                 else

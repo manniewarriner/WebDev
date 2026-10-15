@@ -62,7 +62,7 @@ public sealed class AppConfig
     public WorkspacePermission PermissionFor(string path) => WorkspacePermissions.GetValueOrDefault(WorkspaceKey(path));
     public void SetPermission(string path, WorkspacePermission permission) => WorkspacePermissions[WorkspaceKey(path)] = permission;
 
-    public bool PreferFreeModels { get; set; } = true;
+    public bool PreferFreeModels { get; set; } = false;
     public bool WebFetchEnabled { get; set; } = true;
     public string? MeshyApiKeyProtected { get; set; }
     public List<ProviderConfig> Providers { get; set; } = [];
@@ -80,6 +80,8 @@ public sealed class AppConfig
     public List<string> RecentWorkspaces { get; set; } = [];
     public string? LastProviderId { get; set; }
     public List<string> ExtraAllowedCommands { get; set; } = [];
+    public Dictionary<string, OrchDesk.Core.Orchestration.TeamConfig> WorkspaceTeams { get; set; } = [];
+    public OrchDesk.Core.Orchestration.TeamConfig Team { get; set; } = new();
     public SupervisorConfig Supervisor { get; set; } = new();
     public OvernightConfig Overnight { get; set; } = new();
 

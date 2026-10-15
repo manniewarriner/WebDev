@@ -15,7 +15,7 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
             c = System.Text.Json.JsonSerializer.Deserialize<ProviderConfig>(System.Text.Json.JsonSerializer.Serialize(c))!;
             c.Model = modelOverride;
         }
-        if (!c.Enabled) return null;
+        if (!c.Enabled || (c.Kind == ProviderKind.OpenAiCompatible && c.Model?.EndsWith("-free", StringComparison.OrdinalIgnoreCase) == true)) return null;
         var baseUrl = c.BaseUrl;
         if (c.Id == "opencode-go" && c.Model is not null && c.ModelBaseUrls.TryGetValue(c.Model, out var endpoint)
             && endpoint is "https://opencode.ai/inference/go/v1" or "https://opencode.ai/zen/v1") baseUrl = endpoint;
@@ -61,9 +61,7 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
 
     public static string? AutoModel(AppConfig config, ProviderConfig provider)
     {
-        if (!config.PreferFreeModels || provider.Id != "opencode-go") return provider.Model;
-        string[] preferred = ["deepseek-v4.1-flash-free", "mimo-v2.6-flash-free", "nemotron-3.5-lightning-free", "longcat-2.5-preview-free"];
-        return preferred.FirstOrDefault(provider.AvailableModels.Contains) ?? provider.Model;
+        return provider.Model?.EndsWith("-free", StringComparison.OrdinalIgnoreCase) == true ? provider.AvailableModels.FirstOrDefault(m => !m.EndsWith("-free", StringComparison.OrdinalIgnoreCase)) : provider.Model;
     }
 
     public List<IModelProvider> CreateAll(AppConfig config) =>

@@ -118,7 +118,7 @@ public sealed class ModelSyncTests
         Assert.Equal("https://opencode.ai/zen/v1", provider.ModelBaseUrls["zen-model"]);
     }
     [Fact]
-    public async Task SelectedZenModelUsesZenEndpointWithoutChangingSavedModel()
+    public void FreeZenModelIsNotAvailableOverHttp()
     {
         using var http = new HttpClient(new Handler(request =>
         {
@@ -128,7 +128,7 @@ public sealed class ModelSyncTests
         var config = new ProviderConfig { Id = "opencode-go", BaseUrl = "https://opencode.ai/inference/go/v1", Model = "go-model",
             ModelBaseUrls = new() { ["zen-free"] = "https://opencode.ai/zen/v1" } };
         var provider = new ProviderFactory(new Secrets(), http).Create(config, "zen-free")!;
-        Assert.Equal(ProviderHealth.Online, await provider.CheckHealthAsync(default));
+        Assert.Null(provider);
         Assert.Equal("go-model", config.Model);
         Assert.Equal("https://opencode.ai/inference/go/v1", config.BaseUrl);
     }

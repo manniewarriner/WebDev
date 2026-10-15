@@ -2,7 +2,9 @@ namespace OrchDesk.Core.Config;
 
 public sealed record ModelPickerOption(string? Id, string Label, string? Model = null)
 {
-    public string Subtitle => Id is null ? "PC first, cloud fallback" : "";
+    public bool NeedsOpenCodeApp => (Model ?? DisplayModel)?.EndsWith("-free", StringComparison.OrdinalIgnoreCase) == true;
+    public string Tag => NeedsOpenCodeApp ? "Free" : Id?.StartsWith("opencode") == true ? "Go" : "";
+    public string Subtitle => NeedsOpenCodeApp ? "Free ? needs OpenCode app" : Id is null ? "PC first, cloud fallback" : Tag;
     public string ProviderGroup => Id is null ? "Automatic" : Label.Split(" · ")[0];
     public ProviderKind Kind { get; init; }
     public string? DisplayModel { get; init; }

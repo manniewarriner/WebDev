@@ -119,3 +119,21 @@ public sealed partial class ChangeItem(ChangeEntry entry) : ObservableObject
     [ObservableProperty] private string _error = "";
     [RelayCommand] private void Undo() { try { Entry.Undo(); OnPropertyChanged(nameof(CanUndo)); } catch (Exception ex) { Error = ex.Message; } }
 }
+
+public sealed class TeamItem : ChatItem
+{
+    public string Header { get; private set; } = "Auto model \u00b7 Team";
+    public string ThoughtSummary { get; private set; } = "";
+    public string ModelUsage { get; private set; } = "";
+    public string UsageTooltip { get; private set; } = "";
+    public System.Collections.ObjectModel.ObservableCollection<OrchDesk.Core.Orchestration.TeamCard> Cards { get; } = [];
+    public void Refresh(OrchDesk.Core.Orchestration.TeamJob job, OrchDesk.Core.Orchestration.ModelUsageTracker usage)
+    {
+        Header = $"Auto model \u00b7 PM {job.Pm} \u00b7 {job.Status}";
+        ThoughtSummary = job.ThoughtSummary;
+        UsageTooltip = job.Usage.Tooltip("Team", string.Join(", ", job.Cards.Select(c => c.Model).Where(m=>m.Length>0).Distinct()));
+        Cards.Clear(); foreach (var card in job.Cards.ToArray()) Cards.Add(card);
+        ModelUsage = string.Join("\n", usage.Snapshot().Select(p => $"{p.Key}   {p.Value.Requests} requests \u00b7 {p.Value.Tokens:N0} tokens today; session {p.Value.SessionRequests} requests / {p.Value.SessionTokens:N0} tokens" + (p.Value.BackoffUntil > DateTimeOffset.UtcNow ? $" \u00b7 backoff until {p.Value.BackoffUntil:HH:mm}" : " \u00b7 ready")));
+        OnPropertyChanged(nameof(Header)); OnPropertyChanged(nameof(ThoughtSummary)); OnPropertyChanged(nameof(ModelUsage)); OnPropertyChanged(nameof(UsageTooltip));
+    }
+}
