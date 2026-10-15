@@ -264,8 +264,7 @@
         <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
     </Style>
 
-    <Style x:Key="Muted" TargetType="TextBlock" BasedOn="{StaticResource Body}">
-        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
-        <Setter Property="FontSize" Value="12.5" />
+    <Style x:Key="Muted" TargetType="TextBlock" BasedOn="{StaticResource Caption12}">
+        <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 </ResourceDictionary>
