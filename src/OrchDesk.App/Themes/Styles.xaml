@@ -75,7 +75,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Grid Background="Transparent" Height="38">
+                    <Grid Background="Transparent" Height="40">
                         <Rectangle x:Name="Bar" Width="3" HorizontalAlignment="Left" Margin="0,8" RadiusX="1.5" RadiusY="1.5"
                                    Fill="{DynamicResource AccentBrush}" Visibility="Hidden" />
                         <ContentPresenter Margin="18,0,0,0" VerticalAlignment="Center" />
