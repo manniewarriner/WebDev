@@ -61,7 +61,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
-        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Padding" Value="12,6" />
     </Style>
 
     <!-- Left-rail navigation: a radio button that shows a terracotta bar when selected. -->
