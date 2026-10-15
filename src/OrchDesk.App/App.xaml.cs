@@ -39,23 +39,24 @@ public partial class App : Application
                     var watch = System.Diagnostics.Stopwatch.StartNew();
                     var before = chat.Items.Count;
                     chat.Input = text;
-                    await chat.SendCommand.ExecuteAsync(null);
+                    if (chat.SendCommand.CanExecute(null)) await chat.SendCommand.ExecuteAsync(null);
                     var added = chat.Items.Skip(before).ToList();
                     var reply = string.Concat(added.OfType<AssistantItem>().Select(a => a.Text));
-                    var error = string.Join("; ", added.OfType<ErrorItem>().Select(a => a.Text));
+                    var error = added.OfType<ErrorItem>().Any() ? "Send failed: providers unavailable; see attempt reasons." : "";
                     var provider = chat.CurrentConversation?.LastProvider;
                     if (error.Length == 0 && string.IsNullOrWhiteSpace(reply)) error = "Send failed: provider returned an empty reply.";
                     var output = error.Length > 0 ? error : $"[{provider?.Id}/{provider?.ModelId}] " + reply;
                     if (error.Length > 0 || string.IsNullOrWhiteSpace(reply)) { exit = 1; Console.Error.WriteLine(output); }
                     Console.WriteLine(output);
                     await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), output + Environment.NewLine);
-                    results.Add(new { provider = provider?.Id, model = provider?.ModelId, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.ToArray() });
+                    results.Add(new { provider = provider?.Id, model = provider?.ModelId, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.Select(a => new { a.ProviderId, a.Model, a.Reason }).ToArray(), diagnostics = options.Diag ? chat.CurrentConversation?.Attempts.ToArray() : null });
                     if (exit != 0) break;
                 }
                 await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.json"), System.Text.Json.JsonSerializer.Serialize(results, OrchDesk.Core.Config.ConfigStore.Json));
             }
             catch (Exception ex)
             {
+                exit = 1;
                 var error = ex is ArgumentException ? ex.Message : "Send failed: provider or configuration unavailable.";
                 Console.Error.WriteLine(error); Console.WriteLine(error);
             }

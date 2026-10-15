@@ -35,7 +35,13 @@ public sealed record ChatRequest(
     bool ReadOnly = false);
 
 /// <summary>Streamed output from a provider or the agent loop.</summary>
-public abstract record ChatEvent;
+public abstract record ChatEvent
+{
+    public string? ExceptionType { get; init; }
+    public int? HttpStatus { get; init; }
+}
+public sealed record StreamActivity : ChatEvent;
+public sealed record ModelAttemptFailed(string Model, string Reason, long ElapsedMs) : ChatEvent;
 public sealed record ReasoningDelta(string Text) : ChatEvent;
 public sealed record TextDelta(string Text) : ChatEvent;
 public sealed record ToolCallRequested(ToolCall Call) : ChatEvent;

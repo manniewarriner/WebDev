@@ -65,7 +65,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
                 if (ev is ErrorEvent error && (error.Message.Contains("401") || error.Message.Contains("403")))
                     return ProviderHealth.NotConfigured;
                 if (ev is ProviderUnavailable or ErrorEvent) return ProviderHealth.Offline;
-                if (ev is TextDelta { Text.Length: > 0 } or Done or ToolCallRequested or UsageLimitHit)
+                if (ev is StreamActivity or ReasoningDelta or TextDelta or Done or ToolCallRequested or UsageLimitHit)
                     return ProviderHealth.Online;
             }
             return ProviderHealth.Offline;
@@ -146,11 +146,11 @@ public sealed class OpenAiCompatProvider : IModelProvider
         }
         catch (HttpRequestException ex)
         {
-            failure = new ProviderUnavailable(Id, $"{DisplayName} is unreachable: {ex.Message}");
+            failure = new ProviderUnavailable(Id, "Provider unreachable") { ExceptionType = ex.GetType().Name, HttpStatus = (int?)ex.StatusCode };
         }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            failure = new ProviderUnavailable(Id, $"{DisplayName} timed out.");
+            failure = new ProviderUnavailable(Id, "Response headers timed out") { ExceptionType = ex.GetType().Name };
         }
 
         if (failure is not null) { yield return failure; yield break; }
@@ -159,13 +159,13 @@ public sealed class OpenAiCompatProvider : IModelProvider
         {
             if (!resp!.IsSuccessStatusCode)
             {
-                var text = await resp.Content.ReadAsStringAsync(ct);
+                // Do not expose response bodies: upstream errors may contain credentials.
                 if (resp.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.PaymentRequired)
-                    yield return new UsageLimitHit(Id, $"{(int)resp.StatusCode}: {Truncate(text)}");
+                    yield return new UsageLimitHit(Id, $"HTTP {(int)resp.StatusCode}") { HttpStatus = (int)resp.StatusCode };
                 else if ((int)resp.StatusCode >= 500 || resp.StatusCode is HttpStatusCode.BadGateway)
-                    yield return new ProviderUnavailable(Id, $"{(int)resp.StatusCode}: {Truncate(text)}");
+                    yield return new ProviderUnavailable(Id, $"HTTP {(int)resp.StatusCode}") { HttpStatus = (int)resp.StatusCode };
                 else
-                    yield return new ErrorEvent($"{DisplayName} returned {(int)resp.StatusCode}: {Truncate(text)}");
+                    yield return new ErrorEvent($"HTTP {(int)resp.StatusCode}") { HttpStatus = (int)resp.StatusCode };
                 yield break;
             }
 
@@ -191,7 +191,20 @@ public sealed class OpenAiCompatProvider : IModelProvider
 
     private static async IAsyncEnumerable<string> ReadLines(StreamReader reader, [EnumeratorCancellation] CancellationToken ct)
     {
-        while (await reader.ReadLineAsync(ct) is { } line) yield return line;
+        var buffer = new char[1024];
+        var pending = new StringBuilder();
+        int count;
+        while ((count = await reader.ReadAsync(buffer.AsMemory(), ct)) > 0)
+        {
+            // Surface even partial lines/keepalive bytes before waiting for a complete SSE line.
+            yield return "";
+            for (var i = 0; i < count; i++)
+            {
+                if (buffer[i] == '\n') { yield return pending.ToString(); pending.Clear(); }
+                else pending.Append(buffer[i]);
+            }
+        }
+        if (pending.Length > 0) yield return pending.ToString();
     }
 
     private static string Truncate(string s) => s.Length <= 500 ? s : s[..500] + "…";

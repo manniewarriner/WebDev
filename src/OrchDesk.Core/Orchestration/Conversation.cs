@@ -45,19 +45,25 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
             }
             tried.Add(provider.Id);
             LastProvider = provider;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             yield return new StatusUpdate($"Using {provider.DisplayName}");
 
             ChatEvent? failover = null;
             var answered = false;
             await foreach (var ev in GuardedRun(provider, ctx, ct, readOnly))
             {
+                if (ev is ModelAttemptFailed modelFailure)
+                {
+                    Attempts.Add(new(provider.Id, modelFailure.Model, modelFailure.Reason, modelFailure.ExceptionType, modelFailure.HttpStatus, modelFailure.ElapsedMs));
+                    continue;
+                }
                 if (ev is UsageLimitHit or ProviderUnavailable or ErrorEvent) { failover = ev; break; }
                 if (ev is TextDelta { Text.Length: > 0 } or ToolCallRequested or Done { FinalText.Length: > 0 }) answered = true;
                 yield return ev;
             }
             if (failover is null && !answered) failover = new ProviderUnavailable(provider.Id, "Empty response");
-            if (failover is null) { StickyProviderId = provider.Id; Attempts.Add(new(provider.Id, provider.ModelId, "answered")); yield break; }
-            Attempts.Add(new(provider.Id, provider.ModelId, failover is UsageLimitHit ? "limit" : failover is ErrorEvent error ? (error.Message.Contains("401") || error.Message.Contains("403") || error.Message.Contains("log", StringComparison.OrdinalIgnoreCase) ? "not logged in" : "error") : "offline / timeout"));
+            if (failover is null) { StickyProviderId = provider.Id; Attempts.Add(new(provider.Id, provider.ModelId, "answered", ElapsedMs: watch.ElapsedMilliseconds)); yield break; }
+            Attempts.Add(new(provider.Id, provider.ModelId, failover is UsageLimitHit ? "limit" : failover is ErrorEvent error ? (error.Message.Contains("401") || error.Message.Contains("403") || error.Message.Contains("log", StringComparison.OrdinalIgnoreCase) ? "not logged in" : "error") : "offline / timeout", failover.ExceptionType, failover.HttpStatus, watch.ElapsedMilliseconds));
 
             // Undo the partial attempt so the next model starts from the user's message. (Found by reference, not by
             // count: the loop may have inserted a system prompt at the front.)
@@ -95,11 +101,13 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
                 timeout.CancelAfter(wait);
                 more = await events.MoveNextAsync();
             }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { failure = new ProviderUnavailable(provider.Id, "Response timed out"); }
-            catch (Exception) when (!ct.IsCancellationRequested) { failure = new ProviderUnavailable(provider.Id, "Provider failed"); }
+            catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) { failure = new ProviderUnavailable(provider.Id, "Response timed out") { ExceptionType = ex.GetType().Name }; }
+            catch (Exception ex) when (!ct.IsCancellationRequested) { failure = new ProviderUnavailable(provider.Id, "Provider failed") { ExceptionType = ex.GetType().Name, HttpStatus = ex is HttpRequestException http ? (int?)http.StatusCode : null }; }
             if (failure is not null) { yield return failure; yield break; }
             if (!more) yield break;
-            if (events.Current is TextDelta { Text.Length: > 0 } or ToolCallRequested or Done { FinalText.Length: > 0 }) first = false;
+            // Any provider event proves the stream is alive, including reasoning and keepalives.
+            first = false;
+            timeout.CancelAfter(Timeout.InfiniteTimeSpan);
             yield return events.Current;
         }
     }
@@ -112,4 +120,4 @@ public sealed class Conversation(AgentLoop loop, AccountRotator rotator, string 
     }
 }
 
-public sealed record ProviderAttempt(string ProviderId, string Model, string Reason);
+public sealed record ProviderAttempt(string ProviderId, string Model, string Reason, string? ExceptionType = null, int? HttpStatus = null, long ElapsedMs = 0);

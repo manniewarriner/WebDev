@@ -47,14 +47,15 @@ public class ProviderParsingTests
         var events = await SseChatParser.ParseAsync(Lines(
             """data: {"choices":[],"usage":{"completion_tokens":12}}""",
             "data: [DONE]")).ToListAsync();
-        Assert.IsType<Done>(Assert.Single(events));
+        Assert.Equal(2, events.OfType<StreamActivity>().Count());
+        Assert.IsType<Done>(Assert.Single(events.Where(e => e is not StreamActivity)));
     }
 
     [Fact]
     public async Task Sse_error_object_becomes_error_event()
     {
         var events = await SseChatParser.ParseAsync(Lines("""data: {"error":{"message":"model not found"}}""")).ToListAsync();
-        Assert.Equal("model not found", Assert.IsType<ErrorEvent>(Assert.Single(events)).Message);
+        Assert.Equal("model not found", Assert.IsType<ErrorEvent>(Assert.Single(events.Where(e => e is not StreamActivity))).Message);
     }
 
     [Fact]

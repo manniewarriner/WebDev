@@ -190,6 +190,98 @@ public class AutoRoutingTests
             ProviderFactory.InRotationOrder(new AppConfig(), providers).Select(p => p.Id));
     }
 
+    private sealed class ReasoningProvider(ChatEvent? activity = null, TimeSpan? delay = null) : IModelProvider
+    {
+        public string Id => "reasoning";
+        public string DisplayName => Id;
+        public bool IsLocal => false;
+        public bool IsAgentic => false;
+        public Task<ProviderHealth> CheckHealthAsync(CancellationToken ct) => Task.FromResult(ProviderHealth.Online);
+        public async IAsyncEnumerable<ChatEvent> StreamChatAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken ct)
+        {
+            yield return activity ?? new ReasoningDelta("thinking");
+            await Task.Delay(delay ?? TimeSpan.FromSeconds(25), ct);
+            yield return new TextDelta("pong");
+            yield return new Done();
+        }
+    }
+
+    [Fact]
+    public async Task Reasoning_for_25_seconds_keeps_stream_alive()
+    {
+        using var dir = new TempDir();
+        var convo = Create(dir.Path, new ReasoningProvider());
+        convo.FirstTokenTimeout = TimeSpan.FromMilliseconds(100);
+        var events = await convo.SendAsync("ping", default).ToListAsync();
+        Assert.Contains(events, e => e is TextDelta { Text: "pong" });
+        Assert.Equal("answered", Assert.Single(convo.Attempts).Reason);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Empty_delta_or_keepalive_keeps_stream_alive(bool empty)
+    {
+        using var dir = new TempDir();
+        var convo = Create(dir.Path, new ReasoningProvider(empty ? new TextDelta("") : new StreamActivity(), TimeSpan.FromMilliseconds(200)));
+        convo.FirstTokenTimeout = TimeSpan.FromMilliseconds(50);
+        Assert.Contains(await convo.SendAsync("ping", default).ToListAsync(), e => e is TextDelta { Text: "pong" });
+    }
+
+    [Fact]
+    public async Task Failed_free_model_preserves_key_and_retries_configured_model()
+    {
+        using var dir = new TempDir();
+        var handler = new FreeFallbackHandler();
+        using var http = new HttpClient(handler);
+        var config = new AppConfig { PreferFreeModels = true, Providers = [new() {
+            Id = "opencode-go", Kind = ProviderKind.OpenAiCompatible, BaseUrl = "https://configured.test/v1",
+            Model = "configured", AvailableModels = ["mimo-v2.6-flash-free"], ApiKeyProtected = "protected:test-key"
+        }] };
+        var provider = new ProviderFactory(new TestSecrets(), http).CreateAll(config).Single();
+        var convo = Create(dir.Path, provider);
+        var events = await convo.SendAsync("ping", default).ToListAsync();
+        Assert.Contains(events, e => e is TextDelta { Text: "pong" });
+        Assert.Equal(new[] { "mimo-v2.6-flash-free", "configured" }, handler.Models);
+        Assert.Equal("configured", provider.ModelId);
+        Assert.Equal(401, convo.Attempts[0].HttpStatus);
+        Assert.Equal("preferred model rejected", convo.Attempts[0].Reason);
+    }
+
+    private sealed class FreeFallbackHandler : HttpMessageHandler
+    {
+        public List<string> Models { get; } = [];
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Assert.Equal("test-key", request.Headers.Authorization?.Parameter);
+            var json = System.Text.Json.Nodes.JsonNode.Parse(await request.Content!.ReadAsStringAsync(ct));
+            Models.Add(json!["model"]!.GetValue<string>());
+            return Models.Count == 1 ? new(HttpStatusCode.Unauthorized) : new(HttpStatusCode.OK) {
+                Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"pong\"}}]}", System.Text.Encoding.UTF8, "application/json")
+            };
+        }
+    }
+
+    [Fact]
+    public void Diagnostics_flag_is_opt_in()
+    {
+        Assert.True(SendOptions.Parse(["--send", "ping", "--diag"])!.Diag);
+        Assert.False(SendOptions.Parse(["--send", "ping"])!.Diag);
+    }
+
+    [Fact]
+    public async Task Attempt_diagnostics_exclude_exception_messages_and_response_bodies()
+    {
+        using var dir = new TempDir();
+        var convo = Create(dir.Path, new FakeProvider("bad", _ => [new ErrorEvent("401 secret-token response-body")]),
+            new FakeProvider("good", _ => FakeProvider.Say("pong")));
+        await convo.SendAsync("ping", default).ToListAsync();
+        var json = System.Text.Json.JsonSerializer.Serialize(convo.Attempts);
+        Assert.DoesNotContain("secret-token", json);
+        Assert.DoesNotContain("response-body", json);
+        Assert.Equal("not logged in", convo.Attempts[0].Reason);
+    }
+
     private sealed class SilentProvider : IModelProvider
     {
         public string Id => "silent";
@@ -210,6 +302,8 @@ public class AutoRoutingTests
         convo.FirstTokenTimeout = TimeSpan.FromMilliseconds(30);
         await convo.SendAsync("hello", default).ToListAsync();
         Assert.Equal("cloud", convo.LastProvider!.Id);
+        Assert.Equal("answered", convo.Attempts[1].Reason);
+        Assert.NotNull(convo.Attempts[0].ExceptionType);
     }
 }
 

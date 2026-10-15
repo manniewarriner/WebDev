@@ -67,7 +67,15 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
     }
 
     public List<IModelProvider> CreateAll(AppConfig config) =>
-        config.Providers.Select(c => Create(c, AutoModel(config, c))).OfType<IModelProvider>().ToList();
+        config.Providers.Select(c => CreateAuto(config, c)).OfType<IModelProvider>().ToList();
+
+    private IModelProvider? CreateAuto(AppConfig config, ProviderConfig c)
+    {
+        var preferred = Create(c, AutoModel(config, c));
+        var configured = Create(c);
+        return preferred is not null && configured is not null && preferred.ModelId != configured.ModelId
+            ? new PreferredModelProvider(preferred, configured) : preferred;
+    }
 
     /// <summary>Providers in the configured fallback order (unknown/disabled ids are skipped).</summary>
     public static List<IModelProvider> InRotationOrder(AppConfig config, IReadOnlyList<IModelProvider> all) =>

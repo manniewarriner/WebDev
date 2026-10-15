@@ -62,7 +62,7 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
         var exe = CliRunner.FindOnPath(options.Executable);
         if (exe is null)
         {
-            yield return new ProviderUnavailable(Id, $"'{options.Executable}' was not found on PATH.");
+            yield return new ProviderUnavailable(Id, "CLI executable was not found on PATH.") { ExceptionType = nameof(FileNotFoundException) };
             yield break;
         }
 

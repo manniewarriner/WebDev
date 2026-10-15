@@ -74,6 +74,7 @@ public static class SseChatParser
 
         await foreach (var raw in lines.WithCancellation(ct))
         {
+            yield return new StreamActivity();
             var line = raw.Trim();
             if (!line.StartsWith("data:", StringComparison.Ordinal)) continue;
             var data = line[5..].Trim();
