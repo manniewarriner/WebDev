@@ -154,7 +154,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         s.Split([',', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
     [RelayCommand]
-    private void Save()
+    private async Task SaveAsync()
     {
         var ids = Providers.Select(p => p.Id.Trim()).ToList();
         if (ids.Any(string.IsNullOrEmpty) || ids.Distinct(StringComparer.OrdinalIgnoreCase).Count() != ids.Count)
@@ -191,5 +191,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Error = null;
         SavedMessage = "Settings saved. Providers updated live.";
         Saved?.Invoke();
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        SavedMessage = null;
     }
 }
