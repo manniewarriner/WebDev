@@ -27,6 +27,7 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
     private readonly AgentLoopOptions _options = options ?? new AgentLoopOptions();
 
     public const string DefaultSystemPrompt =
+        "Keep all temporary files inside .orchdesk-tmp in the workspace. " +
         "You are OrchDesk, a careful software engineer working inside the user's project folder. " +
         "Use the tools to inspect files before changing them. Prefer edit_file with a small unique old_string; " +
         "use write_file for new files. After changes, build and run the tests with run_command and fix failures. " +
@@ -43,6 +44,7 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
             var text = new StringBuilder();
             await foreach (var ev in provider.StreamChatAsync(new ChatRequest(messages, [], ctx.WorkspaceRoot, readOnly), ct))
             {
+                if (IsWriteDenied(ev)) { yield return new ErrorEvent(WriteDeniedReason(ev)); yield break; }
                 if (ev is TextDelta d) text.Append(d.Text);
                 yield return ev;
                 if (ev is UsageLimitHit or ProviderUnavailable or ErrorEvent) yield break;
@@ -101,10 +103,21 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
                         : await ExecuteToolAsync(call, ctx, ct);
                 messages.Add(ChatMessage.ToolResult(call.Id, call.Name, output));
                 yield return new ToolCallResult(call.Id, call.Name, output, isError);
+                if (isError && output.StartsWith("Write denied:", StringComparison.OrdinalIgnoreCase)) {
+                    yield return new ErrorEvent(output);
+                    yield break;
+                }
             }
         }
 
         yield return new ErrorEvent($"Stopped after {_options.MaxSteps} steps without finishing. Say 'continue' to keep going.");
+    }
+
+    public static string WriteDeniedReason(ChatEvent ev) => ev switch { ToolCallResult r => r.Output, ErrorEvent e => e.Message, _ => "Write denied" };
+
+    public static bool IsWriteDenied(ChatEvent ev) {
+        var message=ev switch { ToolCallResult {IsError:true} r=>r.Output, ErrorEvent e=>e.Message, _=>"" };
+        return new[] { "write denied", "permission denied", "not allowed to write", "permission to use", "requires approval", "user denied" }.Any(t=>message.Contains(t,StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<(string Output, bool IsError)> ExecuteToolAsync(ToolCall call, ToolContext ctx, CancellationToken ct)
@@ -118,7 +131,10 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
 
         gate.Policy.WorkspaceRoot = ctx.WorkspaceRoot;
         var decision = await gate.CheckAsync(call.Name, args, ct);
-        if (decision.Verdict == Verdict.Deny) return ($"Not allowed: {decision.Reason}", true);
+        if (decision.Verdict == Verdict.Deny) {
+            var prefix=call.Name is "write_file" or "edit_file" or "delete_file" or "run_command" or "git_commit" or "git_push" ? "Write denied" : "Not allowed";
+            return ($"{prefix}: {decision.Reason}", true);
+        }
 
         try
         {
@@ -132,7 +148,7 @@ public sealed class AgentLoop(ToolRegistry tools, PermissionGate gate, AgentLoop
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is ToolException or PathOutsideWorkspaceException or IOException or UnauthorizedAccessException or HttpRequestException or InvalidOperationException)
         {
-            return ($"Error: {ex.Message}", true);
+            return ($"{(ex is UnauthorizedAccessException ? "Write denied" : "Error")}: {ex.Message}", true);
         }
     }
 }

@@ -60,13 +60,13 @@ public sealed class OpenAiCompatProvider : IModelProvider
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(20));
-            await foreach (var ev in StreamChatAsync(new([ChatMessage.User("ping")], []), timeout.Token))
+            timeout.CancelAfter(TimeSpan.FromSeconds(IsLocal ? 180 : 20));
+            await foreach (var ev in StreamChatAsync(new([ChatMessage.User("Reply OK")], [], ReadOnly:true, HostManagedTools:true, MaxOutputTokens:IsLocal ? 256 : 8), timeout.Token))
             {
                 if (ev is ErrorEvent error && (error.Message.Contains("401") || error.Message.Contains("403")))
                     return ProviderHealth.NotConfigured;
                 if (ev is ProviderUnavailable or ErrorEvent) return ProviderHealth.Offline;
-                if (ev is StreamActivity or ReasoningDelta or TextDelta or Done or ToolCallRequested or UsageLimitHit)
+                if (ev is ReasoningDelta {Text.Length:>0} or TextDelta {Text.Length:>0} or Done {FinalText.Length:>0} or ToolCallRequested or UsageLimitHit)
                     return ProviderHealth.Online;
             }
             return ProviderHealth.Offline;
@@ -152,7 +152,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
         try
         {
             using var headersTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            headersTimeout.CancelAfter(_options.HeadersTimeout ?? TimeSpan.FromSeconds(20));
+            headersTimeout.CancelAfter(_options.HeadersTimeout ?? TimeSpan.FromSeconds(IsLocal ? 180 : 20));
             resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, headersTimeout.Token);
         }
         catch (HttpRequestException ex)
@@ -170,7 +170,13 @@ public sealed class OpenAiCompatProvider : IModelProvider
         {
             if (!resp!.IsSuccessStatusCode)
             {
-                // Do not expose response bodies: upstream errors may contain credentials.
+                // Inspect upstream text only for classification; never expose bodies or credentials.
+                var errorBody=await resp.Content.ReadAsStringAsync(ct);
+                var notOnPlan=new[] { "model unavailable", "model is unavailable", "not available", "subscription", "free tier", "free-tier", "wrong endpoint", "not on plan", "not included in", "not part of", "model_not_found" }.Any(t=>errorBody.Contains(t,StringComparison.OrdinalIgnoreCase));
+                if (notOnPlan) {
+                    yield return new ErrorEvent("Model unavailable: not on plan or wrong endpoint") {HttpStatus=(int)resp.StatusCode};
+                    yield break;
+                }
                 if (resp.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.PaymentRequired)
                     yield return new UsageLimitHit(Id, $"HTTP {(int)resp.StatusCode}") { HttpStatus = (int)resp.StatusCode, RetryAfter = resp.Headers.RetryAfter?.Delta ?? (resp.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow) };
                 else if ((int)resp.StatusCode >= 500 || resp.StatusCode is HttpStatusCode.BadGateway)
@@ -214,6 +220,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
     {
         var root = _options.BaseUrl.TrimEnd('/');
         if (root.EndsWith("/v1")) root = root[..^3];
+        for (var attempt=0; attempt<2; attempt++) {
         foreach (var version in new[] {"v1", "v0"}) {
             using var req = new HttpRequestMessage(HttpMethod.Post,root+"/api/"+version+"/models/load") {
                 Content = new StringContent(new JsonObject { ["model"] = ModelId, ["context_length"] = _options.ContextLength, ["ttl"] = _options.TtlSeconds, ["echo_load_config"] = true }.ToJsonString(),Encoding.UTF8,"application/json")
@@ -223,9 +230,19 @@ public sealed class OpenAiCompatProvider : IModelProvider
             if (response.StatusCode == HttpStatusCode.NotFound && version == "v1") continue;
             if (!response.IsSuccessStatusCode) return new ProviderUnavailable(Id,"Explicit LM Studio model load failed") {HttpStatus=(int)response.StatusCode};
             var payload = JsonNode.Parse(await response.Content.ReadAsStringAsync(ct));
-            if (payload?["load_config"]?["context_length"]?.GetValue<int>() is int loaded && loaded < _options.ContextLength)
-                return new ProviderUnavailable(Id,"LM Studio loaded a smaller context than requested; adjust context configuration.");
+            if (payload?["load_config"]?["context_length"]?.GetValue<int>() is int loaded && loaded != _options.ContextLength) {
+                if(attempt>0) return new ProviderUnavailable(Id,"LM Studio context differs from configured context after reload.");
+                var instance = payload?["instance_id"]?.GetValue<string>() ?? ModelId;
+                using var unload = new HttpRequestMessage(HttpMethod.Post,root+"/api/"+version+"/models/unload") {
+                    Content=new StringContent(new JsonObject { ["instance_id"]=instance }.ToJsonString(),Encoding.UTF8,"application/json")
+                };
+                AddHeaders(unload);
+                using var unloaded=await _http.SendAsync(unload,ct);
+                if(!unloaded.IsSuccessStatusCode) return new ProviderUnavailable(Id,"LM Studio could not unload model with incorrect context.");
+                break;
+            }
             return null;
+        }
         }
         return new ProviderUnavailable(Id,"LM Studio REST model loading unsupported; upgrade the server.");
     }

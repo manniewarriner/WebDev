@@ -7,6 +7,12 @@ namespace OrchDesk.App;
 public partial class MainWindow
 {
     private AgentsPanelState _agentsState = new();
+    public void PrepareLiveCapture()
+    {
+        WelcomeOverlay.Visibility = Visibility.Collapsed;
+        if (DataContext is MainViewModel vm) vm.Page = "Chat";
+        _agentsState = new(true); LayoutAgents();
+    }
     private void InitializeAgents()
     {
         SizeChanged += (_, _) => LayoutAgents();

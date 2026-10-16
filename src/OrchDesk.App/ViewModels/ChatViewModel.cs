@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json.Nodes;
 using System.Windows;
@@ -375,6 +375,8 @@ public sealed partial class ChatViewModel : ObservableObject
         Items.Clear();
         Agents.Update(null);
         foreach (var item in items) Items.Add(item);
+        LastTeamJob = items.OfType<TeamItem>().LastOrDefault()?.Job;
+        Agents.Update(LastTeamJob);
         ContentAdded?.Invoke();
     }
 
@@ -414,12 +416,13 @@ public sealed partial class ChatViewModel : ObservableObject
         LastTeamJob = null; Agents.Update(null);
         var config = _services.Config.WorkspaceTeams.GetValueOrDefault(OrchDesk.Core.Config.AppConfig.WorkspaceKey(EffectiveWorkspace)) ?? _services.Config.Team;
         var available = new List<OrchDesk.Core.Providers.IModelProvider>();
+        var skipped = new List<string>();
         var health = new Dictionary<string, OrchDesk.Core.Providers.ProviderHealth>();
         foreach (var provider in _services.AutoModels(EffectiveWorkspace)) {
-            if (_services.Usage.Pick([provider]) is null) continue;
-            if (provider.IsAgentic || (provider.Id == config.PmProvider && provider.ModelId == config.PmModel)) {
+            if (_services.Usage.Pick([provider]) is null) { skipped.Add(ModelUsageTracker.Key(provider)+": usage backoff"); continue; }
+            if (provider.IsLocal || provider.IsAgentic || (provider.Id == config.PmProvider && provider.ModelId == config.PmModel)) {
                 if (!health.TryGetValue(provider.Id, out var checkedHealth)) health[provider.Id] = checkedHealth = await provider.CheckHealthAsync(ct);
-                if (checkedHealth != OrchDesk.Core.Providers.ProviderHealth.Online) continue;
+                if (checkedHealth != OrchDesk.Core.Providers.ProviderHealth.Online) { skipped.Add(ModelUsageTracker.Key(provider)+": health "+checkedHealth); continue; }
             }
             available.Add(provider);
         }
@@ -437,6 +440,7 @@ public sealed partial class ChatViewModel : ObservableObject
         }
         var runner = new TeamOrchestrator(() => { var loop = _services.CreateLoop(gate); AttachChanges(loop); return loop; }, _services.Usage, config);
 
+        runner.Job.WorkerSkips.AddRange(skipped);
         var item = new TeamItem(); Items.Add(item);
         runner.Changed += job => Dispatch(() => { LastTeamJob = job; item.Refresh(job, _services.Usage); Agents.Update(job); });
         runner.Progress += ev => Dispatch(() => Render(ev));

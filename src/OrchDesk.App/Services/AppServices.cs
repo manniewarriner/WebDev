@@ -133,7 +133,7 @@ public sealed class AppServices
         var factory = new ProviderFactory(Secrets, Http);
         var team = workspace is null ? Config.Team : Config.WorkspaceTeams.GetValueOrDefault(AppConfig.WorkspaceKey(workspace)) ?? Config.Team;
         return Config.Providers.Where(c => c.Enabled && (c.Kind != ProviderKind.ClaudeCli || c.AuthStatus != "Sign-in needed")).SelectMany(c =>
-            (c.Kind == ProviderKind.ClaudeCli ? new[] { "opus", "haiku", c.Id == team.PmProvider ? team.PmModel : "opus" }.Distinct().ToArray() : c.AvailableModels.Count > 0 ? c.AvailableModels.ToArray() : new[] { c.Model ?? "" })
+            (c.Kind == ProviderKind.ClaudeCli ? new[] { "opus", "haiku", c.Id == team.PmProvider ? team.PmModel : "opus" }.Distinct().ToArray() : c.AvailableModels.Concat(c.ModelVerifications.Where(v=>v.Value.Verified && !v.Value.Hidden).Select(v=>v.Key)).Append(c.Model ?? "").Where(m=>!string.IsNullOrWhiteSpace(m)).Distinct().ToArray())
             .Where(m => c.Kind != ProviderKind.OpenAiCompatible || (c.ModelVerifications.TryGetValue(m, out var check) && check.Verified && !check.Hidden))
               .Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase) && !m.EndsWith("-free", StringComparison.OrdinalIgnoreCase))
             .Select(m => factory.Create(c, m))).OfType<IModelProvider>().ToList();

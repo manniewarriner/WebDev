@@ -22,7 +22,7 @@ public sealed class AgentsPanelViewModel : ObservableObject
     public ObservableCollection<AgentRow> Workers { get; } = [];
     public bool HasTeam => _job != null;
     public string Failures => string.Join("\n", _job?.SnapshotFailures().Select(f=>$"{f.Model}: {f.Chunk} - {f.Reason}") ?? []);
-    public string Decisions => string.Join("\n", _job?.SnapshotDecisions() ?? []);
+    public string Decisions => string.Join("\n", _job?.SnapshotDecisions().Select(d=>d.ToString()) ?? []);
     public string Count => Workers.Count.ToString();
     public string Planning => _job == null ? "" : $"{_job.Pm} · {AgentsPanelState.PlanningStatus(_job)}";
     public string PlanningElapsed => _job == null ? "" : $"{TimeSpan.FromTicks(_job.SnapshotCards().Where(c => c.Role == "PM").Sum(c => AgentsPanelState.Elapsed(c, DateTimeOffset.UtcNow).Ticks)):m\\:ss}";

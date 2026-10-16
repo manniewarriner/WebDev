@@ -14,17 +14,19 @@ public sealed class TeamConfig
     public string PmModel { get; set; } = "opus";
     public Dictionary<string, WorkerTags> Workers { get; set; } = [];
     public int FirstTokenTimeoutSeconds { get; set; } = 20;
+    public int LocalFirstTokenTimeoutSeconds { get; set; } = 180;
     public int StallTimeoutSeconds { get; set; } = 300;
+    public double JobTimeLimitMinutes { get; set; } = 20;
     public int MaxConcurrency { get; set; } = 4;
     public int PerProviderConcurrency { get; set; } = 2;
 }
 public sealed record WorkerTags(string[] Skills, string[] Sizes);
 public sealed record TeamWorker(IModelProvider Provider, string[] Skills, string[] Sizes);
-public sealed record TeamTask(string Id, string Title, string Skill, string Size, string[] Deps, string[] Files, string? Model = null);
+public sealed record TeamTask(string Id, string Title, string Skill, string Size, string[] Deps, string[] Files, string? Model = null, bool Optional = false);
 public sealed class TeamCard
 {
     public string Id { get; init; } = "";
-    public string Title { get; init; } = "";
+    public string Title { get; set; } = "";
     public string Role { get; set; } = "Worker";
     public string Model { get; set; } = "";
     public string Status { get; set; } = "queued";
@@ -36,7 +38,10 @@ public sealed class TeamCard
     public string Tooltip => Usage.Tooltip(Role, Model);
 }
 public sealed record TeamFailure(DateTimeOffset At, string Chunk, string Model, string Reason, string PartialOutput);
-public sealed record TeamEvent(DateTimeOffset At, string Pm, string Status, string[] Decisions, object[] Cards);
+public sealed record TeamDecision(string Decision, string From, string To, string Reason) {
+    public override string ToString() => $"{Decision}: {From} to {To} - {Reason}";
+}
+public sealed record TeamEvent(DateTimeOffset At, string Pm, string Status, TeamDecision[] Decisions, object[] Cards, string[] WorkerSkips);
 public sealed class TeamJob
 {
     public string PmProvider { get; set; } = "";
@@ -45,10 +50,13 @@ public sealed class TeamJob
     public List<TeamCard> Cards { get; } = [];
     public List<TeamFailure> Failures { get; } = [];
     public TeamFailure[] SnapshotFailures() { lock(this) return Failures.ToArray(); }
-    public List<string> Decisions { get; } = [];
+    public List<TeamDecision> Decisions { get; } = [];
+    public List<string> WorkerSkips { get; } = [];
+    public string Manager => PmProvider + "/" + Pm;
+    public string Summary => SnapshotCards().LastOrDefault(c => c.Role == "PM" && c.Status == "done")?.Output ?? "";
     public List<TeamEvent> Events { get; } = [];
     public TeamCard[] SnapshotCards() { lock(this) return Cards.ToArray(); }
-    public string[] SnapshotDecisions() { lock(this) return Decisions.ToArray(); }
+    public TeamDecision[] SnapshotDecisions() { lock(this) return Decisions.ToArray(); }
     public ResponseUsage Usage => new(SnapshotCards().Sum(c=>c.Usage.InputTokens), SnapshotCards().Sum(c=>c.Usage.OutputTokens), SnapshotCards().Any(c=>c.Usage.Estimated));
     public string ThoughtSummary => Usage.Format(TimeSpan.FromTicks(SnapshotCards().Sum(c=>c.Elapsed.Ticks + (c.Started is { } start ? (DateTimeOffset.UtcNow-start).Ticks : 0))));
 }
@@ -62,9 +70,9 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
     private string? lastEventState;
     private void Notify() {
         lock(Job) {
-            var state=Job.Status+"|"+string.Join("|",Job.Cards.Select(c=>c.Id+":"+c.Model+":"+c.Status+":"+(c.Started!=null)))+"|"+Job.Decisions.Count;
+            var state=Job.Status+"|"+string.Join("|",Job.Cards.Select(c=>c.Id+":"+c.Model+":"+c.Status+":"+(c.Started!=null)))+"|"+Job.Decisions.Count+"|"+Job.WorkerSkips.Count;
             if(state!=lastEventState) {
-                Job.Events.Add(new(DateTimeOffset.UtcNow,Job.Pm,Job.Status,Job.Decisions.ToArray(),Job.Cards.Select(c=>(object)new {c.Id,c.Role,c.Model,c.Title,c.Status,c.Output}).ToArray()));
+                Job.Events.Add(new(DateTimeOffset.UtcNow,Job.Pm,Job.Status,Job.Decisions.ToArray(),Job.Cards.Select(c=>(object)new {c.Id,c.Role,c.Model,c.Title,c.Status,c.Output}).ToArray(),Job.WorkerSkips.ToArray()));
                 lastEventState=state;
             }
         }
@@ -84,12 +92,13 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             await using var stream=createLoop().RunAsync(new RequestCountingProvider(provider,usage),messages,new ToolContext(workspace),timeout.Token,readOnly).GetAsyncEnumerator(timeout.Token);
             bool first=true; var lastProgress=DateTimeOffset.UtcNow;
             while(true) {
-                var remaining=TimeSpan.FromSeconds(first ? config.FirstTokenTimeoutSeconds : config.StallTimeoutSeconds)-(DateTimeOffset.UtcNow-lastProgress);
+                var remaining=TimeSpan.FromSeconds(first ? (provider.IsLocal ? Math.Max(config.LocalFirstTokenTimeoutSeconds, config.FirstTokenTimeoutSeconds) : config.FirstTokenTimeoutSeconds) : config.StallTimeoutSeconds)-(DateTimeOffset.UtcNow-lastProgress);
                 if(remaining<=TimeSpan.Zero) throw new TimeoutException("Worker stalled without progress.");
                 timeout.CancelAfter(remaining);
                 if(!await stream.MoveNextAsync()) break;
                 var ev=stream.Current;
                 if(ev is TextDelta or ReasoningDelta or ToolCallRequested or ToolCallResult or Done) {first=false; lastProgress=DateTimeOffset.UtcNow;}
+                if(AgentLoop.IsWriteDenied(ev)) throw new InvalidOperationException(AgentLoop.WriteDeniedReason(ev));
                 if(ev is ToolCallResult {IsError:false}) completedTool=true;
                 if(ev is Done {FinalText.Length:>0} final && text.Length==0) text.Append(final.FinalText);
                 if(ev is UsageReported u) actual=actual is null ? u.Usage : Add(actual,u.Usage);
@@ -115,38 +124,61 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             card.Status="failed";
             lock(Job) Job.Failures.Add(new(DateTimeOffset.UtcNow,card.Title,ModelUsageTracker.Key(worker),failure!.Message,card.Output));
             Notify();
-            var partial=card.Output;
-            var decisionCard=new TeamCard {Id=card.Id+"-decision-"+Guid.NewGuid().ToString("N"),Title="Recovery: "+card.Title,Role="PM"};
-            lock(Job) Job.Cards.Add(decisionCard);
-            await pmDecisions.WaitAsync(ct);
-            string decision;
-            try {
-                decision=await Run(pm,"Worker failure. Return ONLY JSON {action, model, reason, instruction, chunks}. action must be retry, reassign, or replan. model names the recovery worker. For replan you may split into chunks [{title,model,instruction}] executed in order. Include all needed context in each instruction. Available workers: "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+"\nChunk: "+card.Title+"\nWorker: "+worker.ModelId+"\nFailure: "+failure!.Message+"\nPartial output: "+partial+"\nOriginal chunk context: "+originalPrompt,workspace,decisionCard,true,ct);
-            } finally { pmDecisions.Release(); }
-            using var doc=DecisionJson(decision);
-            var action=doc.RootElement.GetProperty("action").GetString();
-            var target=doc.RootElement.GetProperty("model").GetString();
-            var instruction=doc.RootElement.TryGetProperty("instruction",out var details)?details.GetString()??"":"";
-            var next=action=="retry"?worker:workers.FirstOrDefault(w=>ModelUsageTracker.Key(w.Provider)==target || w.Provider.ModelId==target)?.Provider;
-            if(action is not ("retry" or "reassign" or "replan") || next is null) throw new InvalidOperationException("Invalid PM recovery action or worker.");
-            var verb=action=="reassign"?"reassigned":action=="retry"?"retry":"replanned";
-            lock(Job) Job.Decisions.Add($"{pm.ModelId}: {verb} '{card.Title}' from {worker.ModelId} to {next.ModelId} - {doc.RootElement.GetProperty("reason").GetString()}");
-            decisionCard.Status="done"; Notify();
-            worker=next;
-            if(action=="replan" && doc.RootElement.TryGetProperty("chunks",out var chunks) && chunks.ValueKind==JsonValueKind.Array && chunks.GetArrayLength()>0) {
-                var results=new List<string>();
-                foreach(var chunk in chunks.EnumerateArray()) {
-                    var model=chunk.GetProperty("model").GetString();
-                    var assigned=workers.FirstOrDefault(w=>ModelUsageTracker.Key(w.Provider)==model || w.Provider.ModelId==model)?.Provider ?? throw new InvalidOperationException("PM re-plan names an unavailable worker.");
-                    var subcard=new TeamCard {Id=card.Id+"-split-"+Guid.NewGuid().ToString("N"),Title=chunk.GetProperty("title").GetString()??card.Title};
-                    lock(Job) Job.Cards.Add(subcard);
-                    var result=await RunManaged(assigned,"PM revised chunk: "+chunk.GetProperty("instruction").GetString()+"\nPrevious split results: "+string.Join("\n",results),workspace,subcard,readOnly,pm,workers,limits,ct,depth+1);
-                    subcard.Status="done"; results.Add(result); Notify();
-                }
-                card.Output=string.Join("\n",results); return card.Output;
+            if (failure!.Message.Contains("write denied", StringComparison.OrdinalIgnoreCase) && !failure.Message.Contains("outside", StringComparison.OrdinalIgnoreCase)) {
+                await pmDecisions.WaitAsync(ct);
+                try {
+                    var report = new TeamCard {Id=card.Id+"-denied", Title="Decision: report - "+card.Title, Role="PM"};
+                    lock(Job) Job.Cards.Add(report);
+                    await Run(pm,"Worker stopped: write denied. No retries are allowed. Decide how to report this to the user. Failure: "+failure.Message+" Partial results: "+card.Output,workspace,report,true,ct);
+                    report.Status="done";
+                    lock(Job) Job.Decisions.Add(new("report",ModelUsageTracker.Key(worker),Job.Manager,failure.Message));
+                    Notify();
+                } finally { pmDecisions.Release(); }
+                throw failure;
             }
-            prompt=originalPrompt+"\nPM recovery instruction: "+instruction+"\nPartial output from previous worker: "+partial;
-            card.Status="queued"; Notify();
+            var partial=card.Output;
+            var repeatedFailure=Job.SnapshotFailures().Count(f=>f.Model==ModelUsageTracker.Key(worker) && f.Reason==failure!.Message)>1;
+            string constraint="";
+            for(int decisionAttempt=0; ; decisionAttempt++) {
+                if(decisionAttempt>=3) throw new InvalidOperationException("PM repeatedly proposed a prohibited retry. Reassign or re-plan required. " + failure!.Message);
+                var decisionCard=new TeamCard {Id=card.Id+"-decision-"+Guid.NewGuid().ToString("N"),Title="Recovery: "+card.Title,Role="PM"};
+                lock(Job) Job.Cards.Add(decisionCard);
+                await pmDecisions.WaitAsync(ct);
+                string decision;
+                try {
+                    decision=await Run(pm,"Worker failure. " + constraint + "Return ONLY JSON {action, model, reason, instruction, chunks}. action must be retry, reassign, or replan. For an outside workspace denial, retry with a temporary file inside the workspace; never bypass confinement. model names the recovery worker. For replan you may split into chunks [{title,model,instruction}] executed in order. Include all needed context in each instruction. Available workers: "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+"\nChunk: "+card.Title+"\nWorker: "+worker.ModelId+"\nFailure: "+failure!.Message+"\nPartial output: "+partial+"\nOriginal chunk context: "+originalPrompt,workspace,decisionCard,true,ct);
+                } finally { pmDecisions.Release(); }
+                using var doc=DecisionJson(decision);
+                var action=doc.RootElement.GetProperty("action").GetString();
+                var target=doc.RootElement.GetProperty("model").GetString();
+                var instruction=doc.RootElement.TryGetProperty("instruction",out var details)?details.GetString()??"":"";
+                var next=action=="retry"?worker:workers.FirstOrDefault(w=>ModelUsageTracker.Key(w.Provider)==target || w.Provider.ModelId==target)?.Provider;
+                if(action is not ("retry" or "reassign" or "replan") || next is null) throw new InvalidOperationException("Invalid PM recovery action or worker.");
+                if(repeatedFailure && (action=="retry" || (action=="reassign" && ModelUsageTracker.Key(next)==ModelUsageTracker.Key(worker)) || (action=="replan" && (!doc.RootElement.TryGetProperty("chunks",out var revised) || revised.ValueKind!=JsonValueKind.Array || revised.GetArrayLength()==0)))) {
+                    decisionCard.Status="rejected";
+                    constraint="Rejected retry: the same failure on this worker has already been retried once. You MUST reassign to a different worker or replan into revised chunks; retry is forbidden. ";
+                    Notify(); continue;
+                }
+                lock(Job) Job.Decisions.Add(new(action!,ModelUsageTracker.Key(worker),ModelUsageTracker.Key(next),doc.RootElement.GetProperty("reason").GetString() ?? ""));
+                decisionCard.Title="Decision: "+action+" - "+card.Title;
+                decisionCard.Status="done"; Notify();
+                worker=next;
+                if(action=="replan" && doc.RootElement.TryGetProperty("chunks",out var chunks) && chunks.ValueKind==JsonValueKind.Array && chunks.GetArrayLength()>0) {
+                    var results=new List<string>();
+                    foreach(var chunk in chunks.EnumerateArray()) {
+                        var model=chunk.GetProperty("model").GetString();
+                        var assigned=workers.FirstOrDefault(w=>ModelUsageTracker.Key(w.Provider)==model || w.Provider.ModelId==model)?.Provider ?? throw new InvalidOperationException("PM re-plan names an unavailable worker.");
+                        var subcard=new TeamCard {Id=card.Id+"-split-"+Guid.NewGuid().ToString("N"),Title=chunk.GetProperty("title").GetString()??card.Title};
+                        lock(Job) Job.Cards.Add(subcard);
+                        var result=await RunManaged(assigned,"PM revised chunk: "+chunk.GetProperty("instruction").GetString()+"\nPrevious split results: "+string.Join("\n",results),workspace,subcard,readOnly,pm,workers,limits,ct,depth+1);
+                        subcard.Status="done"; results.Add(result); Notify();
+                    }
+                    card.Output=string.Join("\n",results); return card.Output;
+                }
+                prompt=originalPrompt+"\nPM recovery instruction: "+instruction+"\nPartial output from previous worker: "+partial;
+                card.Status="queued"; Notify();
+                break;
+            }
         }
         throw new InvalidOperationException("PM recovery budget exhausted.");
     }
@@ -154,9 +186,15 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
     public async Task<TeamJob> RunAsync(string goal,string workspace,IModelProvider pm,IReadOnlyList<TeamWorker> workers,bool planOnly,string testCommand,CancellationToken ct,bool verify = true)
     {
 
+        var callerToken=ct;
+        using var deadline=CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromMinutes(Math.Max(0.0001,config.JobTimeLimitMinutes)));
+        ct=deadline.Token;
+        foreach(var kind in new[] {"PC","Go","Haiku"})
+            if(!workers.Any(w=>TeamRoles.WorkerKind(w.Provider)==kind)) Job.WorkerSkips.Add(kind+": no available model in worker pool (disabled, unverified, unhealthy, or not configured)");
         Job.PmProvider=pm.Id; Job.Pm=pm.ModelId; var planner=new TeamCard { Id="pm",Title="Plan and assign chunks",Role="PM" }; Job.Cards.Add(planner); Notify();
         try {
-            var planPrompt="Split this project into a dependency DAG. Return ONLY a JSON array with id,title,skill,size,deps (array),files (array),model (assigned worker model). For trivial requests answer directly in plain text. For a small task you may delegate one chunk. For larger tasks make at least "+workers.Count+" meaningful chunks so every worker receives a chunk. Available workers (assign model using provider/model key): "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+". Task: "+goal;
+            var planPrompt="Split this project into a dependency DAG. Return ONLY a JSON array with id,title,skill,size,deps (array),files (array),model (assigned worker model),optional (boolean; true only for extra verification that is not required to deliver the task). For trivial requests answer directly in plain text. For a small task you may delegate one chunk. For larger tasks make at least "+workers.Count+" meaningful chunks so every worker receives a chunk. Available workers (assign model using provider/model key): "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+". Task: "+goal;
             string json;
             try { json=await Run(pm,planPrompt,workspace,planner,true,ct); }
             catch(Exception) when(!ct.IsCancellationRequested && FallbackPm is not null && FallbackPm != pm) {
@@ -183,10 +221,12 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
                     try {
                         IModelProvider? worker;
                         lock(assigned) {
-                            var eligible=workers.Where(w=>w.Skills.Contains(task.Skill)||w.Skills.Contains("*")).Where(w=>w.Sizes.Contains(task.Size)||w.Sizes.Contains("*")).Select(w=>w.Provider).ToList();
-                            worker=workers.FirstOrDefault(w=>ModelUsageTracker.Key(w.Provider)==task.Model || w.Provider.ModelId==task.Model)?.Provider
-                                ?? usage.Pick(eligible.Where(p=>!assigned.Contains(ModelUsageTracker.Key(p)))) ?? usage.Pick(eligible);
-                            if(worker is not null) assigned.Add(ModelUsageTracker.Key(worker));
+                            var eligible=workers.Where(w=>w.Skills.Contains(task.Skill)||w.Skills.Contains("*")).Where(w=>w.Sizes.Contains(task.Size)||w.Sizes.Contains("*")).Select(w=>w.Provider).Where(p=>usage.Pick([p]) is not null).ToList();
+                            var uncovered=eligible.Where(p=>!assigned.Contains(TeamRoles.WorkerKind(p))).ToList();
+                            if(uncovered.Count>0) eligible=uncovered;
+                            worker=eligible.FirstOrDefault(p=>TeamRoles.WorkerKind(p)=="PC" && !assigned.Contains("PC")) ?? eligible.FirstOrDefault(p=>(ModelUsageTracker.Key(p)==task.Model || p.ModelId==task.Model) && !assigned.Contains(TeamRoles.WorkerKind(p)))
+                                ?? usage.Pick(eligible.Where(p=>!assigned.Contains(TeamRoles.WorkerKind(p)))) ?? usage.Pick(eligible);
+                            if(worker is not null) assigned.Add(TeamRoles.WorkerKind(worker));
                         }
                         if(worker is null) throw new InvalidOperationException("No available worker for "+task.Title);
                         var prompt=goal+"\nChunk: "+task.Title+"\nFiles: "+string.Join(", ",task.Files)+"\nDependency results:\n"+string.Join("\n",Job.SnapshotCards().Where(c=>task.Deps.Contains(c.Id)).Select(c=>c.Output));
@@ -199,20 +239,37 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
                             card.Output=output+"\nReview: "+review;
                         }
                         card.Status="done";
-                    } catch { card.Status="failed"; throw; }
+                    } catch(Exception ex) when(task.Optional && !ct.IsCancellationRequested) { card.Status="failed"; card.Output="Optional chunk failed: "+ex.Message+"\n"+card.Output; }
+                    catch { card.Status="failed"; throw; }
                     finally { concurrency.Release(); Notify(); }
                 }));
                 foreach(var task in ready) { pending.Remove(task); done.Add(task.Id); }
             }
+            foreach(var kind in new[] {"PC","Go","Haiku"})
+                if(!assigned.Contains(kind) && !Job.WorkerSkips.Any(s=>s.StartsWith(kind+":"))) Job.WorkerSkips.Add(kind+": "+(!workers.Any(w=>TeamRoles.WorkerKind(w.Provider)==kind)?"no available models (disabled, unverified, unhealthy, or not configured)":tasks.Count<3?"too few chunks":"no eligible chunk matching skills/size or model in backoff"));
+            Notify();
             if (verify) {
             var verification=new TeamCard { Id="verify",Title="Build and test",Role="Verification" }; Job.Cards.Add(verification);
             var result=await createLoop().ExecuteToolAsync(new ToolCall("team-verify","run_command",JsonSerializer.Serialize(new {command=testCommand})),new ToolContext(workspace),ct);
             verification.Output=result.Output; verification.Status=result.IsError?"failed":"done";
-            if(result.IsError) throw new InvalidOperationException("Team verification failed.");
+
             }
             var summary=new TeamCard {Id="summary",Title="Final planning check",Role="PM"}; Job.Cards.Add(summary);
             await Run(pm,"Check completed chunks and summarize. Do not write code. "+string.Join("\n",Job.SnapshotCards().Select(c=>c.Title+": "+c.Output)),workspace,summary,true,ct); summary.Status="done";
+            var optionalFailures=Job.SnapshotCards().Where(c=>c.Status=="failed" && (c.Role=="Verification" || tasks.Any(t=>t.Id==c.Id && t.Optional))).ToArray();
+            if(optionalFailures.Length>0) summary.Output += "\nPartial result: required chunks completed; optional verification/work failed.\n"+string.Join("\n",optionalFailures.Select(c=>c.Title+": "+c.Output));
             Job.Status="done"; Notify(); return Job;
+        } catch (OperationCanceledException) when (!callerToken.IsCancellationRequested && deadline.IsCancellationRequested) {
+            Job.Status="timed out";
+            lock(Job) Job.Decisions.Add(new("report",Job.Manager,Job.Manager,"Job time limit expired; all workers cancelled."));
+            var summary=new TeamCard {Id="timeout-summary",Title="Partial results after time limit",Role="PM"};
+            lock(Job) Job.Cards.Add(summary);
+            using var summaryTimeout=CancellationTokenSource.CreateLinkedTokenSource(callerToken);
+            summaryTimeout.CancelAfter(TimeSpan.FromSeconds(30));
+            try { await Run(pm,"Job time limit expired. Summarize partial results and unfinished work. "+string.Join("\n",Job.SnapshotCards().Where(c=>c!=summary).Select(c=>c.Title+": "+c.Status+" "+c.Output)),workspace,summary,true,summaryTimeout.Token); summary.Status="done"; }
+            catch(Exception ex) when (!callerToken.IsCancellationRequested && ex is not OutOfMemoryException) { summary.Output="Time limit expired. "+string.Join("\n",Job.SnapshotCards().Where(c=>c!=summary).Select(c=>c.Title+": "+c.Status+" "+c.Output)); summary.Status="failed"; }
+            Notify(); return Job;
         } catch { Job.Status=ct.IsCancellationRequested?"stopped":"failed"; Notify(); throw; }
+        finally { WorkspaceTemp.Clean(workspace); }
     }
 }

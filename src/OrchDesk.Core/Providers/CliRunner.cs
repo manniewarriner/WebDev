@@ -50,6 +50,7 @@ public static class CliRunner
                 else psi.Environment[k] = v;
             }
         }
+        OrchDesk.Core.Tools.WorkspaceTemp.Configure(psi);
         return psi;
     }
 
@@ -67,15 +68,15 @@ public static class CliRunner
         process.ErrorDataReceived += (_, e) => { if (e.Data is null) Complete(); else channel.Writer.TryWrite(new CliLine(e.Data, true)); };
 
         process.Start();
+        using var ownership = ChildProcesses.Track(process);
+        using var reg = ct.Register(() => { try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { } });
         // Start reading before writing stdin so a chatty process can't fill its output pipe and deadlock us.
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        if (stdin is not null) await process.StandardInput.WriteAsync(stdin);
+        if (stdin is not null) await process.StandardInput.WriteAsync(stdin.AsMemory(), ct);
         process.StandardInput.Close();
 
-        using var reg = ct.Register(() => { try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { } });
-
-        await foreach (var line in channel.Reader.ReadAllAsync(CancellationToken.None))
+        await foreach (var line in channel.Reader.ReadAllAsync(ct))
         {
             if (ct.IsCancellationRequested) break;
             yield return line;

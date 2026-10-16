@@ -12,7 +12,7 @@ public sealed class AgentsPanelViewModelTests
         foreach(var status in new[] { "running", "review", "backoff", "done", "failed" }) {
             card.Status=status; vm.Update(job); Assert.Same(row,Assert.Single(vm.Workers)); Assert.Equal(status,row.Status);
         }
-        job.Decisions.Add("Opus: reassigned Build UI from Qwen to GLM - context overflow"); vm.Update(job); Assert.Contains("context overflow", vm.Decisions);
+        job.Decisions.Add(new("reassign", "Qwen", "GLM", "context overflow")); vm.Update(job); Assert.Contains("context overflow", vm.Decisions);
         Assert.Contains("~30 tokens",vm.Totals); Assert.Equal("1",vm.Count);
         vm.Update(null); Assert.False(vm.HasTeam); Assert.Empty(vm.Workers);
     }

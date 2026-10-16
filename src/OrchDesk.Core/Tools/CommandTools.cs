@@ -17,6 +17,7 @@ public static class ProcessRunner
             ? new ProcessStartInfo("cmd.exe") { ArgumentList = { "/d", "/s", "/c", command } }
             : new ProcessStartInfo("/bin/sh") { ArgumentList = { "-c", command } };
         psi.WorkingDirectory = cwd;
+        WorkspaceTemp.Configure(psi);
         return psi;
     }
 
@@ -51,6 +52,7 @@ public static class ProcessRunner
         p.ErrorDataReceived += (_, e) => Append(e.Data);
         try { p.Start(); }
         catch (System.ComponentModel.Win32Exception ex) { return new CommandResult(-1, $"Could not start '{psi.FileName}': {ex.Message}", false); }
+        using var ownership = OrchDesk.Core.Providers.ChildProcesses.Track(p);
         p.StandardInput.Close();
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();

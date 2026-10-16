@@ -6,11 +6,18 @@ namespace OrchDesk.App;
 
 public partial class App : Application
 {
+    protected override void OnExit(ExitEventArgs e)
+    {
+        OrchDesk.Core.Providers.ChildProcesses.StopAll();
+        base.OnExit(e);
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         OrchDesk.Core.Config.ConfigStore storeOverride;
         try { storeOverride = OrchDesk.Core.Config.ConfigStore.FromArgs(e.Args); } catch (ArgumentException) { Shutdown(e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase) ? 1 : 2); return; }
+        if (!e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase) && e.Args.Contains("--capture", StringComparer.OrdinalIgnoreCase)) { Shutdown(2); return; }
         var sdkFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
         if (System.IO.File.Exists(System.IO.Path.Combine(sdkFolder, "dotnet.exe"))) Environment.SetEnvironmentVariable("PATH", sdkFolder + System.IO.Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
 
@@ -26,7 +33,17 @@ public partial class App : Application
                 var options = OrchDesk.Core.Config.SendOptions.Parse(e.Args)!;
                 var sendServices = new AppServices(store: storeOverride, chatOnly: !options.Auto, unattended: true);
                 await sendServices.StartupSync;
-                var chat = new ChatViewModel(sendServices);
+                var sendVm = new MainViewModel(sendServices);
+                var chat = sendVm.Chat;
+                MainWindow? sendWindow = null;
+                if (options.CaptureDirectory is not null) {
+                    ApplyTheme("Dark");
+                    sendWindow = new MainWindow { DataContext = sendVm, Width = 1440, Height = 960, Left = -10000, Top = -10000, ShowActivated = false };
+                    MainWindow = sendWindow; sendWindow.Show();
+                    await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                    sendWindow.PrepareLiveCapture();
+                }
+                using var capture = sendWindow is null ? null : new LiveCapture(sendWindow, options.CaptureDirectory!);
                 if (options.Folder is { } folder) { if (!System.IO.Directory.Exists(folder)) throw new ArgumentException("--folder must name an existing directory."); chat.Workspace = System.IO.Path.GetFullPath(folder); }
                 if (options.Auto) chat.WorkModeIndex = 1;
                 if (options.ProviderId is { } id)
@@ -44,19 +61,23 @@ public partial class App : Application
                     chat.Input = text;
                     if (chat.SendCommand.CanExecute(null)) await chat.SendCommand.ExecuteAsync(null);
                     var added = chat.Items.Skip(before).ToList();
-                    var reply = string.Concat(added.OfType<AssistantItem>().Select(a => a.Text));
-                    var error = added.OfType<ErrorItem>().Any() ? "Send failed: providers unavailable; see attempt reasons." : "";
-                    var provider = chat.CurrentConversation?.LastProvider;
-                    if (error.Length == 0 && string.IsNullOrWhiteSpace(reply)) error = "Send failed: provider returned an empty reply.";
-                    var providerId = chat.LastTeamJob?.PmProvider ?? provider?.Id;
-                    var modelId = chat.LastTeamJob?.Pm ?? provider?.ModelId;
+                    var outcome = SendOutcome.Create(chat.LastTeamJob, chat.CurrentConversation?.LastProvider, added);
+                    var reply = outcome.Reply; var error = outcome.Error;
+                    var providerId = outcome.Provider; var modelId = outcome.Model;
                     var output = error.Length > 0 ? error : $"[{providerId}/{modelId}] " + reply;
                     if (error.Length > 0 || string.IsNullOrWhiteSpace(reply)) { exit = 1; Console.Error.WriteLine(output); }
                     Console.WriteLine(output);
                     await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), output + Environment.NewLine);
-                    results.Add(new { provider = providerId, model = modelId, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.Select(a => new { a.ProviderId, a.Model, a.Reason }).ToArray(), team = chat.LastTeamJob, diagnostics = options.Diag ? chat.CurrentConversation?.Attempts.ToArray() : null });
+                    results.Add(new { provider = providerId, model = modelId, manager = chat.LastTeamJob?.Manager, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.Select(a => new { a.ProviderId, a.Model, a.Reason }).ToArray(), team = chat.LastTeamJob, diagnostics = options.Diag ? chat.CurrentConversation?.Attempts.ToArray() : null });
                     if (exit != 0) break;
                 }
+                if (sendWindow is not null) sendWindow.FlushHistory();
+                else {
+                    var historyDir = System.IO.Path.Combine(storeOverride.Directory, "history"); System.IO.Directory.CreateDirectory(historyDir);
+                    var saved = new SavedChat(options.Texts[0], chat.LastTeamJob?.Pm ?? chat.SelectedProvider?.ModelName ?? "", DateTimeOffset.Now, ChatHistory.SerializeItems(chat.Items), chat.Workspace, chat.SelectedProvider?.Id);
+                    await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(historyDir, Guid.NewGuid().ToString("N") + ".json"), System.Text.Json.JsonSerializer.Serialize(saved));
+                }
+                if (capture is not null) await capture.FinishAsync();
                 await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.json"), System.Text.Json.JsonSerializer.Serialize(results, OrchDesk.Core.Config.ConfigStore.Json));
             }
             catch (Exception ex)

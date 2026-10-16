@@ -122,6 +122,7 @@ public sealed partial class ChangeItem(ChangeEntry entry) : ObservableObject
 
 public sealed class TeamItem : ChatItem
 {
+    public OrchDesk.Core.Orchestration.TeamJob? Job { get; private set; }
     public string Header { get; private set; } = "Auto model \u00b7 Team";
     public string ThoughtSummary { get; private set; } = "";
     public IReadOnlyList<ModelUsageRow> ModelUsageRows { get; private set; } = [];
@@ -130,6 +131,7 @@ public sealed class TeamItem : ChatItem
     public System.Collections.ObjectModel.ObservableCollection<OrchDesk.Core.Orchestration.TeamCard> Cards { get; } = [];
     public void Refresh(OrchDesk.Core.Orchestration.TeamJob job, OrchDesk.Core.Orchestration.ModelUsageTracker usage)
     {
+        Job = job;
         Header = $"Auto model \u00b7 PM {job.Pm} \u00b7 {job.Status}";
         ThoughtSummary = job.ThoughtSummary;
         UsageTooltip = job.Usage.Tooltip("Team", string.Join(", ", job.Cards.Select(c => c.Model).Where(m=>m.Length>0).Distinct()));

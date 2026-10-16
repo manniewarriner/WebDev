@@ -226,6 +226,7 @@ public partial class MainWindow : Window
         if (page is "thread" or "sidebar-expanded" or "sidebar-collapsed") Height = 860;
         if (!vm.Services.UseDemo)
         {
+            if (page == "thread" && _history.FirstOrDefault() is { } latest) { chat.Workspace = latest.Workspace; chat.Restore(latest.Items, null); PrepareLiveCapture(); }
             WelcomeOverlay.Visibility = Visibility.Collapsed;
             SetSidebar(page == "sidebar-collapsed", false);
             if (page is "selector" or "picker") OpenModelPicker();

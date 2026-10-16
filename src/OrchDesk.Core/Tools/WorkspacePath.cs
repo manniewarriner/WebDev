@@ -29,11 +29,11 @@ public static class WorkspacePath
         // Reject ".." segments outright, even ones that would stay inside after normalisation: it keeps the rule simple.
         var segments = rel.Split('/', '\\');
         if (segments.Any(s => s == ".."))
-            throw new PathOutsideWorkspaceException($"Path '{relativePath}' uses '..', which is not allowed.");
+            throw new PathOutsideWorkspaceException($"Path '{relativePath}' uses '..', which is outside workspace policy.");
 
         var full = Path.GetFullPath(Path.IsPathRooted(rel) ? rel : Path.Combine(r, rel));
         if (!IsInside(r, full))
-            throw new PathOutsideWorkspaceException($"Path '{relativePath}' is outside the project folder.");
+            throw new PathOutsideWorkspaceException($"Path '{relativePath}' is outside workspace.");
 
         // Walk from the target up to the root; any existing link along the way must also resolve inside.
         for (var cur = full; cur is not null && IsInside(r, cur) && !cur.Equals(r, Cmp); cur = Path.GetDirectoryName(cur))
@@ -42,7 +42,7 @@ public static class WorkspacePath
             if (!info.Exists || info.LinkTarget is null) continue;
             var target = info.ResolveLinkTarget(returnFinalTarget: true);
             if (target is not null && !IsInside(r, target.FullName))
-                throw new PathOutsideWorkspaceException($"Path '{relativePath}' goes through a link that points outside the project folder.");
+                throw new PathOutsideWorkspaceException($"Path '{relativePath}' goes through a link that points outside workspace.");
         }
         return full;
     }

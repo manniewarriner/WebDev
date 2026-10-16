@@ -30,6 +30,17 @@ public sealed class AutoManagedRoutingTests
             Assert.Contains(vm.Items.OfType<AssistantItem>(),a=>a.Text.Contains("Hello from opus"));
         } finally {if(Directory.Exists(root)) Directory.Delete(root,true);}
     }
+    [Fact] public void SuccessfulManagedSendUsesSummaryAndManagerDespiteEarlierErrors() {
+        var job=new OrchDesk.Core.Orchestration.TeamJob {PmProvider="claude-outlook",Pm="opus",Status="done"};
+        job.Cards.Add(new() {Id="summary",Role="PM",Title="Summary",Status="done",Output="Files written; tests pass"});
+        var result=SendOutcome.Create(job,null,[new ErrorItem("earlier unavailable provider")]);
+        Assert.Equal("Files written; tests pass",result.Reply); Assert.Equal("",result.Error); Assert.Equal(0,result.ExitCode);
+        Assert.Equal("claude-outlook/opus",result.Manager); Assert.Equal("claude-outlook",result.Provider); Assert.Equal("opus",result.Model);
+    }
+    [Fact] public void FailedSendPreservesActualReason() {
+        var result=SendOutcome.Create(null,null,[new ErrorItem("Write denied: outside workspace")]);
+        Assert.Equal("Write denied: outside workspace",result.Error); Assert.Equal(1,result.ExitCode);
+    }
     [Fact] public async Task LoggedOutPmIsExcludedAndPlainFailoverBannerIsShown() {
         var root=Path.Combine(Path.GetTempPath(),"OrchDesk-routing-"+Guid.NewGuid());
         try {
