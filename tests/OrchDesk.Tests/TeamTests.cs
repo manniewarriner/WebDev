@@ -56,6 +56,23 @@ public sealed class TeamTests
         var job=await runner.RunAsync("task",dir.Path,pm,[new(worker,["*"],["*"])],true,"dotnet test",default);
         Assert.Equal("awaiting approval",job.Status); Assert.Empty(worker.Requests);
     }
+    [Fact] public async Task BufferedPmPlanUsesStallTimeoutBeforeFirstToken()
+    {
+        using var dir=new TempDir();
+        var plan="""[{"id":"a","title":"A","skill":"code","size":"small","deps":[],"files":[]}]""";
+        var pm=new Model("opus",r=> {Assert.True(r.ReadOnly); return Say(plan);},"claude-outlook") {
+            BeforeResponse=(_,ct)=>Task.Delay(TimeSpan.FromMilliseconds(1500),ct)
+        };
+        var runner=new TeamOrchestrator(()=>Loop(dir.Path),new(),new() {FirstTokenTimeoutSeconds=1,StallTimeoutSeconds=5});
+
+        var job=await runner.RunAsync("task",dir.Path,pm,[],true,"",default);
+
+        Assert.Equal("awaiting approval",job.Status);
+        Assert.Equal(plan,job.Cards.Single(c=>c.Id=="pm").Output);
+        Assert.Equal("done",job.Cards.Single(c=>c.Id=="pm").Status);
+        Assert.Single(pm.Requests);
+        Assert.Empty(job.Failures);
+    }
     [Fact] public async Task ParallelDelegationDependenciesCrossReviewAndAggregation()
     {
         using var dir=new TempDir(); var active=0; var peak=0; var completed=0;

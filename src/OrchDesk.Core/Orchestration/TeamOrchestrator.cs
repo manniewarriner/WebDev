@@ -91,7 +91,8 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
         try {
             using var timeout=CancellationTokenSource.CreateLinkedTokenSource(ct);
             await using var stream=createLoop().RunAsync(new RequestCountingProvider(provider,usage,readOnly ? 0 : config.MaxConsecutiveZeroOutputRequests),messages,new ToolContext(workspace),timeout.Token,readOnly).GetAsyncEnumerator(timeout.Token);
-            bool first=true; var lastProgress=DateTimeOffset.UtcNow;
+            // Read-only planners/reviewers can buffer their entire response in the CLI.
+            bool first=!readOnly; var lastProgress=DateTimeOffset.UtcNow;
             while(true) {
                 var remaining=TimeSpan.FromSeconds(first ? (provider.IsLocal ? Math.Max(config.LocalFirstTokenTimeoutSeconds, config.FirstTokenTimeoutSeconds) : config.FirstTokenTimeoutSeconds) : config.StallTimeoutSeconds)-(DateTimeOffset.UtcNow-lastProgress);
                 if(remaining<=TimeSpan.Zero) throw new TimeoutException("Worker stalled without progress.");
@@ -101,7 +102,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
                 catch(OperationCanceledException) when(!ct.IsCancellationRequested) { throw new TimeoutException("Worker stalled without progress (idle timeout)."); }
                 if(!moved) break;
                 var ev=stream.Current;
-                if(ev is TextDelta {Text.Length:>0} or ReasoningDelta {Text.Length:>0} or ToolCallResult {IsError:false} or Done {FinalText.Length:>0}) {first=false; lastProgress=DateTimeOffset.UtcNow;}
+                if(ev is TextDelta {Text.Length:>0} or ReasoningDelta {Text.Length:>0} or ToolCallRequested or ToolCallResult or UsageReported {Usage.InputTokens:>0} or UsageReported {Usage.OutputTokens:>0} or Done) {first=false; lastProgress=DateTimeOffset.UtcNow;}
                 if(AgentLoop.IsWriteDenied(ev)) throw new InvalidOperationException(AgentLoop.WriteDeniedReason(ev));
                 if(ev is ToolCallResult {IsError:false}) completedTool=true;
                 if(ev is Done {FinalText.Length:>0} final && text.Length==0) text.Append(final.FinalText);
