@@ -11,9 +11,10 @@ public sealed class TeamTests
     private sealed class Model(string model, Func<ChatRequest,IEnumerable<ChatEvent>> response, string id="go") : IModelProvider
     {
         public string Id=>id; public string ModelId=>model; public string DisplayName=>model; public bool IsLocal=>id=="pc"; public bool IsAgentic=>false;
+        public Func<ChatRequest,CancellationToken,Task>? BeforeResponse { get; init; }
         public List<ChatRequest> Requests { get; }=[];
         public Task<ProviderHealth> CheckHealthAsync(CancellationToken ct)=>Task.FromResult(ProviderHealth.Online);
-        public async IAsyncEnumerable<ChatEvent> StreamChatAsync(ChatRequest request,[EnumeratorCancellation] CancellationToken ct) { lock(Requests) Requests.Add(request with { Messages=request.Messages.ToArray() }); await Task.Delay(30,ct); foreach(var ev in response(request)) yield return ev; }
+        public async IAsyncEnumerable<ChatEvent> StreamChatAsync(ChatRequest request,[EnumeratorCancellation] CancellationToken ct) { lock(Requests) Requests.Add(request with { Messages=request.Messages.ToArray() }); await Task.Delay(30,ct); if(BeforeResponse is not null) await BeforeResponse(request,ct); foreach(var ev in response(request)) yield return ev; }
     }
     private static IEnumerable<ChatEvent> Say(string text)=>[new TextDelta(text),new UsageReported(new(10,20)),new Done()];
     private static AgentLoop Loop(string root)=>new(ToolRegistry.CreateDefault(),new PermissionGate(new PermissionPolicy { WorkspaceRoot=root, WorkspacePermission=OrchDesk.Core.Config.WorkspacePermission.FullAccess },null));
@@ -121,6 +122,69 @@ public sealed class TeamTests
         var events=await new AutoChatProvider([offline,free],new()).StreamChatAsync(new([ChatMessage.User("hi")],[]),default).ToListAsync();
         Assert.Contains(events,e=>e is ProviderUnavailable {Message:"All Auto models unavailable or cooling down."}); Assert.Empty(free.Requests);
         Assert.False(new OrchDesk.Core.Config.AppConfig().PreferFreeModels);
+    }
+
+    [Fact] public async Task PlanReservesSmallEligibleChunkForPcDespiteCloudAssignments()
+    {
+        using var dir=new TempDir();
+        var plan="""[{"id":"large","title":"Large","skill":"code","size":"large","deps":[],"files":[],"model":"go/glm"},{"id":"small","title":"Small","skill":"code","size":"small","deps":[],"files":[],"model":"go/glm"}]""";
+        var pm=new Model("opus",r=> {Assert.Contains("PC (LM Studio)",r.Messages.Last().Content!); return Say(plan);},"claude");
+        var pc=new Model("qwen",_=>Say("ok"),"pc"); var cloud=new Model("glm",_=>Say("ok"));
+        var job=await new TeamOrchestrator(()=>Loop(dir.Path),new(),new()).RunAsync("task",dir.Path,pm,[new(pc,["code"],["small"]),new(cloud,["*"],["*"])],true,"",default);
+        Assert.Equal("pc/qwen",job.Cards.Single(c=>c.Id=="small").Model);
+    }
+
+    [Fact] public async Task ZeroOutputRequestsStallAndPmRetriesWithinRecoveryFlow()
+    {
+        using var dir=new TempDir(); var calls=0;
+        var plan="""[{"id":"a","title":"A","skill":"code","size":"small","deps":[],"files":[]}]""";
+        var pm=new Model("opus",r=>Say(r.Messages.Last().Content!.StartsWith("Split") ? plan : r.Messages.Last().Content!.StartsWith("Worker failure") ? """{"action":"retry","model":"glm","reason":"retry stalled worker","instruction":"finish"}""" : "summary"),"claude");
+        var worker=new Model("glm",_=>Interlocked.Increment(ref calls)<=5
+            ? [new ToolCallRequested(new(Guid.NewGuid().ToString(),"read_file","{\"path\":\"missing.py\"}")),new UsageReported(new(1,0)),new Done()]
+            : Say("finished"));
+        var runner=new TeamOrchestrator(()=>Loop(dir.Path),new(),new());
+        var job=await runner.RunAsync("task",dir.Path,pm,[new(worker,["*"],["*"])],false,"",default,verify:false);
+        Assert.Equal("done",job.Status);
+        Assert.Contains(job.Failures,f=>f.Reason.Contains("5 consecutive requests without output tokens"));
+        Assert.Contains(job.Events,e=>e.Status=="running" && System.Text.Json.JsonSerializer.Serialize(e.Cards).Contains("stalled"));
+        Assert.Equal(6,calls);
+        Assert.Contains(worker.Requests,r=>r.Messages.Any(m=>m.Content!=null && m.Content.Contains("File does not exist")));
+    }
+
+    [Fact] public async Task DependentStartsWhileUnrelatedChunkStillRunsWithinProviderSlots()
+    {
+        using var dir=new TempDir(); var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var plan="""[{"id":"a","title":"A","skill":"code","size":"small","deps":[],"files":[]},{"id":"b","title":"B","skill":"code","size":"small","deps":[],"files":[]},{"id":"c","title":"C","skill":"code","size":"small","deps":["a"],"files":[]}]""";
+        var pm=new Model("opus",r=>Say(r.Messages.Last().Content!.StartsWith("Split")?plan:"summary"),"claude");
+        var active=0; var peak=0;
+        var worker=new Model("glm",_=>Say("finished")) {BeforeResponse=async (r,ct)=> {
+            var count=Interlocked.Increment(ref active); peak=Math.Max(peak,count);
+            try {
+                var prompt=r.Messages.Last().Content!;
+                if(prompt.Contains("Chunk: B")) await release.Task.WaitAsync(TimeSpan.FromSeconds(5),ct);
+                if(prompt.Contains("Chunk: C")) release.SetResult();
+            } finally {Interlocked.Decrement(ref active);}
+        }};
+        var runner=new TeamOrchestrator(()=>Loop(dir.Path),new(),new() {PerProviderConcurrency=2});
+        var job=await runner.RunAsync("task",dir.Path,pm,[new(worker,["*"],["*"])],false,"",default,verify:false);
+        Assert.Equal("done",job.Status); Assert.True(release.Task.IsCompletedSuccessfully); Assert.InRange(peak,1,2); Assert.Empty(job.Failures);
+    }
+
+    [Fact] public async Task IdleWorkerIsCancelledBeforePmRecovery()
+    {
+        using var dir=new TempDir(); var requests=0; var cancelled=false;
+        var plan="""[{"id":"a","title":"A","skill":"code","size":"small","deps":[],"files":[]}]""";
+        var pm=new Model("opus",r=>Say(r.Messages.Last().Content!.StartsWith("Split")?plan:r.Messages.Last().Content!.StartsWith("Worker failure")?"""{"action":"retry","model":"glm","reason":"idle","instruction":"finish"}""":"summary"),"claude");
+        var worker=new Model("glm",_=>requests==1 ? [new ToolCallRequested(new("read","read_file","{\"path\":\"missing.py\"}"))] : Say("finished")) {BeforeResponse=async (_,ct)=> {
+            if(Interlocked.Increment(ref requests)==2) {
+                try {await Task.Delay(Timeout.Infinite,ct);}
+                finally {cancelled=ct.IsCancellationRequested;}
+            }
+        }};
+        var runner=new TeamOrchestrator(()=>Loop(dir.Path),new(),new() {StallTimeoutSeconds=1});
+        var job=await runner.RunAsync("task",dir.Path,pm,[new(worker,["*"],["*"])],false,"",default,verify:false);
+        Assert.True(cancelled); Assert.Equal("done",job.Status);
+        Assert.Contains(job.Failures,f=>f.Reason.Contains("idle timeout"));
     }
 
 }

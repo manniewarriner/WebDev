@@ -15,7 +15,8 @@ public sealed class TeamConfig
     public Dictionary<string, WorkerTags> Workers { get; set; } = [];
     public int FirstTokenTimeoutSeconds { get; set; } = 20;
     public int LocalFirstTokenTimeoutSeconds { get; set; } = 180;
-    public int StallTimeoutSeconds { get; set; } = 300;
+    public int StallTimeoutSeconds { get; set; } = 180;
+    public int MaxConsecutiveZeroOutputRequests { get; set; } = 5;
     public double JobTimeLimitMinutes { get; set; } = 20;
     public int MaxConcurrency { get; set; } = 4;
     public int PerProviderConcurrency { get; set; } = 2;
@@ -89,15 +90,18 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
         var messages = new List<ChatMessage> { ChatMessage.System(readOnly ? "You only plan or review. Never write code, edit files or execute commands." : AgentLoop.DefaultSystemPrompt), ChatMessage.User(prompt) };
         try {
             using var timeout=CancellationTokenSource.CreateLinkedTokenSource(ct);
-            await using var stream=createLoop().RunAsync(new RequestCountingProvider(provider,usage),messages,new ToolContext(workspace),timeout.Token,readOnly).GetAsyncEnumerator(timeout.Token);
+            await using var stream=createLoop().RunAsync(new RequestCountingProvider(provider,usage,readOnly ? 0 : config.MaxConsecutiveZeroOutputRequests),messages,new ToolContext(workspace),timeout.Token,readOnly).GetAsyncEnumerator(timeout.Token);
             bool first=true; var lastProgress=DateTimeOffset.UtcNow;
             while(true) {
                 var remaining=TimeSpan.FromSeconds(first ? (provider.IsLocal ? Math.Max(config.LocalFirstTokenTimeoutSeconds, config.FirstTokenTimeoutSeconds) : config.FirstTokenTimeoutSeconds) : config.StallTimeoutSeconds)-(DateTimeOffset.UtcNow-lastProgress);
                 if(remaining<=TimeSpan.Zero) throw new TimeoutException("Worker stalled without progress.");
                 timeout.CancelAfter(remaining);
-                if(!await stream.MoveNextAsync()) break;
+                bool moved;
+                try { moved=await stream.MoveNextAsync(); }
+                catch(OperationCanceledException) when(!ct.IsCancellationRequested) { throw new TimeoutException("Worker stalled without progress (idle timeout)."); }
+                if(!moved) break;
                 var ev=stream.Current;
-                if(ev is TextDelta or ReasoningDelta or ToolCallRequested or ToolCallResult or Done) {first=false; lastProgress=DateTimeOffset.UtcNow;}
+                if(ev is TextDelta {Text.Length:>0} or ReasoningDelta {Text.Length:>0} or ToolCallResult {IsError:false} or Done {FinalText.Length:>0}) {first=false; lastProgress=DateTimeOffset.UtcNow;}
                 if(AgentLoop.IsWriteDenied(ev)) throw new InvalidOperationException(AgentLoop.WriteDeniedReason(ev));
                 if(ev is ToolCallResult {IsError:false}) completedTool=true;
                 if(ev is Done {FinalText.Length:>0} final && text.Length==0) text.Append(final.FinalText);
@@ -121,7 +125,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             try { return await Run(worker,prompt,workspace,card,readOnly,ct); }
             catch(Exception ex) when(!ct.IsCancellationRequested && ex is not OutOfMemoryException) { failure=ex; }
             finally { limits[worker.Id].Release(); }
-            card.Status="failed";
+            card.Status=failure is TimeoutException ? "stalled" : "failed";
             lock(Job) Job.Failures.Add(new(DateTimeOffset.UtcNow,card.Title,ModelUsageTracker.Key(worker),failure!.Message,card.Output));
             Notify();
             if (failure!.Message.Contains("write denied", StringComparison.OrdinalIgnoreCase) && !failure.Message.Contains("outside", StringComparison.OrdinalIgnoreCase)) {
@@ -194,7 +198,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             if(!workers.Any(w=>TeamRoles.WorkerKind(w.Provider)==kind)) Job.WorkerSkips.Add(kind+": no available model in worker pool (disabled, unverified, unhealthy, or not configured)");
         Job.PmProvider=pm.Id; Job.Pm=pm.ModelId; var planner=new TeamCard { Id="pm",Title="Plan and assign chunks",Role="PM" }; Job.Cards.Add(planner); Notify();
         try {
-            var planPrompt="Split this project into a dependency DAG. Return ONLY a JSON array with id,title,skill,size,deps (array),files (array),model (assigned worker model),optional (boolean; true only for extra verification that is not required to deliver the task). For trivial requests answer directly in plain text. For a small task you may delegate one chunk. For larger tasks make at least "+workers.Count+" meaningful chunks so every worker receives a chunk. Available workers (assign model using provider/model key): "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+". Task: "+goal;
+            var planPrompt="Split this project into a dependency DAG. Return ONLY a JSON array with id,title,skill,size,deps (array),files (array),model (assigned worker model),optional (boolean; true only for extra verification that is not required to deliver the task). For trivial requests answer directly in plain text. For a small task you may delegate one chunk. For larger tasks make at least "+workers.Count+" meaningful chunks so every worker receives a chunk. PC (LM Studio) workers MUST receive at least one eligible chunk; prefer a small/simple chunk. Available workers (assign model using provider/model key): "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+". Task: "+goal;
             string json;
             try { json=await Run(pm,planPrompt,workspace,planner,true,ct); }
             catch(Exception) when(!ct.IsCancellationRequested && FallbackPm is not null && FallbackPm != pm) {
@@ -205,23 +209,40 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             var start=json.IndexOf('['); var end=json.LastIndexOf(']');
             var tasks=JsonSerializer.Deserialize<List<TeamTask>>(json.Substring(start,end-start+1),new JsonSerializerOptions { PropertyNameCaseInsensitive=true })??[];
             if(tasks.Count == 0 || tasks.Select(t=>t.Id).Distinct().Count()!=tasks.Count || tasks.Any(t=>t.Deps is null||t.Files is null||t.Deps.Any(d=>!tasks.Any(x=>x.Id==d)))) throw new InvalidOperationException("Invalid team DAG.");
+            var pcAssignment=(from task in tasks.OrderBy(t=>t.Size.Equals("small",StringComparison.OrdinalIgnoreCase)?0:1).ThenBy(t=>t.Files.Length)
+                              from worker in workers
+                              where TeamRoles.WorkerKind(worker.Provider)=="PC" && TeamRoles.Eligible(worker,task) && usage.Pick([worker.Provider]) is not null
+                              select (task,worker)).FirstOrDefault();
+            string? reservedPcTask=null;
+            if(pcAssignment.task is not null) {
+                reservedPcTask=pcAssignment.task.Id;
+                tasks[tasks.IndexOf(pcAssignment.task)]=pcAssignment.task with {Model=ModelUsageTracker.Key(pcAssignment.worker.Provider)};
+            }
             planner.Status="done";
             foreach(var t in tasks) Job.Cards.Add(new TeamCard { Id=t.Id,Title=t.Title,Model=t.Model??"" });
             if(planOnly) { Job.Status="awaiting approval"; Notify(); return Job; }
             var pending=tasks.ToList(); var done=new HashSet<string>(); var assigned=new HashSet<string>();
             using var concurrency=new SemaphoreSlim(Math.Max(1,config.MaxConcurrency));
             var limits=workers.Select(w=>w.Provider.Id).Distinct().ToDictionary(id=>id,_=>new SemaphoreSlim(Math.Max(1,config.PerProviderConcurrency)));
-            while(pending.Count>0) {
+            using var chunkCancellation=CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var chunkToken=chunkCancellation.Token;
+            var running=new Dictionary<string,Task>();
+            while(pending.Count>0 || running.Count>0) {
                 var ready=pending.Where(t=>t.Deps.All(done.Contains)).ToList();
-                if(ready.Count==0) throw new InvalidOperationException("Team DAG has a dependency cycle.");
+                if(ready.Count==0 && running.Count==0) throw new InvalidOperationException("Team DAG has a dependency cycle.");
                 Job.Status="running";
-                await Task.WhenAll(ready.Select(async task=> {
-                    await concurrency.WaitAsync(ct);
+                foreach(var task in ready) {
+                    pending.Remove(task);
+                    running.Add(task.Id,ExecuteChunk(task));
+                }
+                async Task ExecuteChunk(TeamTask task) {
+                    await concurrency.WaitAsync(chunkToken);
                     var card=Job.SnapshotCards().Single(c=>c.Id==task.Id);
                     try {
                         IModelProvider? worker;
                         lock(assigned) {
                             var eligible=workers.Where(w=>w.Skills.Contains(task.Skill)||w.Skills.Contains("*")).Where(w=>w.Sizes.Contains(task.Size)||w.Sizes.Contains("*")).Select(w=>w.Provider).Where(p=>usage.Pick([p]) is not null).ToList();
+                            if(task.Id==reservedPcTask) eligible=eligible.Where(p=>ModelUsageTracker.Key(p)==task.Model).ToList();
                             var uncovered=eligible.Where(p=>!assigned.Contains(TeamRoles.WorkerKind(p))).ToList();
                             if(uncovered.Count>0) eligible=uncovered;
                             worker=eligible.FirstOrDefault(p=>TeamRoles.WorkerKind(p)=="PC" && !assigned.Contains("PC")) ?? eligible.FirstOrDefault(p=>(ModelUsageTracker.Key(p)==task.Model || p.ModelId==task.Model) && !assigned.Contains(TeamRoles.WorkerKind(p)))
@@ -230,20 +251,29 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
                         }
                         if(worker is null) throw new InvalidOperationException("No available worker for "+task.Title);
                         var prompt=goal+"\nChunk: "+task.Title+"\nFiles: "+string.Join(", ",task.Files)+"\nDependency results:\n"+string.Join("\n",Job.SnapshotCards().Where(c=>task.Deps.Contains(c.Id)).Select(c=>c.Output));
-                        var output=await RunManaged(worker,prompt,workspace,card,false,pm,workers,limits,ct);
+                        var output=await RunManaged(worker,prompt,workspace,card,false,pm,workers,limits,chunkToken);
                         var reviewer=usage.Pick(workers.Select(w=>w.Provider).Where(p=>p.ModelId!=worker.ModelId));
                         if(reviewer is not null) {
-                            var review=await RunManaged(reviewer,"Review this chunk. Reply PASS if correct, otherwise provide required fixes: "+task.Title+"\n"+output,workspace,card,true,pm,workers,limits,ct);
+                            var review=await RunManaged(reviewer,"Review this chunk. Reply PASS if correct, otherwise provide required fixes: "+task.Title+"\n"+output,workspace,card,true,pm,workers,limits,chunkToken);
                             if(!review.TrimStart().StartsWith("PASS",StringComparison.OrdinalIgnoreCase))
-                                output=await RunManaged(worker,"Fix this chunk once: "+task.Title+"\nOriginal work: "+output+"\nReview: "+review,workspace,card,false,pm,workers,limits,ct);
+                                output=await RunManaged(worker,"Fix this chunk once: "+task.Title+"\nOriginal work: "+output+"\nReview: "+review,workspace,card,false,pm,workers,limits,chunkToken);
                             card.Output=output+"\nReview: "+review;
                         }
                         card.Status="done";
-                    } catch(Exception ex) when(task.Optional && !ct.IsCancellationRequested) { card.Status="failed"; card.Output="Optional chunk failed: "+ex.Message+"\n"+card.Output; }
+                    } catch(Exception ex) when(task.Optional && !chunkToken.IsCancellationRequested) { card.Status="failed"; card.Output="Optional chunk failed: "+ex.Message+"\n"+card.Output; }
                     catch { card.Status="failed"; throw; }
                     finally { concurrency.Release(); Notify(); }
-                }));
-                foreach(var task in ready) { pending.Remove(task); done.Add(task.Id); }
+                }
+                await Task.WhenAny(running.Values);
+                foreach(var id in running.Where(pair=>pair.Value.IsCompleted).Select(pair=>pair.Key).ToArray()) {
+                    try { await running[id]; }
+                    catch {
+                        chunkCancellation.Cancel();
+                        try { await Task.WhenAll(running.Values); } catch { /* Preserve the original chunk failure. */ }
+                        throw;
+                    }
+                    running.Remove(id); done.Add(id);
+                }
             }
             foreach(var kind in new[] {"PC","Go","Haiku"})
                 if(!assigned.Contains(kind) && !Job.WorkerSkips.Any(s=>s.StartsWith(kind+":"))) Job.WorkerSkips.Add(kind+": "+(!workers.Any(w=>TeamRoles.WorkerKind(w.Provider)==kind)?"no available models (disabled, unverified, unhealthy, or not configured)":tasks.Count<3?"too few chunks":"no eligible chunk matching skills/size or model in backoff"));

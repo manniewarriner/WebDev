@@ -5,6 +5,7 @@ public static class TeamRoles
     public static IModelProvider? Planner(IEnumerable<IModelProvider> available,TeamConfig config) =>
         available.Where(p=>p.ModelId.Contains("opus",StringComparison.OrdinalIgnoreCase)).OrderByDescending(p=>p.Id==config.PmProvider).FirstOrDefault()
         ?? available.Where(p=>p.Id.StartsWith("opencode",StringComparison.OrdinalIgnoreCase)).OrderByDescending(p=>Strength(p.ModelId)).FirstOrDefault();
+    public static bool Eligible(TeamWorker worker, TeamTask task) => (worker.Skills.Contains(task.Skill) || worker.Skills.Contains("*")) && (worker.Sizes.Contains(task.Size) || worker.Sizes.Contains("*"));
     private static int Strength(string model)=>model.Contains("glm",StringComparison.OrdinalIgnoreCase)?100:model.Contains("kimi",StringComparison.OrdinalIgnoreCase)?90:model.Contains("deepseek",StringComparison.OrdinalIgnoreCase)?80:50;
     public static string WorkerKind(IModelProvider p)=>p.IsLocal || p.Id=="remote-pc" ? "PC" : p.ModelId.Contains("haiku",StringComparison.OrdinalIgnoreCase) ? "Haiku" : p.Id.StartsWith("opencode",StringComparison.OrdinalIgnoreCase) ? "Go" : p.Id;
     public static bool IsWorker(IModelProvider p)=>p.IsLocal || p.Id=="remote-pc" || p.Id.StartsWith("opencode",StringComparison.OrdinalIgnoreCase) || p.ModelId.Contains("haiku",StringComparison.OrdinalIgnoreCase);

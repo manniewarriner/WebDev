@@ -68,7 +68,7 @@ public sealed class ReadFileTool : ITool
     public async Task<string> ExecuteAsync(JsonObject args, ToolContext ctx, CancellationToken ct)
     {
         var path = WorkspacePath.Resolve(ctx.WorkspaceRoot, ToolArgs.Str(args, "path"));
-        if (!File.Exists(path)) throw new ToolException($"File not found: {ToolArgs.Str(args, "path")}");
+        if (!File.Exists(path)) return $"File does not exist: {ToolArgs.Str(args, "path")}";
         if (FileWalk.LooksBinary(path)) throw new ToolException("File looks binary; not reading it.");
         var lines = await File.ReadAllLinesAsync(path, ct);
         var offset = Math.Max(1, ToolArgs.OptInt(args, "offset") ?? 1);
