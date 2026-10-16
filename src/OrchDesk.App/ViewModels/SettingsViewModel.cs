@@ -82,7 +82,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private Task TestIntegrationAsync(ProviderEdit? provider) => CheckIntegrationAsync(provider, false, false);
     [RelayCommand]
-    private Task SyncIntegrationAsync(ProviderEdit? provider) => CheckIntegrationAsync(provider, true, false);
+    private async Task SyncIntegrationAsync(ProviderEdit? provider) {
+        await CheckIntegrationAsync(provider, true, false);
+        await _services.RecheckModelsAsync();
+        if(provider is not null) provider.Status="Re-check complete: " + string.Join(", ",_services.Config.Providers.FirstOrDefault(p=>p.Id==provider.Id)?.ModelVerifications.Select(p=>p.Key+": "+(p.Value.Hidden?"HIDDEN":p.Value.Reason)) ?? []);
+    }
 
     [RelayCommand]
     private async Task DisconnectIntegrationAsync(ProviderEdit? provider)

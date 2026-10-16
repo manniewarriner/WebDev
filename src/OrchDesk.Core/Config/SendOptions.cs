@@ -2,6 +2,8 @@ namespace OrchDesk.Core.Config;
 
 public sealed record SendOptions(string Text, string? ProviderId, string? ConfigPath)
 {
+    public string? Folder { get; init; }
+    public bool Auto { get; init; }
     public bool Diag { get; init; }
     public IReadOnlyList<string> Texts { get; init; } = [Text];
     public static SendOptions? Parse(string[] args)
@@ -23,6 +25,6 @@ public sealed record SendOptions(string Text, string? ProviderId, string? Config
                 if (++i >= args.Length || args[i].StartsWith("--") || string.IsNullOrWhiteSpace(args[i])) throw new ArgumentException("--send requires a value.");
                 texts.Add(args[i]);
             }
-        return new(texts[0], Value("--provider"), Value("--config")) { Texts = texts, Diag = args.Contains("--diag", StringComparer.OrdinalIgnoreCase) };
+        return new(texts[0], Value("--provider"), Value("--config")) { Texts = texts, Folder = Value("--folder"), Auto = args.Contains("--auto", StringComparer.OrdinalIgnoreCase), Diag = args.Contains("--diag", StringComparer.OrdinalIgnoreCase) };
     }
 }

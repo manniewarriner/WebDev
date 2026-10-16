@@ -22,7 +22,7 @@ public class IntegrationTests
             if (r.Method == HttpMethod.Post) Assert.Equal("key", r.Headers.Authorization!.Parameter);
             return new(HttpStatusCode.OK) { Content = new StringContent(r.Method == HttpMethod.Get ? "{}" : "{\"choices\":[{\"message\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}", Encoding.UTF8, "application/json") };
         }));
-        var result = await new ConnectionTester(http, new Secrets()).TestAsync(new() { Id = id, BaseUrl = "https://relay.test/v1", Model = "qwen", ApiKeyProtected = "key", AccessClientIdProtected = "client", AccessClientSecretProtected = "secret" });
+        var result = await new ConnectionTester(http, new Secrets()).TestAsync(new() { UseLmStudioLoad = false, Id = id, BaseUrl = "https://relay.test/v1", Model = "qwen", ApiKeyProtected = "key", AccessClientIdProtected = "client", AccessClientSecretProtected = "secret" });
         Assert.True(result.Ok); Assert.Equal(new[] { "/v1/chat/completions" }, calls);
     }
     [Fact] public async Task FailureNeverLeaksCredentials()

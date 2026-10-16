@@ -13,7 +13,8 @@ public sealed record OpenAiCompatOptions(
     string? ApiKey = null,
     IReadOnlyDictionary<string, string>? ExtraHeaders = null,
     double? Temperature = null,
-    TimeSpan? HeadersTimeout = null);
+    TimeSpan? HeadersTimeout = null,
+    bool LmStudioLoad = false, int ContextLength = 65536, int TtlSeconds = 3600);
 
 /// <summary>
 /// Any OpenAI-compatible chat endpoint: local PC models (Ollama, LM Studio, llama.cpp), OpenCode Zen/Go,
@@ -110,6 +111,7 @@ public sealed class OpenAiCompatProvider : IModelProvider
             ["stream"] = true,
             ["stream_options"] = new JsonObject { ["include_usage"] = true },
         };
+        if (request.MaxOutputTokens is int maximum) body["max_tokens"] = maximum;
         if (options.Temperature is double t) body["temperature"] = t;
         if (request.Tools.Count > 0)
         {
@@ -129,7 +131,15 @@ public sealed class OpenAiCompatProvider : IModelProvider
 
     public async IAsyncEnumerable<ChatEvent> StreamChatAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken ct)
     {
+        if (PromptTokens(request) > _options.ContextLength * .85) {
+            yield return new ProviderUnavailable(Id,"Context overflow: prompt exceeds 85% of loaded context; PM must split or reassign."); yield break;
+        }
+        if (_options.LmStudioLoad) {
+            var error = await SafeLoadAsync(ct);
+            if (error is not null) { yield return error; yield break; }
+        }
         var body = BuildRequestBody(_options, request);
+        if (_options.LmStudioLoad) body["ttl"] = _options.TtlSeconds;
         using var req = new HttpRequestMessage(HttpMethod.Post, Url("/chat/completions"))
         {
             Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"),
@@ -188,6 +198,36 @@ public sealed class OpenAiCompatProvider : IModelProvider
             await foreach (var ev in SseChatParser.ParseAsync(ReadLines(reader, ct), ct))
                 yield return ev;
         }
+    }
+
+    public static int PromptTokens(ChatRequest request) => (int)Math.Ceiling((request.Messages.Sum(m => (long)(m.Content?.Length ?? 0) + (m.ToolCalls?.Sum(t => t.ArgumentsJson.Length + t.Name.Length) ?? 0)) + request.Tools.Sum(t => (long)t.Name.Length + t.Description.Length + t.Parameters.ToJsonString().Length)) / 4.0);
+
+    private async Task<ChatEvent?> SafeLoadAsync(CancellationToken ct)
+    {
+        try { return await LoadAsync(ct); }
+        catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or System.Text.Json.JsonException or InvalidOperationException or TaskCanceledException) {
+            return new ProviderUnavailable(Id,"LM Studio model loading unavailable or returned an invalid response") {ExceptionType=ex.GetType().Name};
+        }
+    }
+
+    private async Task<ChatEvent?> LoadAsync(CancellationToken ct)
+    {
+        var root = _options.BaseUrl.TrimEnd('/');
+        if (root.EndsWith("/v1")) root = root[..^3];
+        foreach (var version in new[] {"v1", "v0"}) {
+            using var req = new HttpRequestMessage(HttpMethod.Post,root+"/api/"+version+"/models/load") {
+                Content = new StringContent(new JsonObject { ["model"] = ModelId, ["context_length"] = _options.ContextLength, ["ttl"] = _options.TtlSeconds, ["echo_load_config"] = true }.ToJsonString(),Encoding.UTF8,"application/json")
+            };
+            AddHeaders(req);
+            using var response = await _http.SendAsync(req,ct);
+            if (response.StatusCode == HttpStatusCode.NotFound && version == "v1") continue;
+            if (!response.IsSuccessStatusCode) return new ProviderUnavailable(Id,"Explicit LM Studio model load failed") {HttpStatus=(int)response.StatusCode};
+            var payload = JsonNode.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (payload?["load_config"]?["context_length"]?.GetValue<int>() is int loaded && loaded < _options.ContextLength)
+                return new ProviderUnavailable(Id,"LM Studio loaded a smaller context than requested; adjust context configuration.");
+            return null;
+        }
+        return new ProviderUnavailable(Id,"LM Studio REST model loading unsupported; upgrade the server.");
     }
 
     private static async IAsyncEnumerable<string> ReadLines(StreamReader reader, [EnumeratorCancellation] CancellationToken ct)

@@ -35,6 +35,7 @@ public sealed class AutoChatProvider(IReadOnlyList<IModelProvider> models, Model
             }
             usage.Complete(model,measured??ResponseUsage.Estimate(string.Join("\n",request.Messages.Select(m=>m.Content)),output.ToString()));
             if(!failed && answered) yield break;
+            yield return new StatusUpdate($"Plain failover: {model.Id}/{model.ModelId} failed or stalled; trying another verified model.");
         }
         yield return new ProviderUnavailable(Id,"All Auto models unavailable or cooling down.");
     }

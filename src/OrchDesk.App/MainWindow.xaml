@@ -4,7 +4,7 @@
         xmlns:vm="clr-namespace:OrchDesk.App.ViewModels"
         xmlns:ctl="clr-namespace:OrchDesk.App.Controls"
         xmlns:core="clr-namespace:OrchDesk.Core.Overnight;assembly=OrchDesk.Core"
-        Title="OrchDesk" Width="{StaticResource Metric.1180}" Height="{StaticResource Metric.780}" MinWidth="900" MinHeight="{StaticResource Metric.520}"
+        Title="OrchDesk" Width="{StaticResource Metric.1180}" Height="{StaticResource Metric.780}" MinWidth="480" MinHeight="{StaticResource Metric.520}"
         Background="{DynamicResource BaseBrush}" Foreground="{DynamicResource TextBrush}"
         Icon="Assets/orch-app-icon.ico" UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterScreen">
 
@@ -61,7 +61,7 @@
         </Border>
 
         <!-- ───────── Chat page ───────── -->
-        <Grid Grid.Column="1" DataContext="{Binding Chat}"
+        <Grid x:Name="ChatPageGrid" Grid.Column="1" DataContext="{Binding Chat}"
               Visibility="{Binding DataContext.Page, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageVisible}, ConverterParameter=Chat}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -70,12 +70,14 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="AgentsColumn" Width="0"/></Grid.ColumnDefinitions>
+            <ctl:AgentsPanel x:Name="LiveAgents" Grid.Column="1" Grid.Row="2" Grid.RowSpan="2" DataContext="{Binding Agents}" Visibility="Collapsed" Panel.ZIndex="10"/>
             <!-- Header: folder, mode, model -->
-            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_0_0_1}" Padding="{StaticResource Inset.24_10}">
+            <Border Grid.ColumnSpan="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{StaticResource Inset.0_0_0_1}" Padding="{StaticResource Inset.24_10}">
                 <StackPanel>
-                    <Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" ToolTip="{Binding Workspace}" Margin="{StaticResource Inset.0_0_0_4}">
+                    <DockPanel><Button x:Name="AgentsAction" DockPanel.Dock="Right"  Click="ToggleAgents" Style="{StaticResource GhostButton}" Margin="{StaticResource Inset.0_0_8_8}"><StackPanel Orientation="Horizontal"><TextBlock Text="Agents"/><Border CornerRadius="{StaticResource Round.12}" Background="{DynamicResource RaisedBrush}" Padding="{StaticResource Inset.8_3}" Margin="{StaticResource Inset.8_0_0_0}"><TextBlock Text="{Binding Agents.Count}"/></Border></StackPanel></Button><Button Command="{Binding PickFolderCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" ToolTip="{Binding Workspace}" Margin="{StaticResource Inset.0_0_0_4}">
                         <TextBlock Text="{Binding WorkspaceLabel}" FontFamily="{StaticResource UiFont}" ToolTip="{Binding Workspace}" FontSize="{StaticResource Metric.13}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="{StaticResource Metric.720}" />
-                    </Button>
+                    </Button></DockPanel>
                     <StackPanel Orientation="Vertical">
                         <!-- Row 1: Provider, Modes, Open file, New chat -->
                         <DockPanel LastChildFill="True">

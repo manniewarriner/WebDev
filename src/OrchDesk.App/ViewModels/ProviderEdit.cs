@@ -37,9 +37,9 @@ public sealed partial class ProviderEdit : ObservableObject
     }
     public string Badge => IsClaude ? "C" : "O";
     public string Subtitle => IsClaude ? "Claude Code · Subscription account" : "OpenCode · Go & Zen models";
-    public string ConnectionState => !Enabled ? "Not connected" : ModelsSyncedAt is not null ? "Connected" : "Needs login";
+    public string ConnectionState => Original.AuthStatus == "Sign-in needed" ? "Sign-in needed" : !Enabled ? "Not connected" : ModelsSyncedAt is not null ? "Connected" : "Needs login";
     public string SyncSummary => ModelsSyncedAt is { } synced
-        ? $"Synced {Math.Max(0, (int)(DateTimeOffset.Now - synced).TotalMinutes)}m ago · {AvailableModels.Count} models"
+        ? $"Synced {Math.Max(0, (int)(DateTimeOffset.Now - synced).TotalMinutes)}m ago · {AvailableModels.Count} models ? {Original.ModelVerifications.Count(p=>p.Value.Hidden)} hidden"
         : "Not synced yet · Connect to discover models";
     public void RefreshConnection()
     {
@@ -85,6 +85,7 @@ public sealed partial class ProviderEdit : ObservableObject
             ClearSecrets ? null : string.IsNullOrWhiteSpace(newValue) ? old : secrets.Protect(newValue.Trim());
         return new ProviderConfig
         {
+            ContextLength = Original.ContextLength, ModelTtlSeconds = Original.ModelTtlSeconds, UseLmStudioLoad = Original.UseLmStudioLoad, ModelVerifications = new(Original.ModelVerifications), AuthStatus=Original.AuthStatus,
             ModelBaseUrls = new(ModelBaseUrls), AvailableModels = [.. AvailableModels], ModelsSyncedAt = ModelsSyncedAt,
             Id = Id.Trim(), DisplayName = DisplayName.Trim(), Kind = Kind, Enabled = Enabled, IsLocal = IsLocal,
             BaseUrl = BaseUrl?.Trim(), Model = Model?.Trim(), Executable = Executable?.Trim(),

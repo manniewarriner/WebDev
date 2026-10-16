@@ -34,7 +34,7 @@ public sealed class ProviderFactory(ISecretProtector secrets, HttpClient http)
                     headers["User-Agent"] = "OrchDesk/0.1";
                 }
                 return new OpenAiCompatProvider(c.Id, c.DisplayName,
-                    new OpenAiCompatOptions(baseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers, temperature),
+                    new OpenAiCompatOptions(baseUrl ?? "", c.Model ?? "", secrets.TryUnprotect(c.ApiKeyProtected), headers, temperature, LmStudioLoad: c.UseLmStudioLoad ?? (c.Id != "ollama" && (c.IsLocal || c.Id == "remote-pc" || c.BaseUrl?.Contains(":1234") == true)), ContextLength: c.ContextLength, TtlSeconds: c.ModelTtlSeconds),
                     c.IsLocal, http);
 
             case ProviderKind.ClaudeCli:

@@ -31,14 +31,15 @@ public sealed class AppServices
     public event Action? Rebuilt;
 
     public bool ChatOnly { get; }
+    public bool Unattended { get; }
     private readonly IReadOnlyList<IModelProvider>? _providerOverride;
     public bool IsScreenshot { get; }
     public bool UseDemo { get; }
     public Task StartupSync { get; private set; } = Task.CompletedTask;
 
-    public AppServices(bool screenshot = false, ConfigStore? store = null, bool? demo = null, bool chatOnly = false, IReadOnlyList<IModelProvider>? providers = null)
+    public AppServices(bool screenshot = false, ConfigStore? store = null, bool? demo = null, bool chatOnly = false, IReadOnlyList<IModelProvider>? providers = null, bool unattended = false)
     {
-        ChatOnly = chatOnly;
+        ChatOnly = chatOnly; Unattended = unattended;
         _providerOverride = providers;
         Store = store ?? new();
         Usage = new(screenshot ? null : Store.Directory);
@@ -60,7 +61,8 @@ public sealed class AppServices
         Queue = new OvernightQueueStore(Path.Combine(Store.Directory, "overnight"));
         ReportsDir = Path.Combine(Store.Directory, "reports");
         Rebuild();
-        if (chatOnly) return;
+        if (chatOnly) { if (providers is null) StartupSync = SyncModelsAsync(); return; }
+        if (providers is not null) return;
         if (screenshot) { if (!UseDemo) StartupSync = SyncModelsAsync(); return; }
         Store.Changed += () => System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => {
             try { Config = Store.Load(); Rebuild(); } catch (IOException) { }
@@ -69,12 +71,24 @@ public sealed class AppServices
         StartupSync = SyncModelsAsync();
     }
 
+    public async Task RecheckModelsAsync() { await StartupSync; foreach(var p in Config.Providers) p.ModelVerifications.Clear(); await SyncModelsAsync(); }
+
+    public async Task EnsureModelVerificationAsync()
+    {
+        await StartupSync;
+        if (_providerOverride is not null || UseDemo) return;
+        if (Config.Providers.Where(p=>p.Enabled && p.Kind==ProviderKind.OpenAiCompatible).Any(p=>p.ModelVerifications.Values.Any(v=>v.CheckedAt<DateTimeOffset.UtcNow.AddDays(-1))))
+            await SyncModelsAsync();
+    }
+
     private async Task SyncModelsAsync()
     {
         var config = Config;
         var sync = new OrchDesk.Core.Integrations.IntegrationModelSync(Http, Secrets, new OrchDesk.Core.Integrations.ClaudeAuthRunner());
         var results = await OrchDesk.Core.Integrations.StartupModelSync.RunAsync(config, sync);
-        if (ReferenceEquals(config, Config) && results.Any(r => r.Status == "pass")) Save();
+        var factory = new ProviderFactory(Secrets, Http);
+        await Task.WhenAll(config.Providers.Where(p=>p.Enabled && p.Kind==ProviderKind.OpenAiCompatible).Select(p=>OrchDesk.Core.Integrations.ModelProbe.RunAsync(p,m=>factory.Create(p,m),rateLimited:(provider,delay)=>Usage.Backoff(provider,delay))));
+        if (ReferenceEquals(config, Config)) Save();
     }
 
     public void Rebuild()
@@ -113,13 +127,15 @@ public sealed class AppServices
         return result;
     }
 
-    public IReadOnlyList<IModelProvider> AutoModels()
+    public IReadOnlyList<IModelProvider> AutoModels(string? workspace = null)
     {
         if (_providerOverride is not null) return _providerOverride;
         var factory = new ProviderFactory(Secrets, Http);
-        return Config.Providers.Where(c => c.Enabled).SelectMany(c =>
-            (c.Kind == ProviderKind.ClaudeCli ? new[] { "opus", "haiku" } : c.AvailableModels.Count > 0 ? c.AvailableModels.ToArray() : new[] { c.Model ?? "" })
-            .Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase) && !m.EndsWith("-free", StringComparison.OrdinalIgnoreCase))
+        var team = workspace is null ? Config.Team : Config.WorkspaceTeams.GetValueOrDefault(AppConfig.WorkspaceKey(workspace)) ?? Config.Team;
+        return Config.Providers.Where(c => c.Enabled && (c.Kind != ProviderKind.ClaudeCli || c.AuthStatus != "Sign-in needed")).SelectMany(c =>
+            (c.Kind == ProviderKind.ClaudeCli ? new[] { "opus", "haiku", c.Id == team.PmProvider ? team.PmModel : "opus" }.Distinct().ToArray() : c.AvailableModels.Count > 0 ? c.AvailableModels.ToArray() : new[] { c.Model ?? "" })
+            .Where(m => c.Kind != ProviderKind.OpenAiCompatible || (c.ModelVerifications.TryGetValue(m, out var check) && check.Verified && !check.Hidden))
+              .Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase) && !m.EndsWith("-free", StringComparison.OrdinalIgnoreCase))
             .Select(m => factory.Create(c, m))).OfType<IModelProvider>().ToList();
     }
 
@@ -132,7 +148,7 @@ public sealed class AppServices
 
     public PermissionPolicy CreatePolicy()
     {
-        var p = new PermissionPolicy();
+        var p = new PermissionPolicy { Unattended = Unattended };
         p.ExtraAllowedCommandPrefixes.AddRange(Config.ExtraAllowedCommands);
         return p;
     }

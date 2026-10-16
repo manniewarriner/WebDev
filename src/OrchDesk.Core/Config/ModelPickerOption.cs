@@ -4,7 +4,7 @@ public sealed record ModelPickerOption(string? Id, string Label, string? Model =
 {
     public bool NeedsOpenCodeApp => (Model ?? DisplayModel)?.EndsWith("-free", StringComparison.OrdinalIgnoreCase) == true;
     public string Tag => NeedsOpenCodeApp ? "Free" : Id?.StartsWith("opencode") == true ? "Go" : "";
-    public string Subtitle => NeedsOpenCodeApp ? "Free ? needs OpenCode app" : Id is null ? "PC first, cloud fallback" : Tag;
+    public string Subtitle => NeedsOpenCodeApp ? "Free ? needs OpenCode app" : Id is null ? "Claude Opus manages the team" : Tag;
     public string ProviderGroup => Id is null ? "Automatic" : Label.Split(" · ")[0];
     public ProviderKind Kind { get; init; }
     public string? DisplayModel { get; init; }
@@ -24,6 +24,7 @@ public sealed record ModelPickerOption(string? Id, string Label, string? Model =
             var label = group.Id is "local-pc" or "local-pc-gemma" ? "LM Studio (PC)" : group.DisplayName;
             foreach (var model in p.AvailableModels.Count > 0 ? p.AvailableModels : new List<string> { p.Model ?? "" })
             {
+                if (p.ModelVerifications.TryGetValue(model,out var verification) && verification.Hidden) continue;
                 if (model.Contains("embed", StringComparison.OrdinalIgnoreCase) || !seen.Add((shared ? endpoint : p.Id, model))) continue;
                 options.Add(p.AvailableModels.Count > 0
                     ? new(p.Id, $"{label} \u00b7 {ModelDisplayNames.Get(model)}", model) { Kind = p.Kind }

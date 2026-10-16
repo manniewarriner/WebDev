@@ -80,6 +80,7 @@ public sealed class ComposerSendTests : IDisposable
     [Fact]
     public void ParsesSendArguments()
     {
+        var run=SendOptions.Parse(["--send","Build layout","--folder",_root,"--auto"])!; Assert.True(run.Auto); Assert.Equal(_root,run.Folder);
         Assert.Null(SendOptions.Parse(["--page", "composer-ready"]));
         Assert.Equal("Hello world", SendOptions.Parse(["--send", "Hello world", "--provider", "fake", "--config", "test.json"])!.Text);
     }

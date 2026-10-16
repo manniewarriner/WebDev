@@ -18,6 +18,7 @@ public enum ChatMode { Chat, CostRouter }
 
 public sealed partial class ChatViewModel : ObservableObject
 {
+    public AgentsPanelViewModel Agents { get; } = new();
     private readonly AppServices _services;
     private readonly IFolderPicker _folderPicker;
     public ChatViewState ViewState => Items.Count > 0 || IsBusy ? ChatViewState.Thread : ChatViewState.Home;
@@ -170,6 +171,7 @@ public sealed partial class ChatViewModel : ObservableObject
     {
         _conversation = null;
         Items.Clear();
+        Agents.Update(null);
         ResetChanges();
         PermissionIndex = (int)_services.Config.PermissionFor(EffectiveWorkspace);
         EditorPath = "";
@@ -349,6 +351,7 @@ public sealed partial class ChatViewModel : ObservableObject
         if (SendCommand.ExecutionTask is { } pending) await pending;
         _conversation = null;
         Items.Clear();
+        Agents.Update(null);
         ResetChanges();
     }
 
@@ -370,6 +373,7 @@ public sealed partial class ChatViewModel : ObservableObject
             foreach (var item in items) { if(item is UserItem u) _conversation.Messages.Add(ChatMessage.User(u.Text)); else if(item is AssistantItem a) _conversation.Messages.Add(ChatMessage.Assistant(a.Text)); }
         }
         Items.Clear();
+        Agents.Update(null);
         foreach (var item in items) Items.Add(item);
         ContentAdded?.Invoke();
     }
@@ -385,8 +389,7 @@ public sealed partial class ChatViewModel : ObservableObject
         var rotator = _services.CreateRunRotator(SelectedProvider);
         var sup = _services.Config.Supervisor;
 
-        if (SelectedProvider?.Id is null && !_services.ChatOnly) return RunAuto(text, gate, ct);
-        if (SelectedProvider?.Id is null && _services.ChatOnly) rotator = new OrchDesk.Core.Accounts.AccountRotator([new AutoChatProvider(_services.AutoModels(), _services.Usage)]);
+        if (SelectedProvider?.Id is null) return RunAuto(text, gate, ct);
         switch (WorkModeIndex == 0 ? ChatMode.Chat : Mode)
         {
             case ChatMode.CostRouter:
@@ -407,44 +410,51 @@ public sealed partial class ChatViewModel : ObservableObject
 
     private async IAsyncEnumerable<ChatEvent> RunAuto(string text, PermissionGate gate, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
+        await _services.EnsureModelVerificationAsync();
+        LastTeamJob = null; Agents.Update(null);
+        var config = _services.Config.WorkspaceTeams.GetValueOrDefault(OrchDesk.Core.Config.AppConfig.WorkspaceKey(EffectiveWorkspace)) ?? _services.Config.Team;
         var available = new List<OrchDesk.Core.Providers.IModelProvider>();
-        foreach (var provider in _services.AutoModels()) {
+        var health = new Dictionary<string, OrchDesk.Core.Providers.ProviderHealth>();
+        foreach (var provider in _services.AutoModels(EffectiveWorkspace)) {
             if (_services.Usage.Pick([provider]) is null) continue;
-            if (provider.IsLocal || provider.Id == "remote-pc" || provider.IsAgentic) {
-                if (await provider.CheckHealthAsync(ct) != OrchDesk.Core.Providers.ProviderHealth.Online) continue;
+            if (provider.IsAgentic || (provider.Id == config.PmProvider && provider.ModelId == config.PmModel)) {
+                if (!health.TryGetValue(provider.Id, out var checkedHealth)) health[provider.Id] = checkedHealth = await provider.CheckHealthAsync(ct);
+                if (checkedHealth != OrchDesk.Core.Providers.ProviderHealth.Online) continue;
             }
             available.Add(provider);
         }
         var models = available;
-        var config = _services.Config.WorkspaceTeams.GetValueOrDefault(OrchDesk.Core.Config.AppConfig.WorkspaceKey(EffectiveWorkspace)) ?? _services.Config.Team;
         var workers = models.Where(TeamRoles.IsWorker).ToList();
-        var pm = TeamRoles.Planner(models, config);
-        var intake = _services.Usage.Pick(workers.Where(p => p.IsLocal || p.Id == "remote-pc")) ?? _services.Usage.Pick(workers);
-        if (intake is null) { yield return new ErrorEvent("All roles unavailable: intake, PM, workers. Providers: " + string.Join(", ", _services.Config.Providers.Where(p=>p.Enabled).Select(p=>p.Id)) + ". Check availability and model backoff."); yield break; }
-        var classification = new System.Text.StringBuilder();
-        await foreach (var ev in new AutoChatProvider([intake], _services.Usage).StreamChatAsync(new([ChatMessage.User("Classify as trivial, chat, or task. Reply only with that word. Use task for project changes: " + text)], [], EffectiveWorkspace, true, true), ct))
-            if (ev is TextDelta d) classification.Append(d.Text);
-        if (!classification.ToString().Trim().Equals("task", StringComparison.OrdinalIgnoreCase)) {
-            var convo = new Conversation(_services.CreateLoop(gate), new OrchDesk.Core.Accounts.AccountRotator([new AutoChatProvider(workers, _services.Usage)]), EffectiveWorkspace);
+        var pm = models.FirstOrDefault(p => p.Id.Equals(config.PmProvider,StringComparison.OrdinalIgnoreCase) && p.ModelId.Equals(config.PmModel,StringComparison.OrdinalIgnoreCase));
+        if (pm is null) {
+            ActiveModel = "Claude unavailable - plain failover";
+            yield return new StatusUpdate(ActiveModel);
+            var convo = new Conversation(_services.CreateLoop(gate), new OrchDesk.Core.Accounts.AccountRotator([new AutoChatProvider(models, _services.Usage)]), EffectiveWorkspace);
             if (_conversation is not null) convo.Messages.AddRange(_conversation.Messages);
             _conversation = convo;
             await foreach (var ev in convo.SendAsync(text, ct, WorkModeIndex == 0)) yield return ev;
             yield break;
         }
-        if (pm is null) { yield return new ErrorEvent("Team PM unavailable: Claude Opus and Go unavailable."); yield break; }
         var runner = new TeamOrchestrator(() => { var loop = _services.CreateLoop(gate); AttachChanges(loop); return loop; }, _services.Usage, config);
-        runner.FallbackPm = TeamRoles.Planner(models.Where(p => p.Id.StartsWith("opencode")), config);
+
         var item = new TeamItem(); Items.Add(item);
-        runner.Changed += job => Application.Current.Dispatcher.Invoke(() => item.Refresh(job, _services.Usage));
-        runner.Progress += ev => Application.Current.Dispatcher.Invoke(() => Render(ev));
+        runner.Changed += job => Dispatch(() => { LastTeamJob = job; item.Refresh(job, _services.Usage); Agents.Update(job); });
+        runner.Progress += ev => Dispatch(() => Render(ev));
         ActiveModel = "Auto model ? PM " + pm.ModelId;
         var refresh = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        refresh.Tick += (_, _) => item.Refresh(runner.Job, _services.Usage); refresh.Start();
+        refresh.Tick += (_, _) => Agents.Tick(); refresh.Start();
+        var transcript=string.Join("\n",Items.Select(i=>i is UserItem u?"User: "+u.Text:i is AssistantItem a?"Assistant: "+a.Text:"").Where(t=>t.Length>0));
         TeamJob job;
-        try { job = await runner.RunAsync(text, EffectiveWorkspace, pm, workers.Select(p => config.Workers.TryGetValue(ModelUsageTracker.Key(p), out var tags) ? new TeamWorker(p, tags.Skills, tags.Sizes) : new TeamWorker(p, ["*"], ["*"])).ToList(), WorkModeIndex == 0, _services.Config.Supervisor.TestCommand, ct); } finally { refresh.Stop(); }
+        try { job = await runner.RunAsync(text+"\nConversation context:\n"+transcript, EffectiveWorkspace, pm, workers.Select(p => config.Workers.TryGetValue(ModelUsageTracker.Key(p), out var tags) ? new TeamWorker(p, tags.Skills, tags.Sizes) : new TeamWorker(p, ["*"], ["*"])).ToList(), WorkModeIndex == 0, _services.Config.Supervisor.TestCommand, ct, verify: !_services.ChatOnly); } finally { refresh.Stop(); }
+        LastTeamJob = job;
+        if (job.Status == "done" && job.Cards.LastOrDefault(c => c.Role == "PM") is { } summary) yield return new TextDelta(summary.Output);
         if (WorkModeIndex == 0) Items.Add(new PlanItem(job.Cards.Where(c => c.Role == "Worker").Select(c => c.Title).ToList(), RunApprovedPlan));
         yield return new Done();
     }
+
+    private static void Dispatch(Action action) { if (Application.Current is { } app) app.Dispatcher.Invoke(action); else action(); }
+
+    public TeamJob? LastTeamJob { get; private set; }
 
     private async Task RunApprovedPlan(string task)
     {

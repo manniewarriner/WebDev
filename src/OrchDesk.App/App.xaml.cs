@@ -24,14 +24,17 @@ public partial class App : Application
                 System.IO.Directory.CreateDirectory(storeOverride.Directory);
                 await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), "");
                 var options = OrchDesk.Core.Config.SendOptions.Parse(e.Args)!;
-                var sendServices = new AppServices(store: storeOverride, chatOnly: true);
+                var sendServices = new AppServices(store: storeOverride, chatOnly: !options.Auto, unattended: true);
+                await sendServices.StartupSync;
                 var chat = new ChatViewModel(sendServices);
+                if (options.Folder is { } folder) { if (!System.IO.Directory.Exists(folder)) throw new ArgumentException("--folder must name an existing directory."); chat.Workspace = System.IO.Path.GetFullPath(folder); }
+                if (options.Auto) chat.WorkModeIndex = 1;
                 if (options.ProviderId is { } id)
                 {
                     chat.SelectedProvider = chat.ProviderOptions.FirstOrDefault(p => p.Id == id)
                         ?? new OrchDesk.Core.Config.ModelPickerOption(id, id);
                 }
-                chat.SelectedProvider = options.ProviderId is null ? chat.ProviderOptions[0] : chat.SelectedProvider;
+                chat.SelectedProvider = options.Auto || options.ProviderId is null ? chat.ProviderOptions[0] : chat.SelectedProvider;
                 var results = new List<object>();
                 exit = 0;
                 foreach (var text in options.Texts)
@@ -45,11 +48,13 @@ public partial class App : Application
                     var error = added.OfType<ErrorItem>().Any() ? "Send failed: providers unavailable; see attempt reasons." : "";
                     var provider = chat.CurrentConversation?.LastProvider;
                     if (error.Length == 0 && string.IsNullOrWhiteSpace(reply)) error = "Send failed: provider returned an empty reply.";
-                    var output = error.Length > 0 ? error : $"[{provider?.Id}/{provider?.ModelId}] " + reply;
+                    var providerId = chat.LastTeamJob?.PmProvider ?? provider?.Id;
+                    var modelId = chat.LastTeamJob?.Pm ?? provider?.ModelId;
+                    var output = error.Length > 0 ? error : $"[{providerId}/{modelId}] " + reply;
                     if (error.Length > 0 || string.IsNullOrWhiteSpace(reply)) { exit = 1; Console.Error.WriteLine(output); }
                     Console.WriteLine(output);
                     await System.IO.File.AppendAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.txt"), output + Environment.NewLine);
-                    results.Add(new { provider = provider?.Id, model = provider?.ModelId, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.Select(a => new { a.ProviderId, a.Model, a.Reason }).ToArray(), diagnostics = options.Diag ? chat.CurrentConversation?.Attempts.ToArray() : null });
+                    results.Add(new { provider = providerId, model = modelId, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.Select(a => new { a.ProviderId, a.Model, a.Reason }).ToArray(), team = chat.LastTeamJob, diagnostics = options.Diag ? chat.CurrentConversation?.Attempts.ToArray() : null });
                     if (exit != 0) break;
                 }
                 await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(storeOverride.Directory, "send-result.json"), System.Text.Json.JsonSerializer.Serialize(results, OrchDesk.Core.Config.ConfigStore.Json));
@@ -146,7 +151,7 @@ public partial class App : Application
         var screenshotMode = e.Args.Contains("--screenshot", StringComparer.OrdinalIgnoreCase);
         var pageIndex = Array.FindIndex(e.Args, a => a.Equals("--page", StringComparison.OrdinalIgnoreCase));
         var page = pageIndex >= 0 && pageIndex + 1 < e.Args.Length ? e.Args[pageIndex + 1].ToLowerInvariant() : null;
-        if (pageIndex >= 0 && page is not ("usage-by-model" or "team-running" or "team-done" or "delete-confirm" or "delete-undo" or "composer-modes" or "plan-card" or "approval-card" or "changes-panel" or "accounts" or "settings-appearance" or "settings-about" or "heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "reply" or "selector" or "composer" or "composer-empty" or "composer-ready" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
+        if (pageIndex >= 0 && page is not ("agents" or "usage-by-model" or "team-running" or "team-done" or "delete-confirm" or "delete-undo" or "composer-modes" or "plan-card" or "approval-card" or "changes-panel" or "accounts" or "settings-appearance" or "settings-about" or "heatmap" or "welcome" or "filters" or "background" or "integrations" or "picker" or "thread" or "thinking" or "reply" or "selector" or "composer" or "composer-empty" or "composer-ready" or "sidebar-collapsed" or "sidebar-expanded" or "home" or "palette" or "connect-dialog" or "settings-fallback" or "settings-overnight" or "settings-limits" or "overnight-setup" or "toasts" or "usage" or "file-tree" or "diff" or "code-block" or "skeleton")) { Shutdown(2); return; }
         Motion.Screenshot = screenshotMode;
         var services = new AppServices(screenshotMode, storeOverride, OrchDesk.Core.Config.ScreenshotOptions.UseDemo(e.Args), chatOnly: e.Args.Contains("--ui-selftest", StringComparer.OrdinalIgnoreCase));
         if (screenshotMode && !services.UseDemo) await services.StartupSync;
@@ -190,10 +195,27 @@ public partial class App : Application
                     await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                 }
                 var heightIndex = Array.FindIndex(e.Args, a => a.Equals("--height", StringComparison.OrdinalIgnoreCase));
-                if (heightIndex >= 0 && heightIndex + 1 < e.Args.Length && int.TryParse(e.Args[heightIndex + 1], out var height)) captureWindow.Height = Math.Max(captureWindow.MinHeight, height);
+                if (heightIndex >= 0 && heightIndex + 1 < e.Args.Length && int.TryParse(e.Args[heightIndex + 1], out var height)) captureWindow.Height = Math.Max(captureWindow.MinHeight, height) + captureWindow.ActualHeight - ((FrameworkElement)captureWindow.Content).ActualHeight;
                 await captureWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                 captureWindow.UpdateLayout();
                 var captureRoot = captureWindow.Content as FrameworkElement ?? captureWindow;
+                System.Windows.Interop.HwndSource? captureHost = null;
+                if (widthIndex >= 0 && int.TryParse(e.Args[widthIndex + 1], out var renderWidth) && heightIndex >= 0 && heightIndex + 1 < e.Args.Length && int.TryParse(e.Args[heightIndex + 1], out var renderHeight))
+                {
+                    // An offscreen presentation source avoids the desktop work-area clip.
+                    captureRoot.DataContext = captureWindow.DataContext;
+                    captureRoot.SetValue(System.Windows.Documents.TextElement.ForegroundProperty, captureWindow.Foreground);
+                    captureRoot.SetValue(System.Windows.Documents.TextElement.FontFamilyProperty, captureWindow.FontFamily);
+                    captureRoot.SetValue(System.Windows.Documents.TextElement.FontSizeProperty, captureWindow.FontSize);
+                    captureWindow.Content = null;
+                    captureWindow.UpdateLayout();
+                    var hostParameters = new System.Windows.Interop.HwndSourceParameters("Screenshot") { Width = renderWidth, Height = renderHeight, PositionX = -10000, PositionY = -10000, WindowStyle = unchecked((int)0x90000000) };
+                    captureHost = new System.Windows.Interop.HwndSource(hostParameters) { RootVisual = captureRoot };
+                    captureRoot.Width = renderWidth; captureRoot.Height = renderHeight;
+                    captureRoot.InvalidateMeasure();
+                    captureRoot.Measure(new Size(renderWidth, renderHeight));
+                    captureRoot.Arrange(new Rect(0, 0, renderWidth, renderHeight));
+                }
                 var dpi = widthIndex >= 0 ? new DpiScale(1, 1) : System.Windows.Media.VisualTreeHelper.GetDpi(captureRoot);
                 var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
                     (int)Math.Ceiling(captureRoot.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(captureRoot.ActualHeight * dpi.DpiScaleY),
@@ -205,6 +227,7 @@ public partial class App : Application
                     drawing.DrawRectangle(captureWindow.Background, null, new Rect(0, 0, captureRoot.ActualWidth, captureRoot.ActualHeight));
                 bitmap.Render(canvas);
                 bitmap.Render(captureRoot);
+                captureHost?.Dispose();
                 var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
                 encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
                 var path = System.IO.Path.GetFullPath(e.Args[screenshotIndex + 1]);

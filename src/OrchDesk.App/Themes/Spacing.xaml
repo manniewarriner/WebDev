@@ -170,4 +170,8 @@
     <Thickness x:Key="Inset.24_24_24_16">24,24,24,16</Thickness>
 <Thickness x:Key="Inset.0_16_28_16">0,16,28,16</Thickness>
 <Thickness x:Key="Inset.16_16_16_0">16,16,16,0</Thickness><Thickness x:Key="Inset.16_0_0_16">16,0,0,16</Thickness><Thickness x:Key="Inset.24_16_24_24">24,16,24,24</Thickness><Thickness x:Key="Inset.0_4_8_0">0,4,8,0</Thickness><Thickness x:Key="Inset.16_4">16,4</Thickness><Thickness x:Key="Inset.0_8_8_0">0,8,8,0</Thickness><Thickness x:Key="Inset.12_4">12,4</Thickness><sys:Double x:Key="Metric.36">36</sys:Double><Thickness x:Key="Inset.24">24</Thickness>
+<Thickness x:Key="Inset.0_0_0_24">0,0,0,24</Thickness>
+<Thickness x:Key="Inset.0_6_0_24">0,6,0,24</Thickness>
+<Thickness x:Key="Inset.20">20</Thickness>
+<Thickness x:Key="Inset.8_3">8,3</Thickness>
 </ResourceDictionary>

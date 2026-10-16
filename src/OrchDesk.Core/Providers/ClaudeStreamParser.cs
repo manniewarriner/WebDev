@@ -24,6 +24,8 @@ public static class ClaudeStreamParser
     public static ParseResult Parse(string line, string providerId)
     {
         var events = new List<ChatEvent>();
+        if (line.Contains("Not logged in",StringComparison.OrdinalIgnoreCase) || line.Contains("Please run /login",StringComparison.OrdinalIgnoreCase))
+            return new([new ProviderUnavailable(providerId,"Sign-in needed")],null);
         JsonNode? node;
         try { node = JsonNode.Parse(line); }
         catch (System.Text.Json.JsonException)
@@ -97,6 +99,10 @@ public static class ClaudeStreamParser
                     events.Add(new Done(result));
                 break;
         }
+        if (events.Any(ev => {
+            var text=ev switch {TextDelta d=>d.Text, Done d=>d.FinalText, ErrorEvent e=>e.Message, StatusUpdate s=>s.Text, _=>null};
+            return text is not null && (text.Contains("Not logged in",StringComparison.OrdinalIgnoreCase) || text.Contains("Please run /login",StringComparison.OrdinalIgnoreCase));
+        })) return new([new ProviderUnavailable(providerId,"Sign-in needed")],sessionId);
         return new ParseResult(events, sessionId);
     }
 }

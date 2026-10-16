@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         InitializeFollowup();
+        InitializeAgents();
         InitializeRedesign();
         ApplyLayout();
         HistoryList.ItemsSource = _history;
@@ -180,15 +181,16 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainViewModel vm) return;
         var chat = vm.Chat;
-        if (page is "team-running" or "team-done") {
+        if (page is "agents" or "team-running" or "team-done") {
             WelcomeOverlay.Visibility = Visibility.Collapsed;
             chat.Items.Clear();
             chat.Items.Add(new UserItem("Implement the workspace activity dashboard and test the integration."));
             var job = new OrchDesk.Core.Orchestration.TeamJob { Pm="Claude Opus", Status=page=="team-done"?"done":"running" };
             var names = new[] { "Plan and assign chunks", "Build dashboard layout", "Connect activity data", "Add integration tests" };
             var models = new[] { "Claude Opus", "GLM 5.2", "Kimi K2.5", "Claude Haiku" };
-            for(var i=0;i<4;i++) job.Cards.Add(new() { Id=i.ToString(),Title=names[i],Role=i==0?"PM":"Worker",Model=models[i],Status=page=="team-done"||i==0?"done":i==3?"queued":"running",Elapsed=TimeSpan.FromSeconds(i==0?8:12),Usage=new(240+i*100,80+i*50,i==2),Output="Chunk completed and cross-reviewed. Workspace permission checks passed." });
-            var item=new TeamItem(); var usage=vm.Services.Usage; foreach(var model in vm.Services.AutoModels().Take(4)) { usage.Start(model); usage.Complete(model,new(240,80)); } item.Refresh(job,usage); chat.Items.Add(item);
+            for(var i=0;i<4;i++) job.Cards.Add(new() { Id=i.ToString(),Title=names[i],Role=i==0?"PM":"Worker",Model=models[i],Status=page=="team-done"||i==0?"done":i==3?"queued":"running",Started=page!="team-done" && i is 1 or 2 ? DateTimeOffset.UtcNow.AddSeconds(-12) : null,Elapsed=TimeSpan.FromSeconds(i==0?8:12),Usage=new(240+i*100,80+i*50,i==2),Output="Chunk completed and cross-reviewed. Workspace permission checks passed." });
+            var item=new TeamItem(); var usage=vm.Services.Usage; foreach(var model in vm.Services.AutoModels().Take(4)) { usage.Start(model); usage.Complete(model,new(240,80)); } item.Refresh(job,usage); chat.Items.Add(item); chat.Agents.Update(job);
+            if (page == "agents") { _agentsState = new(true); LayoutAgents(); }
             _stickToBottom = false;
             Dispatcher.BeginInvoke(() => ChatScroll.ScrollToTop(), DispatcherPriority.ApplicationIdle);
             SetSidebar(false,false); return;

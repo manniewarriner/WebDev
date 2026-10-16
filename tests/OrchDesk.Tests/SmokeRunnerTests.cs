@@ -57,7 +57,7 @@ public class SmokeRunnerTests
     public async Task SmokeProvesWriteReadRoundTripAndReportsSkippedIntegrations(string id)
     {
         using var dir = new TempDir(); using var http = new HttpClient(new Handler());
-        var config = new AppConfig { WebFetchEnabled = false, Providers = [new() { Id = id, BaseUrl = "https://provider.test/v1", Model = "model", ApiKeyProtected = "key" }, new() { Id = "disabled", Enabled = false }] };
+        var config = new AppConfig { WebFetchEnabled = false, Providers = [new() { UseLmStudioLoad = false, Id = id, BaseUrl = "https://provider.test/v1", Model = "model", ApiKeyProtected = "key" }, new() { Id = "disabled", Enabled = false }] };
         using var store = new ConfigStore(Path.Combine(dir.Path, "config"));
         bool saved = false;
         var results = await IntegrationSmokeRunner.RunAsync(config, new Secrets(), http, dir.Path, saveSynced: c => {

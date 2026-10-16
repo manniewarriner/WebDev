@@ -147,7 +147,7 @@ public class AutoRoutingTests
         using var store = ConfigStore.FromArgs(["--config", Path.Combine(dir.Path, "copy.json")]);
         var secrets = new TestSecrets();
         store.Save(new AppConfig { Providers = [new() {
-            Id = id, Kind = ProviderKind.OpenAiCompatible, BaseUrl = "https://configured.test/v1", Model = "configured",
+            UseLmStudioLoad = false, Id = id, Kind = ProviderKind.OpenAiCompatible, BaseUrl = "https://configured.test/v1", Model = "configured",
             ApiKeyProtected = secrets.Protect("test-key"), AccessClientIdProtected = secrets.Protect("test-id"),
             AccessClientSecretProtected = secrets.Protect("test-secret")
         }] });

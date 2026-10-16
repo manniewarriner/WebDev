@@ -26,11 +26,10 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
     public bool IsAgentic => true;
     public bool IsLocal => false;
 
-    public Task<ProviderHealth> CheckHealthAsync(CancellationToken ct)
+    public async Task<ProviderHealth> CheckHealthAsync(CancellationToken ct)
     {
-        if (CliRunner.FindOnPath(options.Executable) is null) return Task.FromResult(ProviderHealth.NotConfigured);
-        if (string.IsNullOrWhiteSpace(options.ConfigDir)) return Task.FromResult(ProviderHealth.NotConfigured);
-        return Task.FromResult(ProviderHealth.Online);
+        try { return await new OrchDesk.Core.Integrations.ClaudeAuthRunner().IsLoggedInAsync(new OrchDesk.Core.Config.ProviderConfig { Executable=options.Executable, ClaudeConfigDir=options.ConfigDir },ct) ? ProviderHealth.Online : ProviderHealth.NotConfigured; }
+        catch (Exception) when (!ct.IsCancellationRequested) { return ProviderHealth.NotConfigured; }
     }
 
     public void ResetSession(string workingDirectory) => _sessions.Remove(workingDirectory);
@@ -80,6 +79,9 @@ public sealed class ClaudeCliProvider(string id, string displayName, ClaudeCliOp
 
         await foreach (var line in CliRunner.StreamAsync(psi, prompt, ct))
         {
+            if (line.Text.Contains("Not logged in",StringComparison.OrdinalIgnoreCase) || line.Text.Contains("Please run /login",StringComparison.OrdinalIgnoreCase)) {
+                yield return new ProviderUnavailable(Id,"Sign-in needed"); yield break;
+            }
             if (line.IsStdErr) { stderr.Add(line.Text); continue; }
             var parsed = ClaudeStreamParser.Parse(line.Text, Id);
             if (parsed.SessionId is not null) _sessions[cwd] = parsed.SessionId;

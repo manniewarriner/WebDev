@@ -5,6 +5,8 @@ namespace OrchDesk.Core.Config;
 
 public enum ProviderKind { OpenAiCompatible, ClaudeCli, CodexCli, OpenCodeCli }
 
+public sealed record ModelVerification(bool Verified, bool Hidden, DateTimeOffset CheckedAt, string Reason);
+
 public sealed class ProviderConfig
 {
     public string Id { get; set; } = "";
@@ -14,6 +16,11 @@ public sealed class ProviderConfig
     /// <summary>Marks models on the user's own PC: preferred when online, skipped when the PC is off.</summary>
     public bool IsLocal { get; set; }
 
+    public int ContextLength { get; set; } = 65536;
+    public int ModelTtlSeconds { get; set; } = 3600;
+    public bool? UseLmStudioLoad { get; set; }
+    public Dictionary<string, ModelVerification> ModelVerifications { get; set; } = [];
+    public string? AuthStatus { get; set; }
     public List<string> AvailableModels { get; set; } = [];
     public DateTimeOffset? ModelsSyncedAt { get; set; }
     public Dictionary<string, string> ModelBaseUrls { get; set; } = [];
@@ -56,6 +63,7 @@ public enum WorkspacePermission { Manual, FullAccess }
 
 public sealed class AppConfig
 {
+    public bool? AgentsPanelOpen { get; set; }
     public Dictionary<string, WorkspacePermission> WorkspacePermissions { get; set; } = [];
     public WorkMode LastWorkMode { get; set; } = WorkMode.Agent;
     public static string WorkspaceKey(string path) => OrchDesk.Core.Tools.WorkspacePath.NormalizeRoot(path).ToUpperInvariant();

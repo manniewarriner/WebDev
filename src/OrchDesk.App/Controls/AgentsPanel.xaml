@@ -1,0 +1,21 @@
+<UserControl x:Class="OrchDesk.App.Controls.AgentsPanel" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="{StaticResource Inset.20}">
+ <DockPanel>
+  <TextBlock DockPanel.Dock="Top" Text="Live agents" FontSize="{StaticResource Metric.20}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_0_0_24}"/>
+  <StackPanel DockPanel.Dock="Bottom" Visibility="{Binding HasTeam, Converter={StaticResource BoolVisible}}"><Separator Margin="{StaticResource Inset.0_12}"/><TextBlock Text="{Binding Totals}" FontSize="{StaticResource Metric.12}" Foreground="{DynamicResource MutedBrush}"/><Button Content="Usage by model &#x2197;" Click="UsageClick" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="{StaticResource Inset.0_8_0_0}"/></StackPanel>
+  <Grid><TextBlock Text="No agents running. Auto model will show its team here." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasTeam}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+  <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding HasTeam, Converter={StaticResource BoolVisible}}"><StackPanel>
+   <TextBlock Text="Planning" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.0_0_0_12}"/><TextBlock Text="{Binding Planning}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding PlanningElapsed}" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.0_6_0_24}"/>
+   <TextBlock Text="{Binding Failures}" TextWrapping="Wrap"/>
+   <TextBlock Text="{Binding Decisions}" TextWrapping="Wrap"/>
+   <TextBlock Text="Workers" Foreground="{DynamicResource MutedBrush}" Margin="{StaticResource Inset.0_0_0_12}"/>
+   <ItemsControl ItemsSource="{Binding Workers}"><ItemsControl.ItemTemplate><DataTemplate>
+    <Button Click="RowClick" HorizontalContentAlignment="Stretch" Style="{StaticResource GhostButton}" Padding="{StaticResource Inset.0_12}" Margin="{StaticResource Inset.0_0_0_8}"><StackPanel>
+     <StackPanel Orientation="Horizontal"><TextBlock Text="{Binding Mark}" Foreground="{DynamicResource AccentBrush}" Margin="{StaticResource Inset.0_0_8_0}"/><TextBlock Text="{Binding Model}" FontWeight="SemiBold"/></StackPanel>
+     <TextBlock Text="{Binding Title}" ToolTip="{Binding Title}" TextTrimming="CharacterEllipsis" Margin="{StaticResource Inset.0_8_0_8}"/>
+     <StackPanel Orientation="Horizontal"><Border CornerRadius="{StaticResource Round.12}" Background="{DynamicResource RaisedBrush}" Padding="{StaticResource Inset.8_3}" Margin="{StaticResource Inset.0_0_8_0}"><Border.Style><Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding IsRunning}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.55" Duration="0:0:1.4" AutoReverse="True" RepeatBehavior="Forever"/></Storyboard></BeginStoryboard></DataTrigger.EnterActions></DataTrigger></Style.Triggers></Style></Border.Style><TextBlock Text="{Binding Status}" FontSize="{StaticResource Metric.11}"/></Border><TextBlock Text="{Binding Detail}" FontSize="{StaticResource Metric.11}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/></StackPanel>
+    </StackPanel></Button>
+   </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+  </StackPanel></ScrollViewer></Grid>
+ </DockPanel></Border>
+</UserControl>

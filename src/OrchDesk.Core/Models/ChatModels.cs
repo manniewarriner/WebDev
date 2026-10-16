@@ -33,7 +33,8 @@ public sealed record ChatRequest(
     IReadOnlyList<ToolDef> Tools,
     string? WorkingDirectory = null,
     bool ReadOnly = false,
-    bool HostManagedTools = false);
+    bool HostManagedTools = false,
+    int? MaxOutputTokens = null);
 
 /// <summary>Streamed output from a provider or the agent loop.</summary>
 public abstract record ChatEvent

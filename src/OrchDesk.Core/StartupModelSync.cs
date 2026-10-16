@@ -17,6 +17,7 @@ public static class StartupModelSync
             try
             {
                 var result = await sync.RunAsync(provider, ct: timeout.Token).WaitAsync(timeout.Token);
+                if (provider.Kind == ProviderKind.ClaudeCli) provider.AuthStatus = result.Ok ? "Signed in" : "Sign-in needed";
                 // A failed Claude auth check must not display a stale connected profile.
                 if (!result.Ok && provider.Kind == ProviderKind.ClaudeCli)
                 {
