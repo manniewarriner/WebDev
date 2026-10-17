@@ -20,7 +20,9 @@ public sealed class AppServices
 
     public OrchDesk.Core.Orchestration.ModelUsageTracker Usage { get; private set; } = null!;
     public ConfigStore Store { get; }
-    public ISecretProtector Secrets { get; } = new DpapiSecretProtector();
+    public ISecretProtector Secrets { get; }
+    /// <summary>secrets.bin shared with the original build (telegram, opencode-go, opencode-free, gemini, meshy ...).</summary>
+    public SecretStore SecretFile { get; }
     public ToolRegistry Tools { get; private set; } = ToolRegistry.CreateDefault();
     public AppConfig Config { get; private set; }
     public IReadOnlyList<IModelProvider> Providers { get; private set; } = [];
@@ -42,6 +44,9 @@ public sealed class AppServices
         ChatOnly = chatOnly; Unattended = unattended;
         _providerOverride = providers;
         Store = store ?? new();
+        var protector = SecretStoreProtector.ForDirectory(Store.Directory);
+        Secrets = protector; SecretFile = protector.Store!;
+        Store.HasSecret ??= SecretFile.Has;
         Usage = new(screenshot ? null : Store.Directory);
         IsScreenshot = screenshot;
         var useFixtures = UseDemo = screenshot && (demo ?? store is null);
@@ -148,7 +153,7 @@ public sealed class AppServices
 
     public PermissionPolicy CreatePolicy()
     {
-        var p = new PermissionPolicy { Unattended = Unattended };
+        var p = new PermissionPolicy { Unattended = Unattended, PermissionResolver = Config.PermissionFor };
         p.ExtraAllowedCommandPrefixes.AddRange(Config.ExtraAllowedCommands);
         return p;
     }

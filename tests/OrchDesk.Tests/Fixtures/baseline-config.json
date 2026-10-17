@@ -1,0 +1,142 @@
+﻿{
+    "Endpoints":  [
+                      {
+                          "Name":  "Local · LM Studio / Bionic",
+                          "Url":  "http://127.0.0.1:1234/v1",
+                          "Model":  "local-model",
+                          "KeyId":  "local",
+                          "Local":  true,
+                          "NativeTools":  true,
+                          "ModelsUrl":  "",
+                          "ModelPattern":  "^(?!.*embed)"
+                      },
+                      {
+                          "Name":  "OpenCode Go",
+                          "Url":  "https://opencode.ai/inference/go/openai/v1",
+                          "Model":  "",
+                          "KeyId":  "opencode-go",
+                          "Local":  false,
+                          "NativeTools":  true,
+                          "ModelsUrl":  "https://opencode.ai/inference/go/v1/models",
+                          "ModelPattern":  "^(glm|kimi|deepseek|mimo|hy|longcat|step|beam|space-bunny|big-pickle)"
+                      },
+                      {
+                          "Name":  "OpenCode Free",
+                          "Url":  "https://opencode.ai/inference/openai/v1",
+                          "Model":  "",
+                          "KeyId":  "opencode-free",
+                          "Local":  false,
+                          "NativeTools":  true,
+                          "ModelsUrl":  "https://opencode.ai/inference/v1/models",
+                          "ModelPattern":  "(-free$|^big-pickle$)"
+                      },
+                      {
+                          "Name":  "Gemini",
+                          "Url":  "https://generativelanguage.googleapis.com/v1beta/openai",
+                          "Model":  "",
+                          "KeyId":  "gemini",
+                          "Local":  false,
+                          "NativeTools":  true,
+                          "ModelsUrl":  "",
+                          "ModelPattern":  "gemini"
+                      }
+                  ],
+    "MinimumFreeRamGb":  2,
+    "MaxSteps":  40,
+    "ShellTimeoutSeconds":  120,
+    "OutputLimit":  65536,
+    "TestCommand":  "dotnet test",
+    "LightTheme":  false,
+    "Permission":  "Auto",
+    "Project":  "C:\\Users\\mannie\\Documents",
+    "SupervisorMaxRuns":  5,
+    "SupervisorMaxMinutes":  60,
+    "BrainModel":  "claude-opus-5-5",
+    "IntakeProvider":  "local",
+    "IntakeModel":  "",
+    "Ladder":  [
+                   {
+                       "Name":  "Local",
+                       "Provider":  "local",
+                       "Model":  ""
+                   },
+                   {
+                       "Name":  "OpenCode Free",
+                       "Provider":  "opencode-free",
+                       "Model":  ""
+                   },
+                   {
+                       "Name":  "OpenCode Go",
+                       "Provider":  "opencode-go",
+                       "Model":  ""
+                   },
+                   {
+                       "Name":  "Claude Haiku 5.5",
+                       "Provider":  "claude",
+                       "Model":  "claude-haiku-5-5"
+                   },
+                   {
+                       "Name":  "Claude Sonnet 5.5",
+                       "Provider":  "claude",
+                       "Model":  "claude-sonnet-5-5"
+                   }
+               ],
+    "NightShift":  true,
+    "NightLadder":  [
+                        {
+                            "Name":  "Local · google/gemma-4-e2b",
+                            "Provider":  "local",
+                            "Model":  "google/gemma-4-e2b"
+                        },
+                        {
+                            "Name":  "Local · nvidia/nemotron-3-nano-4b",
+                            "Provider":  "local",
+                            "Model":  "nvidia/nemotron-3-nano-4b"
+                        },
+                        {
+                            "Name":  "Local · google/gemma-4-12b-qat",
+                            "Provider":  "local",
+                            "Model":  "google/gemma-4-12b-qat"
+                        },
+                        {
+                            "Name":  "Local · prism-ml/bonsai-27b",
+                            "Provider":  "local",
+                            "Model":  "prism-ml/bonsai-27b"
+                        },
+                        {
+                            "Name":  "Claude Haiku 5.5",
+                            "Provider":  "claude",
+                            "Model":  "claude-haiku-5-5"
+                        },
+                        {
+                            "Name":  "Claude Sonnet 5.5",
+                            "Provider":  "claude",
+                            "Model":  "claude-sonnet-5-5"
+                        }
+                    ],
+    "MaxTasks":  6,
+    "VerifyCommand":  "auto",
+    "VerifyTimeoutSeconds":  300,
+    "MaxModelCalls":  80,
+    "CallTimeoutMinutes":  20,
+    "TransientRetries":  1,
+    "RepoMapChars":  4000,
+    "ArchitectSplit":  true,
+    "LearnedRouting":  true,
+    "Skills":  true,
+    "SkillsFromProject":  false,
+    "SkillsFromClaude":  true,
+    "ClaudeSkillsEnabledOnce":  true,
+    "Memory":  true,
+    "DailyTokenCeiling":  2000000,
+    "TelegramEnabled":  true,
+    "TelegramChatId":  123456789,
+    "RemoteAllowAuto":  true,
+    "RemoteMaxPerHour":  20,
+    "MaxParallel":  3,
+    "AttemptsPerTier":  1,
+    "MaxRevisionRounds":  1,
+    "OpusReviewsEveryAttempt":  false,
+    "MeshyKeyId":  "meshy",
+    "LastModel":  "orchestra"
+}

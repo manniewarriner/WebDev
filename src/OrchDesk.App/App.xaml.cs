@@ -17,6 +17,7 @@ public partial class App : Application
         base.OnStartup(e);
         OrchDesk.Core.Config.ConfigStore storeOverride;
         try { storeOverride = OrchDesk.Core.Config.ConfigStore.FromArgs(e.Args); } catch (ArgumentException) { Shutdown(e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase) ? 1 : 2); return; }
+        storeOverride.HasSecret = new OrchDesk.Core.Config.SecretStore(storeOverride.Directory).Has;
         if (!e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase) && e.Args.Contains("--capture", StringComparer.OrdinalIgnoreCase)) { Shutdown(2); return; }
         var sdkFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
         if (System.IO.File.Exists(System.IO.Path.Combine(sdkFolder, "dotnet.exe"))) Environment.SetEnvironmentVariable("PATH", sdkFolder + System.IO.Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
@@ -102,7 +103,7 @@ public partial class App : Application
                 var deadline = DateTime.Today.Add(until.ToTimeSpan()); if (deadline <= DateTime.Now) deadline = deadline.AddDays(1);
                 var store = storeOverride; var config = store.Load();
                 using var http = new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan };
-                var providers = new OrchDesk.Core.Config.ProviderFactory(new OrchDesk.Core.Config.DpapiSecretProtector(), http).CreateAll(config);
+                var providers = new OrchDesk.Core.Config.ProviderFactory(OrchDesk.Core.Config.SecretStoreProtector.ForDirectory(storeOverride.Directory), http).CreateAll(config);
                 var run = new OrchDesk.Core.Overnight.OvernightRun {
                     Goal = goal, Workspace = workspace, Deadline = new DateTimeOffset(deadline),
                     ManagerId = Arg("--manager") ?? config.Supervisor.PlannerProviderId,
@@ -125,7 +126,7 @@ public partial class App : Application
             var store = storeOverride;
             using var http = new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan };
             try {
-                var results = await OrchDesk.Core.Verification.IntegrationSmokeRunner.RunAsync(store.Load(), new OrchDesk.Core.Config.DpapiSecretProtector(), http, System.IO.Path.Combine(store.Directory, "smoketest"), saveSynced: store.Save);
+                var results = await OrchDesk.Core.Verification.IntegrationSmokeRunner.RunAsync(store.Load(), OrchDesk.Core.Config.SecretStoreProtector.ForDirectory(storeOverride.Directory), http, System.IO.Path.Combine(store.Directory, "smoketest"), saveSynced: store.Save);
                 Shutdown(results.Any(r => r.Status == "fail") ? 1 : 0);
             } catch { Shutdown(2); }
             return;
@@ -145,13 +146,13 @@ public partial class App : Application
                 // local-pc is the explicit LM Studio verification target, independent of older saved defaults.
                 var providerConfig = id == "local-pc" && !e.Args.Contains("--config", StringComparer.OrdinalIgnoreCase) ? OrchDesk.Core.Config.AppConfig.CreateDefault().Providers.First(p => p.Id == id)
                     : config.Providers.FirstOrDefault(p => p.Id == id && p.Kind == OrchDesk.Core.Config.ProviderKind.OpenAiCompatible);
-                var provider = providerConfig is null ? null : new OrchDesk.Core.Config.ProviderFactory(new OrchDesk.Core.Config.DpapiSecretProtector(), http).Create(providerConfig);
+                var provider = providerConfig is null ? null : new OrchDesk.Core.Config.ProviderFactory(OrchDesk.Core.Config.SecretStoreProtector.ForDirectory(storeOverride.Directory), http).Create(providerConfig);
                 if (provider is null) {
                     System.IO.Directory.CreateDirectory(folder);
                     await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(folder, "selftest.json"), "{\"passed\":false,\"items\":[{\"name\":\"provider\",\"pass\":false,\"detail\":\"Unknown or disabled OpenAI-compatible provider\"}]}");
                     Shutdown(2); return;
                 }
-                var report = await OrchDesk.Core.Verification.SelfTestRunner.RunAsync(folder, provider, accounts: new OrchDesk.Core.Config.ProviderFactory(new OrchDesk.Core.Config.DpapiSecretProtector(), http).CreateAll(config));
+                var report = await OrchDesk.Core.Verification.SelfTestRunner.RunAsync(folder, provider, accounts: new OrchDesk.Core.Config.ProviderFactory(OrchDesk.Core.Config.SecretStoreProtector.ForDirectory(storeOverride.Directory), http).CreateAll(config));
                 Shutdown(report.Passed ? 0 : 1);
             } catch {
                 // Do not display exception text: HTTP/provider diagnostics can contain secrets.

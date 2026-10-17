@@ -31,6 +31,8 @@ public sealed partial class PermissionPolicy
     public string? WorkspaceRoot { get; set; }
     public OrchDesk.Core.Config.WorkspacePermission? WorkspacePermission { get; set; }
     public bool HostManagedCommits { get; set; }
+    /// <summary>Per-path permission lookup (normally <see cref="OrchDesk.Core.Config.AppConfig.PermissionFor"/>).</summary>
+    public Func<string, OrchDesk.Core.Config.WorkspacePermission>? PermissionResolver { get; set; }
 
     public PermissionDecision Evaluate(string toolName, JsonObject args)
     {
@@ -44,7 +46,13 @@ public sealed partial class PermissionPolicy
         }
         var decision = EvaluateAttended(toolName, args);
         if (decision.Verdict != Verdict.Deny && WorkspacePermission is { } mode && toolName is "write_file" or "edit_file" or "delete_file" or "run_command")
+        {
+            // Full access is per folder: a file tool is judged by the folder of the file it touches (inherited from the nearest
+            // configured parent), so full access on one folder never spills into its siblings.
+            if (PermissionResolver is not null && WorkspaceRoot is not null && toolName is not "run_command")
+                mode = PermissionResolver(OrchDesk.Core.Tools.WorkspacePath.Resolve(WorkspaceRoot, args["path"]?.GetValue<string>()));
             decision = mode == OrchDesk.Core.Config.WorkspacePermission.FullAccess ? PermissionDecision.Allow("Full access") : PermissionDecision.Ask("Ask first");
+        }
         return Unattended && decision.Verdict == Verdict.Ask
             ? PermissionDecision.Deny($"{decision.Reason} (unattended mode: not allowed without a person to approve)")
             : decision;

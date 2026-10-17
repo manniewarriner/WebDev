@@ -36,6 +36,13 @@ public sealed class ProviderConfig
     public string? Executable { get; set; }
     public string? ClaudeConfigDir { get; set; }
     public string? PermissionMode { get; set; }
+
+    // Imported from the original build's Endpoints: the secrets.bin key id, the /models URL override and the model id filter.
+    public string? KeyId { get; set; }
+    public string? ModelsUrl { get; set; }
+    public string? ModelPattern { get; set; }
+    public bool? NativeTools { get; set; }
+    [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 public sealed class SupervisorConfig
@@ -67,7 +74,17 @@ public sealed class AppConfig
     public Dictionary<string, WorkspacePermission> WorkspacePermissions { get; set; } = [];
     public WorkMode LastWorkMode { get; set; } = WorkMode.Agent;
     public static string WorkspaceKey(string path) => OrchDesk.Core.Tools.WorkspacePath.NormalizeRoot(path).ToUpperInvariant();
-    public WorkspacePermission PermissionFor(string path) => WorkspacePermissions.GetValueOrDefault(WorkspaceKey(path));
+    /// <summary>
+    /// The nearest explicit setting for this folder or one of its parents wins, so "Full access" on a folder covers its subfolders
+    /// and nothing else. Folders with no setting (and no parent setting) are Manual ("Ask first").
+    /// </summary>
+    public WorkspacePermission PermissionFor(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return WorkspacePermission.Manual;
+        for (string? dir = OrchDesk.Core.Tools.WorkspacePath.NormalizeRoot(path); !string.IsNullOrEmpty(dir); dir = Path.GetDirectoryName(dir))
+            if (WorkspacePermissions.TryGetValue(WorkspaceKey(dir), out var permission)) return permission;
+        return WorkspacePermission.Manual;
+    }
     public void SetPermission(string path, WorkspacePermission permission) => WorkspacePermissions[WorkspaceKey(path)] = permission;
 
     public bool PreferFreeModels { get; set; } = false;
@@ -93,6 +110,62 @@ public sealed class AppConfig
     public SupervisorConfig Supervisor { get; set; } = new();
     public OvernightConfig Overnight { get; set; } = new();
 
+    // ───── Settings carried over from the original OrchDesk build (same key names, so both builds can read one config.json) ─────
+    public List<EndpointConfig> Endpoints { get; set; } = [];
+    public double MinimumFreeRamGb { get; set; } = 2;
+    public int ShellTimeoutSeconds { get; set; } = 120;
+    public int OutputLimit { get; set; } = 65536;
+    public string TestCommand { get; set; } = "dotnet test";
+    /// <summary>Mirror of <see cref="Theme"/> under the original build's key.</summary>
+    public bool LightTheme { get => Theme == "Light"; set => Theme = value ? "Light" : "Dark"; }
+    /// <summary>
+    /// The original build's single global mode (Plan/Manual/Auto). Kept verbatim for round-trips; it never grants per-folder
+    /// full access here. Folders use <see cref="WorkspacePermissions"/> (default Manual).
+    /// </summary>
+    public string Permission { get; set; } = "Manual";
+    public string Project { get; set; } = "";
+    public int SupervisorMaxRuns { get; set; } = 5;
+    public int SupervisorMaxMinutes { get; set; } = 60;
+    public string BrainModel { get; set; } = "claude-opus-5-5";
+    public string IntakeProvider { get; set; } = "local";
+    public string IntakeModel { get; set; } = "";
+    public List<TierConfig> Ladder { get; set; } = [];
+    public bool NightShift { get; set; }
+    public List<TierConfig> NightLadder { get; set; } = [];
+    [JsonIgnore] public List<TierConfig> ActiveLadder => NightShift && NightLadder.Count > 0 ? NightLadder : Ladder;
+    public int MaxTasks { get; set; } = 6;
+    public string VerifyCommand { get; set; } = "auto";
+    public int VerifyTimeoutSeconds { get; set; } = 300;
+    public int MaxModelCalls { get; set; } = 80;
+    public int CallTimeoutMinutes { get; set; } = 20;
+    public int TransientRetries { get; set; } = 1;
+    public int RepoMapChars { get; set; } = 4000;
+    public bool ArchitectSplit { get; set; } = true;
+    public bool LearnedRouting { get; set; } = true;
+    // Skills (SKILL.md folders) are guidance text only. ~/.orchdesk/skills always loads; the project folder and ~/.claude/skills are opt-in.
+    public bool Skills { get; set; } = true;
+    public bool SkillsFromProject { get; set; }
+    public bool SkillsFromClaude { get; set; }
+    public bool ClaudeSkillsEnabledOnce { get; set; }
+    // Persistent memory notes added to prompts (the remember tool still asks first).
+    public bool Memory { get; set; } = true;
+    // Unattended (scheduled/remote) runs stop starting once today's estimated tokens reach this (0 = no ceiling).
+    public long DailyTokenCeiling { get; set; } = 2_000_000;
+    // Telegram remote channel: long polling only, one paired private chat.
+    public bool TelegramEnabled { get; set; }
+    public long TelegramChatId { get; set; }
+    public bool RemoteAllowAuto { get; set; }
+    public int RemoteMaxPerHour { get; set; } = 20;
+    public int MaxParallel { get; set; } = 3;
+    public int AttemptsPerTier { get; set; } = 1;
+    public int MaxRevisionRounds { get; set; } = 1;
+    public bool OpusReviewsEveryAttempt { get; set; }
+    public string MeshyKeyId { get; set; } = "meshy";
+    public string LastModel { get; set; } = "";
+
+    /// <summary>Any key this build does not know (for example one added by a newer original build) survives load + save unchanged.</summary>
+    [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
+
     public static AppConfig CreateDefault()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -113,6 +186,11 @@ public sealed class AppConfig
                         BaseUrl = "https://opencode.ai/inference/go/v1", Model = "glm-5.2" },
                 new() { Id = "opencode-cli", DisplayName = "OpenCode CLI", Kind = ProviderKind.OpenCodeCli, Executable = "opencode", Enabled = false },
                 new() { Id = "codex", DisplayName = "Codex CLI", Kind = ProviderKind.CodexCli, Executable = "codex", Enabled = false },
+                // From the original build. "-free" models stay blocked by ProviderFactory, so OpenCode Free is off unless a paid model is set.
+                new() { Id = "opencode-free", DisplayName = "OpenCode Free", Kind = ProviderKind.OpenAiCompatible, BaseUrl = LegacyDefaults.OpenCodeFreeUrl, Model = "", KeyId = "opencode-free",
+                        ModelsUrl = LegacyDefaults.OpenCodeFreeModels, ModelPattern = LegacyDefaults.OpenCodeFreePattern, Enabled = false },
+                new() { Id = "gemini", DisplayName = "Gemini", Kind = ProviderKind.OpenAiCompatible, BaseUrl = LegacyDefaults.GeminiUrl, Model = "", KeyId = "gemini",
+                        ModelPattern = LegacyDefaults.GeminiPattern, Enabled = false },
             ],
             RotationOrder = ["remote-pc", "claude-outlook", "opencode-go", "local-pc", "claude-gmail"],
         };
@@ -127,7 +205,14 @@ public sealed class ConfigStore(string? directory = null, string? filePath = nul
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter() },
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        // The original build writes PascalCase keys; both spellings load.
+        PropertyNameCaseInsensitive = true,
     };
+
+    /// <summary>Looks up secrets.bin entries (key id → present?). Supplied by the app; tests leave it null.</summary>
+    public Func<string, bool>? HasSecret { get; set; }
+    /// <summary>Set when the file on disk is still in the original build's format; the first save writes a one-time backup first.</summary>
+    public bool LoadedLegacyFormat { get; private set; }
 
     public string Directory { get; } = filePath is not null ? Path.GetDirectoryName(Path.GetFullPath(filePath))! : directory ??
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrchDesk");
@@ -159,7 +244,13 @@ public sealed class ConfigStore(string? directory = null, string? filePath = nul
     {
         if (!File.Exists(FilePath)) return AppConfig.CreateDefault();
         try {
-            var config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Json) ?? AppConfig.CreateDefault();
+            var text = File.ReadAllText(FilePath);
+            var config = JsonSerializer.Deserialize<AppConfig>(text, Json) ?? AppConfig.CreateDefault();
+            if (System.Text.Json.Nodes.JsonNode.Parse(text) is System.Text.Json.Nodes.JsonObject raw)
+            {
+                LoadedLegacyFormat = LegacyConfigImport.IsLegacyFormat(raw);
+                LegacyConfigImport.Apply(config, raw, HasSecret);
+            }
             foreach (var provider in config.Providers)
                 if (provider.Id == "opencode-go" && provider.BaseUrl?.TrimEnd('/') == "https://opencode.ai/zen/go/v1") provider.BaseUrl = "https://opencode.ai/inference/go/v1";
             return config;
@@ -174,9 +265,28 @@ public sealed class ConfigStore(string? directory = null, string? filePath = nul
     public void Save(AppConfig config)
     {
         System.IO.Directory.CreateDirectory(Directory);
+        BackupLegacyOnce();
         var tmp = FilePath + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(config, Json));
         File.Move(tmp, FilePath, overwrite: true); // atomic replace: a crash never leaves half a file
         Changed?.Invoke();
+    }
+
+    public const string BackupPrefix = ".pre-merged-";
+
+    /// <summary>
+    /// Before this build first rewrites a config.json that is still in the original build's format, the file is copied once to
+    /// config.json.pre-merged-&lt;timestamp&gt;. An existing backup is never overwritten and no second backup is made.
+    /// </summary>
+    private void BackupLegacyOnce()
+    {
+        if (!File.Exists(FilePath)) return;
+        if (System.IO.Directory.EnumerateFiles(Directory, Path.GetFileName(FilePath) + BackupPrefix + "*").Any()) { LoadedLegacyFormat = false; return; }
+        bool legacy;
+        try { legacy = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath)) is System.Text.Json.Nodes.JsonObject raw && LegacyConfigImport.IsLegacyFormat(raw); }
+        catch (JsonException) { legacy = false; }
+        if (!legacy && !LoadedLegacyFormat) return;
+        File.Copy(FilePath, FilePath + BackupPrefix + DateTime.Now.ToString("yyyyMMdd-HHmmss"), overwrite: false);
+        LoadedLegacyFormat = false;
     }
 }
