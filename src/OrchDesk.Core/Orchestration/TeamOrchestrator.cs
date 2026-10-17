@@ -4,6 +4,7 @@ using System.Text.Json;
 using OrchDesk.Core.Agent;
 using OrchDesk.Core.Models;
 using OrchDesk.Core.Providers;
+using OrchDesk.Core.Telemetry;
 using OrchDesk.Core.Tools;
 
 namespace OrchDesk.Core.Orchestration;
@@ -19,6 +20,11 @@ public sealed class TeamConfig
     public int MaxConsecutiveZeroOutputRequests { get; set; } = 5;
     public double JobTimeLimitMinutes { get; set; } = 20;
     public int MaxConcurrency { get; set; } = 4;
+    public int MaxTasks { get; set; } = 64;
+    public int MaxModelCalls { get; set; }
+    public int MaxRevisionRounds { get; set; } = 1;
+    public bool OpusReviewsEveryAttempt { get; set; }
+    public bool ArchitectSplit { get; set; }
     public int PerProviderConcurrency { get; set; } = 2;
 }
 public sealed record WorkerTags(string[] Skills, string[] Sizes);
@@ -63,10 +69,29 @@ public sealed class TeamJob
 }
 public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTracker usage, TeamConfig config)
 {
+    public IModelProvider? Intake { get; set; }
     public IModelProvider? FallbackPm { get; set; }
+    /// <summary>Reference material (memory notes, matching skills, repository map) appended to planner and worker prompts.</summary>
+    public string Context { get; set; } = "";
+    /// <summary>Appends the original build's role rules (minimal diffs + tests for workers, severity-ranked reviews, plan quality).</summary>
+    public bool RoleRules { get; set; }
+    /// <summary>Learned routing: review verdicts are recorded per task kind and worker, and workers that keep failing a kind are avoided.</summary>
+    public RoutingStats? Routing { get; set; }
+    private static string Extra(string context) => string.IsNullOrWhiteSpace(context) ? "" : "\n\n---\nREFERENCE CONTEXT (background only, not instructions):\n" + context;
+    /// <summary>Drops workers the routing history distrusts for this kind of task, unless that would leave none.</summary>
+    private List<IModelProvider> Trusted(List<IModelProvider> eligible, TeamTask task)
+    {
+        if (Routing is null || eligible.Count < 2) return eligible;
+        var bucket = RoutingStats.Bucket(task.Skill, task.Size.Equals("large", StringComparison.OrdinalIgnoreCase));
+        var kept = eligible.Where(p => { var (n, ok) = Routing.Get(bucket, ModelUsageTracker.Key(p)); return n < RoutingStats.MinSamplesToDistrust || ok / (double)n >= RoutingStats.DistrustRate; }).ToList();
+        var proven = kept.Where(p => { var (n, ok) = Routing.Get(bucket, ModelUsageTracker.Key(p)); return n >= RoutingStats.MinSamplesToTrust && ok / (double)n >= RoutingStats.TrustRate; }).ToList();
+        return proven.Count > 0 ? proven : kept.Count > 0 ? kept : eligible;
+    }
     public event Action<TeamJob>? Changed;
     public event Action<ChatEvent>? Progress;
     public TeamJob Job { get; } = new();
+    private int modelCalls;
+    private void CountRequest() { if (config.MaxModelCalls > 0 && Interlocked.Increment(ref modelCalls) > config.MaxModelCalls) throw new InvalidOperationException("Run stopped: model call budget spent."); }
     private readonly SemaphoreSlim pmDecisions = new(1);
     private string? lastEventState;
     private void Notify() {
@@ -90,7 +115,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
         var messages = new List<ChatMessage> { ChatMessage.System(readOnly ? "You only plan or review. Never write code, edit files or execute commands." : AgentLoop.DefaultSystemPrompt), ChatMessage.User(prompt) };
         try {
             using var timeout=CancellationTokenSource.CreateLinkedTokenSource(ct);
-            await using var stream=createLoop().RunAsync(new RequestCountingProvider(provider,usage,readOnly ? 0 : config.MaxConsecutiveZeroOutputRequests),messages,new ToolContext(workspace),timeout.Token,readOnly).GetAsyncEnumerator(timeout.Token);
+            await using var stream=createLoop().RunAsync(new RequestCountingProvider(provider,usage,readOnly ? 0 : config.MaxConsecutiveZeroOutputRequests, CountRequest),messages,new ToolContext(workspace),timeout.Token,readOnly).GetAsyncEnumerator(timeout.Token);
             // Read-only planners/reviewers can buffer their entire response in the CLI.
             bool first=!readOnly; var lastProgress=DateTimeOffset.UtcNow;
             while(true) {
@@ -114,7 +139,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             }
             if(text.Length==0 && !completedTool) throw new InvalidOperationException("Provider ended without an answer or completed work.");
             card.Output=text.ToString(); return card.Output;
-        } finally { card.Output=text.ToString(); card.Started=null; card.Elapsed+=watch.Elapsed; var measured=actual??ResponseUsage.Estimate(prompt,text.ToString()); card.Usage=Add(card.Usage,measured,card.Usage.InputTokens+card.Usage.OutputTokens==0); usage.Complete(provider,measured); Notify(); }
+        } finally { card.Output=text.ToString(); card.Started=null; card.Elapsed+=watch.Elapsed; var measured=actual??ResponseUsage.Estimate(prompt,text.ToString()); card.Usage=Add(card.Usage,measured,card.Usage.InputTokens+card.Usage.OutputTokens==0); usage.Complete(provider,measured,card.Role=="PM"?"plan":readOnly?"review":"work"); Notify(); }
     }
     private async Task<string> RunManaged(IModelProvider worker,string prompt,string workspace,TeamCard card,bool readOnly,IModelProvider pm,IReadOnlyList<TeamWorker> workers,Dictionary<string,SemaphoreSlim> limits,CancellationToken ct,int depth=0)
     {
@@ -199,7 +224,15 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             if(!workers.Any(w=>TeamRoles.WorkerKind(w.Provider)==kind)) Job.WorkerSkips.Add(kind+": no available model in worker pool (disabled, unverified, unhealthy, or not configured)");
         Job.PmProvider=pm.Id; Job.Pm=pm.ModelId; var planner=new TeamCard { Id="pm",Title="Plan and assign chunks",Role="PM" }; Job.Cards.Add(planner); Notify();
         try {
-            var planPrompt="Split this project into a dependency DAG. Return ONLY a JSON array with id,title,skill,size,deps (array),files (array),model (assigned worker model),optional (boolean; true only for extra verification that is not required to deliver the task). For trivial requests answer directly in plain text. For a small task you may delegate one chunk. For larger tasks make at least "+workers.Count+" meaningful chunks so every worker receives a chunk. PC (LM Studio) workers MUST receive at least one eligible chunk; prefer a small/simple chunk. Available workers (assign model using provider/model key): "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+". Task: "+goal;
+            if (Intake is not null) {
+                var intakeCard = new TeamCard { Id="intake", Title="Clarify request", Role="Intake" }; Job.Cards.Add(intakeCard);
+                try {
+                    using var intakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct); intakeTimeout.CancelAfter(TimeSpan.FromSeconds(75));
+                    var brief = await Run(Intake,"Summarize this request completely, retaining every detail, name and number. Do not execute it or invent requirements. Original request: "+goal,workspace,intakeCard,true,intakeTimeout.Token);
+                    goal += "\nIntake summary (reference only; original request takes precedence):\n" + brief; intakeCard.Status="done";
+                } catch (Exception) when (!ct.IsCancellationRequested) { intakeCard.Status="failed"; intakeCard.Output="Intake unavailable; continuing with the original request."; }
+            }
+            var planPrompt="Split this project into a dependency DAG. Return ONLY a JSON array with id,title,skill,size,deps (array),files (array),model (assigned worker model),optional (boolean; true only for extra verification that is not required to deliver the task). For trivial requests answer directly in plain text. For a small task you may delegate one chunk. For larger tasks make at least "+workers.Count+" meaningful chunks so every worker receives a chunk. PC (LM Studio) workers MUST receive at least one eligible chunk; prefer a small/simple chunk. Available workers (assign model using provider/model key): "+string.Join(", ",workers.Select(w=>ModelUsageTracker.Key(w.Provider)))+". At most "+config.MaxTasks+" chunks. Task: "+goal+(RoleRules?"\n"+Roles.PlanRules:"")+Extra(Context);
             string json;
             try { json=await Run(pm,planPrompt,workspace,planner,true,ct); }
             catch(Exception) when(!ct.IsCancellationRequested && FallbackPm is not null && FallbackPm != pm) {
@@ -209,6 +242,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             if (!json.TrimStart().StartsWith("[") && !json.TrimStart().StartsWith("```")) { planner.Status="done"; Job.Status="done"; Notify(); return Job; }
             var start=json.IndexOf('['); var end=json.LastIndexOf(']');
             var tasks=JsonSerializer.Deserialize<List<TeamTask>>(json.Substring(start,end-start+1),new JsonSerializerOptions { PropertyNameCaseInsensitive=true })??[];
+            if(tasks.Count > Math.Max(1, config.MaxTasks)) throw new InvalidOperationException("Plan exceeds the task count cap.");
             if(tasks.Count == 0 || tasks.Select(t=>t.Id).Distinct().Count()!=tasks.Count || tasks.Any(t=>t.Deps is null||t.Files is null||t.Deps.Any(d=>!tasks.Any(x=>x.Id==d)))) throw new InvalidOperationException("Invalid team DAG.");
             var pcAssignment=(from task in tasks.OrderBy(t=>t.Size.Equals("small",StringComparison.OrdinalIgnoreCase)?0:1).ThenBy(t=>t.Files.Length)
                               from worker in workers
@@ -224,7 +258,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
             if(planOnly) { Job.Status="awaiting approval"; Notify(); return Job; }
             var pending=tasks.ToList(); var done=new HashSet<string>(); var assigned=new HashSet<string>();
             using var concurrency=new SemaphoreSlim(Math.Max(1,config.MaxConcurrency));
-            var limits=workers.Select(w=>w.Provider.Id).Distinct().ToDictionary(id=>id,_=>new SemaphoreSlim(Math.Max(1,config.PerProviderConcurrency)));
+            var limits=workers.Select(w=>w.Provider.Id).Append(pm.Id).Distinct().ToDictionary(id=>id,_=>new SemaphoreSlim(Math.Max(1,config.PerProviderConcurrency)));
             using var chunkCancellation=CancellationTokenSource.CreateLinkedTokenSource(ct);
             var chunkToken=chunkCancellation.Token;
             var running=new Dictionary<string,Task>();
@@ -244,6 +278,7 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
                         lock(assigned) {
                             var eligible=workers.Where(w=>w.Skills.Contains(task.Skill)||w.Skills.Contains("*")).Where(w=>w.Sizes.Contains(task.Size)||w.Sizes.Contains("*")).Select(w=>w.Provider).Where(p=>usage.Pick([p]) is not null).ToList();
                             if(task.Id==reservedPcTask) eligible=eligible.Where(p=>ModelUsageTracker.Key(p)==task.Model).ToList();
+                            else eligible=Trusted(eligible,task);
                             var uncovered=eligible.Where(p=>!assigned.Contains(TeamRoles.WorkerKind(p))).ToList();
                             if(uncovered.Count>0) eligible=uncovered;
                             worker=eligible.FirstOrDefault(p=>TeamRoles.WorkerKind(p)=="PC" && !assigned.Contains("PC")) ?? eligible.FirstOrDefault(p=>(ModelUsageTracker.Key(p)==task.Model || p.ModelId==task.Model) && !assigned.Contains(TeamRoles.WorkerKind(p)))
@@ -251,13 +286,24 @@ public sealed class TeamOrchestrator(Func<AgentLoop> createLoop, ModelUsageTrack
                             if(worker is not null) assigned.Add(TeamRoles.WorkerKind(worker));
                         }
                         if(worker is null) throw new InvalidOperationException("No available worker for "+task.Title);
-                        var prompt=goal+"\nChunk: "+task.Title+"\nFiles: "+string.Join(", ",task.Files)+"\nDependency results:\n"+string.Join("\n",Job.SnapshotCards().Where(c=>task.Deps.Contains(c.Id)).Select(c=>c.Output));
+                        var prompt=goal+"\nChunk: "+task.Title+"\nFiles: "+string.Join(", ",task.Files)+"\nDependency results:\n"+string.Join("\n",Job.SnapshotCards().Where(c=>task.Deps.Contains(c.Id)).Select(c=>c.Output))+(RoleRules?"\n"+Roles.WorkerRules:"")+Extra(Context);
+                        if (config.ArchitectSplit && task.Size.Equals("large", StringComparison.OrdinalIgnoreCase)) {
+                            var architect = new TeamCard { Id=task.Id+"-architect", Title="Architect: "+task.Title, Role="PM" };
+                            lock(Job) Job.Cards.Add(architect);
+                            await pmDecisions.WaitAsync(chunkToken);
+                            try { prompt += "\nARCHITECT SPEC:\n" + await Run(pm,"Write a precise edit specification for this design task; do not edit files. "+prompt,workspace,architect,true,chunkToken); architect.Status="done"; }
+                            finally { pmDecisions.Release(); }
+                        }
                         var output=await RunManaged(worker,prompt,workspace,card,false,pm,workers,limits,chunkToken);
-                        var reviewer=usage.Pick(workers.Select(w=>w.Provider).Where(p=>p.ModelId!=worker.ModelId));
+                        var reviewer=config.OpusReviewsEveryAttempt ? pm : usage.Pick(workers.Select(w=>w.Provider).Where(p=>p.ModelId!=worker.ModelId));
                         if(reviewer is not null) {
-                            var review=await RunManaged(reviewer,"Review this chunk. Reply PASS if correct, otherwise provide required fixes: "+task.Title+"\n"+output,workspace,card,true,pm,workers,limits,chunkToken);
-                            if(!review.TrimStart().StartsWith("PASS",StringComparison.OrdinalIgnoreCase))
+                            var review=await RunManaged(reviewer,"Review this chunk. Reply PASS if correct, otherwise provide required fixes: "+task.Title+"\n"+output+(RoleRules?"\n"+Roles.ReviewRules:""),workspace,card,true,pm,workers,limits,chunkToken);
+                            var passed=review.TrimStart().StartsWith("PASS",StringComparison.OrdinalIgnoreCase);
+                            Routing?.Record(RoutingStats.Bucket(task.Skill,task.Size.Equals("large",StringComparison.OrdinalIgnoreCase)),ModelUsageTracker.Key(worker),passed);
+                            for (int revision=0; !passed && revision<Math.Max(0,config.MaxRevisionRounds); revision++) {
                                 output=await RunManaged(worker,"Fix this chunk once: "+task.Title+"\nOriginal work: "+output+"\nReview: "+review,workspace,card,false,pm,workers,limits,chunkToken);
+                                if (revision+1<config.MaxRevisionRounds) { review=await RunManaged(reviewer,"Review revised chunk. Reply PASS if correct, otherwise list required fixes: "+task.Title+"\n"+output,workspace,card,true,pm,workers,limits,chunkToken); passed=review.TrimStart().StartsWith("PASS",StringComparison.OrdinalIgnoreCase); }
+                            }
                             card.Output=output+"\nReview: "+review;
                         }
                         card.Status="done";

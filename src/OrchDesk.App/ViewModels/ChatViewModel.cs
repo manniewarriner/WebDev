@@ -30,6 +30,7 @@ public sealed partial class ChatViewModel : ObservableObject
     public string EffectiveWorkspace => Workspace ?? _scratchWorkspace;
     public bool UsesScratchWorkspace => Workspace is null;
     public string? SendBlockedReason => IsBusy ? "Working on the previous message"
+        : _services.AutomationBusy?.Invoke() == true ? "An automation run is working"
         : string.IsNullOrWhiteSpace(Input) ? "Type a message"
         : null;
     [ObservableProperty] private string? _composerNotice;
@@ -230,6 +231,7 @@ public sealed partial class ChatViewModel : ObservableObject
         try
         {
             Directory.CreateDirectory(EffectiveWorkspace);
+            if (!_services.IsScreenshot) { _runLog = new(RunsDirectory, _services.SecretFile.Redact, keep: int.MaxValue); _runLog.Write("request", text); }
             if (isOvernight)
                 await RunOvernightAsync(goal, _cts.Token);
             else {
@@ -267,6 +269,8 @@ public sealed partial class ChatViewModel : ObservableObject
             IsThinking = false;
             IsBusy = false;
             _current = null;
+            _runLog?.Write("complete", "Run finished"); _runLog = null;
+            SelectedSkills.Clear();
             _cts.Dispose();
             _cts = null;
             ContentAdded?.Invoke();
@@ -355,6 +359,8 @@ public sealed partial class ChatViewModel : ObservableObject
         ResetChanges();
     }
 
+    public List<OrchDesk.Core.Knowledge.Skill> SelectedSkills { get; } = [];
+
     public Conversation? CurrentConversation => _conversation;
 
     public void Restore(ChatItem[] items, Conversation? conversation)
@@ -382,6 +388,7 @@ public sealed partial class ChatViewModel : ObservableObject
 
     private IAsyncEnumerable<ChatEvent> StartRun(string text, CancellationToken ct)
     {
+        if (!_services.ChatOnly) text = OrchDesk.Core.Knowledge.PromptContext.Build(_services.Config, EffectiveWorkspace, text, _services.Memory, forced: SelectedSkills).Wrap(text);
         var policy = _services.CreatePolicy();
         policy.WorkspaceRoot = EffectiveWorkspace;
         policy.WorkspacePermission = _services.Config.PermissionFor(EffectiveWorkspace);
@@ -396,8 +403,9 @@ public sealed partial class ChatViewModel : ObservableObject
         {
             case ChatMode.CostRouter:
                 var tiers = sup.CostTiers.Select(id => rotator.Find(id)).Where(a => a is not null && rotator.IsUsable(a)).Select(a => a!.Provider).ToList();
+                if (_services.Config.ActiveLadder.Count > 0 && !_services.ChatOnly) tiers = _services.LegacyCostTiers().ToList();
                 if (tiers.Count == 0) return One(new ErrorEvent("No cost-router tiers are available. Check Settings → Supervisor."));
-                return new CostRouter(loop).RunAsync(text, tiers, sup.TestCommand, EffectiveWorkspace, ct);
+                return new CostRouter(loop) { AttemptsPerTier = _services.Config.AttemptsPerTier, TestTimeout = TimeSpan.FromSeconds(Math.Clamp(_services.Config.VerifyTimeoutSeconds, 1, 600)) }.RunAsync(text, tiers, sup.TestCommand, EffectiveWorkspace, ct);
 
             default:
                 // Each run gets a fresh loop/gate (settings may have changed) but carries the history forward.
@@ -438,8 +446,11 @@ public sealed partial class ChatViewModel : ObservableObject
             await foreach (var ev in convo.SendAsync(text, ct, WorkModeIndex == 0)) yield return ev;
             yield break;
         }
-        var runner = new TeamOrchestrator(() => { var loop = _services.CreateLoop(gate); AttachChanges(loop); return loop; }, _services.Usage, config);
+        var runner = new TeamOrchestrator(() => { var loop = _services.CreateLoop(gate); AttachChanges(loop); return loop; }, _services.Usage, config) { RoleRules = _services.Config.RoleRules, Routing = _services.Config.LearnedRouting ? _services.Routing : null };
 
+        var intakeId = OrchDesk.Core.Config.LegacyDefaults.ProviderId(_services.Config.IntakeProvider);
+        var intakeModel = string.IsNullOrWhiteSpace(_services.Config.IntakeModel) ? OrchDesk.Core.Config.ModelPicker.Small(models.Where(p => p.Id == intakeId).Select(p => p.ModelId)) : _services.Config.IntakeModel;
+        runner.Intake = models.FirstOrDefault(p => p.Id == intakeId && p.ModelId == intakeModel);
         runner.Job.WorkerSkips.AddRange(skipped);
         var item = new TeamItem(); Items.Add(item);
         runner.Changed += job => Dispatch(() => { LastTeamJob = job; item.Refresh(job, _services.Usage); Agents.Update(job); });
@@ -487,10 +498,12 @@ public sealed partial class ChatViewModel : ObservableObject
         return await item.Answer;
     }
 
+    private OrchDesk.Core.Telemetry.RunLog? _runLog;
     private AssistantItem? _current;
 
     private void Render(ChatEvent ev)
     {
+        _runLog?.Write(ev.GetType().Name, ev switch { TextDelta t => t.Text, ErrorEvent e => e.Message, StatusUpdate status => status.Text, ToolCallResult tool => tool.Output, _ => "" });
         switch (ev)
         {
             case UsageReported u:

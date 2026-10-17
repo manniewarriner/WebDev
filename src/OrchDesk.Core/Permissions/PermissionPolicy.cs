@@ -28,6 +28,7 @@ public sealed partial class PermissionPolicy
 
     /// <summary>Overnight mode: there is nobody to ask, so every "Ask" becomes "Deny".</summary>
     public bool Unattended { get; set; }
+    public bool AllowRoutineUnattendedWork { get; set; }
     public string? WorkspaceRoot { get; set; }
     public OrchDesk.Core.Config.WorkspacePermission? WorkspacePermission { get; set; }
     public bool HostManagedCommits { get; set; }
@@ -45,7 +46,7 @@ public sealed partial class PermissionPolicy
             catch (Exception ex) when (ex is OrchDesk.Core.Tools.PathOutsideWorkspaceException or ArgumentException) { return PermissionDecision.Deny(ex.Message); }
         }
         var decision = EvaluateAttended(toolName, args);
-        if (decision.Verdict != Verdict.Deny && WorkspacePermission is { } mode && toolName is "write_file" or "edit_file" or "delete_file" or "run_command")
+        if (!(Unattended && AllowRoutineUnattendedWork) && decision.Verdict != Verdict.Deny && WorkspacePermission is { } mode && toolName is "write_file" or "edit_file" or "delete_file" or "run_command")
         {
             // Full access is per folder: a file tool is judged by the folder of the file it touches (inherited from the nearest
             // configured parent), so full access on one folder never spills into its siblings.
@@ -68,6 +69,8 @@ public sealed partial class PermissionPolicy
         {
             "delete_file" => PermissionDecision.Ask($"Delete {args["path"]}"),
             "git_push" => PermissionDecision.Ask("Push this branch to the remote"),
+            "remember" => PermissionDecision.Ask("Save this note to OrchDesk's memory. Future runs will see it."),
+            "generate_image" or "generate_3d" => PermissionDecision.Ask("Meshy generation spends your Meshy credits."),
             "run_command" => EvaluateCommand(args["command"]?.GetValue<string>() ?? ""),
             _ => PermissionDecision.Ask($"Unknown tool '{toolName}'"),
         };

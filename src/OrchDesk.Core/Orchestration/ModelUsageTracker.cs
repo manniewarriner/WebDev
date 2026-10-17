@@ -44,6 +44,8 @@ public sealed class ModelUsageTracker
             .OrderBy(p => Entry(Key(p)).SessionRequests).ThenBy(p => Entry(Key(p)).Requests).ThenBy(p => Entry(Key(p)).Tokens).FirstOrDefault();
     }
     public void Start(IModelProvider p) { lock(sync) { var e=Entry(Key(p)); e.Requests++; e.SessionRequests++; Save(); } }
-    public void Complete(IModelProvider p, ResponseUsage usage) { lock(sync) { var e=Entry(Key(p)); e.Tokens+=usage.InputTokens+usage.OutputTokens; e.SessionTokens+=usage.InputTokens+usage.OutputTokens; Save(); } }
+    /// <summary>Optional long-term log (usage.jsonl, shared with the original build) that feeds the Usage page and the daily token ceiling.</summary>
+    public OrchDesk.Core.Telemetry.UsageLog? Log { get; set; }
+    public void Complete(IModelProvider p, ResponseUsage usage, string role = "work") { lock(sync) { var e=Entry(Key(p)); e.Tokens+=usage.InputTokens+usage.OutputTokens; e.SessionTokens+=usage.InputTokens+usage.OutputTokens; Save(); } Log?.Record(new(DateTime.UtcNow, Key(p), role, (int)Math.Min(int.MaxValue, usage.InputTokens), (int)Math.Min(int.MaxValue, usage.OutputTokens))); }
     public void Backoff(IModelProvider p, TimeSpan? retryAfter = null) { lock(sync) { var e=Entry(Key(p)); var minutes = new[] {2,5,15}[Math.Min(e.Failures++,2)]; var delay=TimeSpan.FromMinutes(minutes); if(retryAfter > delay) delay=retryAfter.Value; e.BackoffUntil=clock()+delay; Save(); } }
 }

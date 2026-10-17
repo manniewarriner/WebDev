@@ -3,7 +3,7 @@ using OrchDesk.Core.Models;
 using OrchDesk.Core.Providers;
 namespace OrchDesk.Core.Orchestration;
 /// <summary>Count every transport request, including AgentLoop tool rounds.</summary>
-internal sealed class RequestCountingProvider(IModelProvider inner, ModelUsageTracker usage, int maxZeroOutputRequests = 0) : IModelProvider
+internal sealed class RequestCountingProvider(IModelProvider inner, ModelUsageTracker usage, int maxZeroOutputRequests = 0, Action? beforeRequest = null) : IModelProvider
 {
     private int zeroOutputRequests;
     public string Id=>inner.Id;
@@ -14,6 +14,7 @@ internal sealed class RequestCountingProvider(IModelProvider inner, ModelUsageTr
     public Task<ProviderHealth> CheckHealthAsync(CancellationToken ct)=>inner.CheckHealthAsync(ct);
     public async IAsyncEnumerable<ChatEvent> StreamChatAsync(ChatRequest request,[EnumeratorCancellation] CancellationToken ct)
     {
+        beforeRequest?.Invoke();
         usage.Start(inner);
         bool output=false;
         await foreach(var ev in inner.StreamChatAsync(request,ct)) {

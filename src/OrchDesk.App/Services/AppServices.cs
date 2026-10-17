@@ -19,6 +19,13 @@ public sealed class AppServices
     private static readonly HttpClient Http = new(new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(4) }) { Timeout = Timeout.InfiniteTimeSpan }; // streams can run long; requests use their own tokens
 
     public OrchDesk.Core.Orchestration.ModelUsageTracker Usage { get; private set; } = null!;
+    public OrchDesk.Core.Knowledge.MemoryStore Memory { get; }
+    public OrchDesk.Core.Automation.ScheduleStore Schedules { get; }
+    public OrchDesk.Core.Telemetry.UsageLog UsageLog { get; }
+    public OrchDesk.Core.Telemetry.RoutingStats Routing { get; }
+    public OrchDesk.Core.Dashboard.TaskStore Tasks { get; }
+    public OrchDesk.Core.Dashboard.ReportStore Reports { get; }
+    public OrchDesk.Core.Research.ResearchClient Research { get; }
     public ConfigStore Store { get; }
     public ISecretProtector Secrets { get; }
     /// <summary>secrets.bin shared with the original build (telegram, opencode-go, opencode-free, gemini, meshy ...).</summary>
@@ -31,6 +38,7 @@ public sealed class AppServices
     public string ReportsDir { get; }
 
     public event Action? Rebuilt;
+    public Func<bool>? AutomationBusy { get; set; }
 
     public bool ChatOnly { get; }
     public bool Unattended { get; }
@@ -47,6 +55,11 @@ public sealed class AppServices
         var protector = SecretStoreProtector.ForDirectory(Store.Directory);
         Secrets = protector; SecretFile = protector.Store!;
         Store.HasSecret ??= SecretFile.Has;
+        string? DataFile(string name) => screenshot ? null : Path.Combine(Store.Directory, name);
+        Research = new(() => SecretFile.Get("gemini"), Http);
+        Memory = new(DataFile("memory.json")); Schedules = new(DataFile("schedules.json"));
+        UsageLog = new(DataFile("usage.jsonl")); Routing = new(DataFile("routing-stats.json"));
+        Tasks = new(DataFile("tasks.json")); Reports = new(DataFile("reports.json"));
         Usage = new(screenshot ? null : Store.Directory);
         IsScreenshot = screenshot;
         var useFixtures = UseDemo = screenshot && (demo ?? store is null);
@@ -99,8 +112,13 @@ public sealed class AppServices
     public void Rebuild()
     {
         Tools = ChatOnly ? new ToolRegistry() : ToolRegistry.CreateDefault(Config.WebFetchEnabled);
+        if (!ChatOnly) {
+            if (Config.Memory) Tools.Add(new RememberTool(Memory));
+            var meshy = new MeshyClient(() => SecretFile.Get(Config.MeshyKeyId), Http);
+            Tools.Add(new GenerateImageTool(meshy)).Add(new Generate3DTool(meshy));
+        }
         var factory = new ProviderFactory(Secrets, Http);
-        Providers = _providerOverride ?? factory.CreateAll(Config);
+        Providers = _providerOverride ?? factory.CreateAll(Config).Select(Track).ToList();
         // Keep limit history across rebuilds so a settings change doesn't forget a provider is cooling down.
         var old = Rotator;
         Rotator = new AccountRotator(ProviderFactory.InRotationOrder(Config, Providers), TimeSpan.FromMinutes(Config.LimitCooldownMinutes));
@@ -113,7 +131,7 @@ public sealed class AppServices
     {
         if (_providerOverride is not null || ChatOnly || selected?.Model is null) return Rotator;
         var factory = new ProviderFactory(Secrets, Http);
-        var providers = Config.Providers.Select(c => factory.Create(c, c.Id == selected.Id ? selected.Model : null)).OfType<IModelProvider>().ToList();
+        var providers = Config.Providers.Select(c => factory.Create(c, c.Id == selected.Id ? selected.Model : null)).OfType<IModelProvider>().Select(Track).ToList();
         var result = new AccountRotator(ProviderFactory.InRotationOrder(Config, providers), TimeSpan.FromMinutes(Config.LimitCooldownMinutes));
         foreach (var account in result.Accounts)
             if (Rotator.Find(account.Provider.Id) is { } previous) { account.Health = previous.Health; account.LastLimitHit = previous.LastLimitHit; account.LastOfflineAt = previous.LastOfflineAt; }
@@ -139,10 +157,23 @@ public sealed class AppServices
         var team = workspace is null ? Config.Team : Config.WorkspaceTeams.GetValueOrDefault(AppConfig.WorkspaceKey(workspace)) ?? Config.Team;
         return Config.Providers.Where(c => c.Enabled && (c.Kind != ProviderKind.ClaudeCli || c.AuthStatus != "Sign-in needed")).SelectMany(c =>
             (c.Kind == ProviderKind.ClaudeCli ? new[] { "opus", "haiku", c.Id == team.PmProvider ? team.PmModel : "opus" }.Distinct().ToArray() : c.AvailableModels.Concat(c.ModelVerifications.Where(v=>v.Value.Verified && !v.Value.Hidden).Select(v=>v.Key)).Append(c.Model ?? "").Where(m=>!string.IsNullOrWhiteSpace(m)).Distinct().ToArray())
+            .Where(m => !Config.NightShift || Config.NightLadder.Count == 0 || c.Id == team.PmProvider || Config.NightLadder.Any(t => LegacyDefaults.ProviderId(t.Provider) == c.Id && (string.IsNullOrWhiteSpace(t.Model) || t.Model == m)))
             .Where(m => c.Kind != ProviderKind.OpenAiCompatible || (c.ModelVerifications.TryGetValue(m, out var check) && check.Verified && !check.Hidden))
               .Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase) && !m.EndsWith("-free", StringComparison.OrdinalIgnoreCase))
-            .Select(m => factory.Create(c, m))).OfType<IModelProvider>().ToList();
+            .Select(m => factory.Create(c, m))).OfType<IModelProvider>().Select(Track).ToList();
     }
+
+    public IReadOnlyList<IModelProvider> LegacyCostTiers()
+    {
+        var factory = new ProviderFactory(Secrets, Http);
+        return Config.ActiveLadder.Select(t => {
+            var id = LegacyDefaults.ProviderId(t.Provider);
+            var provider = Config.Providers.FirstOrDefault(p => p.Id == id);
+            return provider is null ? null : factory.Create(provider, string.IsNullOrWhiteSpace(t.Model) ? null : t.Model);
+        }).OfType<IModelProvider>().Select(Track).ToList();
+    }
+
+    private IModelProvider Track(IModelProvider provider) => new OrchDesk.Core.Telemetry.UsageLoggingProvider(provider, UsageLog, Config.MinimumFreeRamGb);
 
     public void Save()
     {

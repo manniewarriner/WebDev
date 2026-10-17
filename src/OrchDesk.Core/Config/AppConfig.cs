@@ -141,6 +141,7 @@ public sealed class AppConfig
     public int TransientRetries { get; set; } = 1;
     public int RepoMapChars { get; set; } = 4000;
     public bool ArchitectSplit { get; set; } = true;
+    public bool RoleRules { get; set; } = true;
     public bool LearnedRouting { get; set; } = true;
     // Skills (SKILL.md folders) are guidance text only. ~/.orchdesk/skills always loads; the project folder and ~/.claude/skills are opt-in.
     public bool Skills { get; set; } = true;

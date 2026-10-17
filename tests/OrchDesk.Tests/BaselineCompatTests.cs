@@ -171,7 +171,7 @@ public sealed class BaselineCompatTests
         Assert.False(File.Exists(Path.Combine(dir.Path, "a.txt")));
     }
 
-    [Fact]
+    [DpapiFact]
     public void Secrets_bin_round_trips_in_a_temp_directory_and_is_only_rewritten_on_change()
     {
         if (!OperatingSystem.IsWindows()) return;

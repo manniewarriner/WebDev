@@ -82,6 +82,13 @@ public class ClickableAuditTests
                 settings.Show();
                 foreach (var page in new[] { "integrations", "settings-appearance", "settings-about", "settings-fallback", "settings-overnight", "settings-limits" }) { settings.SelectPage(page); Pump(settings); Audit(settings); }
                 settings.Close();
+                using (var automation = new AutomationService(services)) {
+                    var tools = new OrchDesk.App.Views.WorkspaceToolsWindow(vm, automation) { Owner = window };
+                    tools.Show(); Pump(tools);
+                    var tabs = Walk(tools, new HashSet<DependencyObject>()).OfType<TabControl>().First();
+                    for (int i = 0; i < tabs.Items.Count; i++) { tabs.SelectedIndex = i; Pump(tools); Audit(tools); }
+                    tools.Close();
+                }
                 window.Close(); app.Shutdown();
             } catch (Exception ex) { failure = ex; }
         });

@@ -1,0 +1,49 @@
+<UserControl x:Class="OrchDesk.App.Views.UsageView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OrchDesk.App.Views"
+             IsVisibleChanged="OnVisibleChanged">
+  <UserControl.Resources>
+    <Style x:Key="Muted" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style x:Key="StatValue" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="22"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </UserControl.Resources>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel MaxWidth="980" Margin="{StaticResource Inset.24_28_24_24}">
+      <TextBlock FontSize="{StaticResource Metric.24}" FontWeight="SemiBold" Text="Usage"/>
+      <TextBlock Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_6_0_18}" Text="Estimated tokens per day across every model call OrchDesk makes (about four characters per token). Providers rarely report exact counts."/>
+      <UniformGrid Columns="4" Margin="{StaticResource Inset.0_0_0_16}">
+        <StackPanel Margin="{StaticResource Inset.0_0_12_0}"><TextBlock Style="{StaticResource Muted}" Text="Tokens, last 26 weeks"/><TextBlock x:Name="TotalText" Style="{StaticResource StatValue}" Text="0"/></StackPanel>
+        <StackPanel Margin="{StaticResource Inset.0_0_12_0}"><TextBlock Style="{StaticResource Muted}" Text="Model calls"/><TextBlock x:Name="CallsText" Style="{StaticResource StatValue}" Text="0"/></StackPanel>
+        <StackPanel Margin="{StaticResource Inset.0_0_12_0}"><TextBlock Style="{StaticResource Muted}" Text="Busiest day"/><TextBlock x:Name="BusiestText" Style="{StaticResource StatValue}" FontSize="{StaticResource Metric.16}" Margin="{StaticResource Inset.0_5_0_0}" Text="none yet"/></StackPanel>
+        <StackPanel><TextBlock Style="{StaticResource Muted}" Text="Current streak"/><TextBlock x:Name="StreakText" Style="{StaticResource StatValue}" Text="0 days"/></StackPanel>
+      </UniformGrid>
+      <DockPanel Margin="{StaticResource Inset.0_0_0_8}">
+        <ComboBox x:Name="PaletteBox" DockPanel.Dock="Right" Width="130" ToolTip="Colour palette" SelectionChanged="OnPalette"/>
+        <Button x:Name="MorphButton" DockPanel.Dock="Right" Margin="{StaticResource Inset.0_0_8_0}" Content="Show skyline" Click="OnMorph"/>
+        <TextBlock x:Name="DetailText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Style="{StaticResource Muted}" Text="Hover a day, or click the chart and use the arrow keys."/>
+      </DockPanel>
+      <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Background="{DynamicResource SurfaceBrush}" Height="460">
+        <local:SkylineChart x:Name="Chart"/>
+      </Border>
+      <TextBlock Style="{StaticResource Muted}" Margin="{StaticResource Inset.0_6_0_18}" Text="In skyline view, drag sideways to orbit."/>
+      <TextBlock FontSize="{StaticResource Metric.16}" FontWeight="SemiBold" Text="By model" Margin="{StaticResource Inset.0_0_0_6}"/>
+      <ItemsControl x:Name="Models">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <DockPanel Margin="{StaticResource Inset.0_3}">
+              <TextBlock DockPanel.Dock="Right" Text="{Binding Tokens}"/>
+              <TextBlock Text="{Binding Model}" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock x:Name="EmptyText" Style="{StaticResource Muted}" Visibility="Collapsed" Text="No usage recorded yet. Run something and it shows up here."/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

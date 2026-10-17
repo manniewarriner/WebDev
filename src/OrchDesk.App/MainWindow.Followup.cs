@@ -34,7 +34,7 @@ public partial class MainWindow
             ModelFilters.Fields["Provider"] = vm.Chat.ProviderOptions.Select(p => p.ProviderGroup).Distinct().ToArray();
             HomeActivity.Populate(vm.Services.UseDemo ? Enumerable.Range(0, 182).Select(i => new ActivityDay(DateOnly.FromDateTime(DateTime.Today).AddDays(i - 181), 0, 0)).ToArray() : ActivityAggregator.Read(vm.Services.Store.Directory, DateOnly.FromDateTime(DateTime.Today)));
             WelcomeOverlay.Visibility = !vm.Services.IsScreenshot && !vm.Services.Config.FirstRunCompleted ? Visibility.Visible : Visibility.Collapsed;
-            if (!vm.Services.UseDemo) { HistorySkeleton.Visibility = Visibility.Visible; Dispatcher.BeginInvoke(() => { try { LoadHistory(); } finally { HistorySkeleton.Visibility = Visibility.Collapsed; } }, System.Windows.Threading.DispatcherPriority.Background); if (!vm.Services.IsScreenshot) _historyTimer.Start(); }
+            if (!vm.Services.UseDemo) { HistorySkeleton.Visibility = Visibility.Visible; Dispatcher.BeginInvoke(() => { try { if (!vm.Services.IsScreenshot) LegacyChatImport.Import(vm.Services.Store.Directory); LoadHistory(); } finally { HistorySkeleton.Visibility = Visibility.Collapsed; } }, System.Windows.Threading.DispatcherPriority.Background); if (!vm.Services.IsScreenshot) _historyTimer.Start(); }
             vm.Accounts.PropertyChanged += (_, _) => RefreshAvatar(); vm.Services.Rebuilt += RefreshAvatar;
             vm.Chat.ContentAdded += () => _historyDirty = true;
             vm.Chat.Items.CollectionChanged += (_, change) => {

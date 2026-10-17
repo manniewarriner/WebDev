@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializePortedFeatures();
         InitializeFollowup();
         InitializeAgents();
         InitializeRedesign();

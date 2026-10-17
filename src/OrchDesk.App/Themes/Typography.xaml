@@ -5,4 +5,13 @@
 <sys:Double x:Key="Type.Label">11</sys:Double><sys:Double x:Key="Type.Code">13</sys:Double>
 <sys:Double x:Key="Type.Body">14</sys:Double><sys:Double x:Key="Type.Small">13</sys:Double><sys:Double x:Key="Type.Large">15</sys:Double>
 <sys:Double x:Key="Type.H1">32</sys:Double><sys:Double x:Key="Type.H2">24</sys:Double><sys:Double x:Key="Type.H3">18</sys:Double>
+<sys:Double x:Key="Metric.16">16</sys:Double>
+<sys:Double x:Key="Metric.24">24</sys:Double>
+<sys:Double x:Key="Metric.20">20</sys:Double>
+<sys:Double x:Key="Metric.36">36</sys:Double>
+<sys:Double x:Key="Metric.12">12</sys:Double>
+<sys:Double x:Key="Metric.8">8</sys:Double>
+<sys:Double x:Key="Metric.12.5">12.5</sys:Double>
+<sys:Double x:Key="Metric.15">15</sys:Double>
+<sys:Double x:Key="Metric.13">13</sys:Double>
 </ResourceDictionary>

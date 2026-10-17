@@ -3,4 +3,5 @@
 <CornerRadius x:Key="Radius.Card">10</CornerRadius>
 <CornerRadius x:Key="Radius.Dialog">14</CornerRadius>
 <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
+<CornerRadius x:Key="Round.0">0</CornerRadius>
 </ResourceDictionary>

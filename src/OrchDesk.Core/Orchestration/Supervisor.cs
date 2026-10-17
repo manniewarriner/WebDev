@@ -107,6 +107,7 @@ public sealed class Supervisor(AgentLoop loop)
 /// </summary>
 public sealed class CostRouter(AgentLoop loop)
 {
+    public int AttemptsPerTier { get; init; } = 1;
     public TimeSpan TestTimeout { get; init; } = TimeSpan.FromMinutes(10);
 
     public async IAsyncEnumerable<ChatEvent> RunAsync(
@@ -115,7 +116,7 @@ public sealed class CostRouter(AgentLoop loop)
     {
         var ctx = new ToolContext(workspace);
         string? previousFailure = null;
-        foreach (var tier in tiers)
+        foreach (var tier in tiers.SelectMany(t => Enumerable.Repeat(t, Math.Clamp(AttemptsPerTier, 1, 5))))
         {
             yield return new StatusUpdate($"Trying {tier.DisplayName}…");
             var prompt = previousFailure is null

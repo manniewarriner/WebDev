@@ -176,6 +176,10 @@ public sealed class EditFileTool : ITool
         if (crlf) { oldStr = oldStr.Replace("\r\n", "\n").Replace("\n", "\r\n"); newStr = newStr.Replace("\r\n", "\n").Replace("\n", "\r\n"); }
 
         var count = CountOccurrences(text, oldStr);
+        if (count == 0 && !ToolArgs.OptBool(args, "replace_all")) {
+            try { var tolerant = TextEdits.Apply(text, oldStr, newStr); await File.WriteAllTextAsync(path, tolerant, ct); return $"Edited {rel} (1 replacement)."; }
+            catch (InvalidOperationException e) { throw new ToolException(e.Message); }
+        }
         if (count == 0) throw new ToolException($"old_string not found in {rel}. Read the file again and copy the text exactly.");
         var all = ToolArgs.OptBool(args, "replace_all");
         if (count > 1 && !all) throw new ToolException($"old_string appears {count} times in {rel}. Add more context or set replace_all.");

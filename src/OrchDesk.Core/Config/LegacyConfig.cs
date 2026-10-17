@@ -120,6 +120,13 @@ public static class LegacyConfigImport
             config.Supervisor.CostTiers = config.Ladder.Select(t => LegacyDefaults.ProviderId(t.Provider)).Distinct().ToList();
         if (!Has(raw, "team") && Has(raw, "maxParallel")) config.Team.MaxConcurrency = Math.Clamp(config.MaxParallel, 1, 8);
         if (!Has(raw, "team") && Has(raw, "brainModel") && config.BrainModel.Contains("opus", StringComparison.OrdinalIgnoreCase)) config.Team.PmModel = "opus";
+        if (!Has(raw, "team")) {
+            config.Team.MaxTasks = Math.Max(1, config.MaxTasks);
+            config.Team.MaxModelCalls = Math.Max(1, config.MaxModelCalls);
+            config.Team.MaxRevisionRounds = Math.Max(0, config.MaxRevisionRounds);
+            config.Team.OpusReviewsEveryAttempt = config.OpusReviewsEveryAttempt;
+            config.Team.ArchitectSplit = config.ArchitectSplit;
+        }
         // The original build's global Permission applied to every folder. It is deliberately NOT turned into per-folder full access:
         // every folder starts at the normal "Ask first" (Manual) default and full access must be granted per folder.
     }

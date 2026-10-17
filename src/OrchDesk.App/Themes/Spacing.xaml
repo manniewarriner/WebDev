@@ -174,4 +174,22 @@
 <Thickness x:Key="Inset.0_6_0_24">0,6,0,24</Thickness>
 <Thickness x:Key="Inset.20">20</Thickness>
 <Thickness x:Key="Inset.8_3">8,3</Thickness>
+<Thickness x:Key="Inset.0_6_0_18">0,6,0,18</Thickness>
+<Thickness x:Key="Inset.24_28_24_24">24,28,24,24</Thickness>
+<Thickness x:Key="Inset.0_3">0,3</Thickness>
+<Thickness x:Key="Inset.18_0_18_8">18,0,18,8</Thickness>
+<Thickness x:Key="Inset.0_18">0,18</Thickness>
+<Thickness x:Key="Inset.18_0_18_18">18,0,18,18</Thickness>
+<Thickness x:Key="Inset.0_4_0_8">0,4,0,8</Thickness>
+<Thickness x:Key="Inset.24_0_24_20">24,0,24,20</Thickness>
+<Thickness x:Key="Inset.18_12_18_8">18,12,18,8</Thickness>
+<Thickness x:Key="Inset.24_0_24_6">24,0,24,6</Thickness>
+<Thickness x:Key="Inset.10_0_0_0">10,0,0,0</Thickness>
+<Thickness x:Key="Inset.24_8_24_12">24,8,24,12</Thickness>
+<Thickness x:Key="Inset.12_6">12,6</Thickness>
+<Thickness x:Key="Inset.16_11">16,11</Thickness>
+<Thickness x:Key="Inset.4_1">4,1</Thickness>
+<Thickness x:Key="Inset.2_6_0_0">2,6,0,0</Thickness>
+<Thickness x:Key="Inset.4_0_8_0">4,0,8,0</Thickness>
+<Thickness x:Key="Inset.0_10_0_4">0,10,0,4</Thickness>
 </ResourceDictionary>
