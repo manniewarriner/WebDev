@@ -52,6 +52,7 @@ public sealed class WorkspaceToolsWindow : Window
         var ceiling = Field(p, "Daily unattended token ceiling (0 = unlimited)", c.DailyTokenCeiling.ToString());
         var rate = Field(p, "Remote runs per hour", c.RemoteMaxPerHour.ToString());
         Button(p, "Save limits", () => { c.DailyTokenCeiling = Math.Max(0, long.Parse(ceiling.Text)); c.RemoteMaxPerHour = Math.Clamp(int.Parse(rate.Text), 1, 100); s.Store.Save(c); });
+        Toggle(p, "Notify when jobs finish", c.TelegramNotifyJobDone, value => c.TelegramNotifyJobDone = value);
         var token = new PasswordBox { Margin = new Thickness(0, 12, 0, 0), ToolTip = "Telegram bot token from BotFather" }; p.Children.Add(token);
         Button(p, "Save Telegram bot token", () => { if (token.Password.Length > 0) s.SecretFile.Set("telegram", token.Password); token.Clear(); automation.RestartTelegram(); });
         Toggle(p, "Enable Telegram", c.TelegramEnabled, value => { c.TelegramEnabled = value; automation.RestartTelegram(); });

@@ -36,6 +36,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string? _error;
     [ObservableProperty] private string? _savedMessage;
     [ObservableProperty] private bool? _reduceMotion;
+    [ObservableProperty] private bool _telegramEnabled;
+    [ObservableProperty] private bool _telegramNotifyJobDone;
     [ObservableProperty] private bool _webFetchEnabled;
     [ObservableProperty] private bool _shutdownWhenDone;
     [ObservableProperty] private string _webStatus = "Not tested";
@@ -51,6 +53,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(AppServices services)
     {
         _services = services;
+        _telegramEnabled = services.Config.TelegramEnabled;
+        _telegramNotifyJobDone = services.Config.TelegramNotifyJobDone;
         _webFetchEnabled = services.Config.WebFetchEnabled;
         _shutdownWhenDone = services.Config.Overnight.ShutdownWhenDone;
         var c = services.Config;
@@ -186,6 +190,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         c.DisplayName = DisplayName.Trim(); c.Initials = string.IsNullOrWhiteSpace(Initials) ? "MW" : Initials.Trim()[..Math.Min(3,Initials.Trim().Length)];
         OrchDesk.App.Services.Motion.ReduceMotion = ReduceMotion;
         OrchDesk.App.Services.Motion.Refresh();
+        c.TelegramEnabled = TelegramEnabled;
+        c.TelegramNotifyJobDone = TelegramNotifyJobDone;
         c.WebFetchEnabled = WebFetchEnabled;
         c.Overnight.ShutdownWhenDone = ShutdownWhenDone;
         if (!string.IsNullOrWhiteSpace(NewMeshyKey)) c.MeshyApiKeyProtected = _services.Secrets.Protect(NewMeshyKey);

@@ -37,6 +37,10 @@ public sealed class AppServices
     public OvernightQueueStore Queue { get; }
     public string ReportsDir { get; }
 
+    public OrchDesk.Core.Automation.StatusSnapshot? LiveStatus { get; set; }
+    public OrchDesk.Core.Automation.JobNotifier Notifications { get; private set; } = null!;
+    public Task NotificationDelivery { get; private set; } = Task.CompletedTask;
+    public void JobFinished(OrchDesk.Core.Automation.JobFinished job) => NotificationDelivery = Task.WhenAll(NotificationDelivery, Notifications.Notify(job));
     public event Action? Rebuilt;
     public Func<bool>? AutomationBusy { get; set; }
 
@@ -64,6 +68,7 @@ public sealed class AppServices
         IsScreenshot = screenshot;
         var useFixtures = UseDemo = screenshot && (demo ?? store is null);
         Config = useFixtures ? AppConfig.CreateDefault() : Store.Load();
+        Notifications = OrchDesk.Core.Automation.TelegramJobDelivery.Create(() => Config, SecretFile, Http, Store.Directory, () => !IsScreenshot);
         if (useFixtures)
         {
             // Display-only fixtures: this instance never watches or saves user configuration.

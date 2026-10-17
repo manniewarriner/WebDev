@@ -154,6 +154,7 @@ public sealed class AppConfig
     public long DailyTokenCeiling { get; set; } = 2_000_000;
     // Telegram remote channel: long polling only, one paired private chat.
     public bool TelegramEnabled { get; set; }
+    public bool TelegramNotifyJobDone { get; set; } = true;
     public long TelegramChatId { get; set; }
     public bool RemoteAllowAuto { get; set; }
     public int RemoteMaxPerHour { get; set; } = 20;

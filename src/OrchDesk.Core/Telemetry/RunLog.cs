@@ -3,7 +3,7 @@ using OrchDesk.Core.Safety;
 
 namespace OrchDesk.Core.Telemetry;
 
-public sealed record RunLogEntry(string At, string Kind, string TaskId, string Title, string Tier, string Role, string Text);
+public sealed record RunLogEntry(string At, string Kind, string TaskId, string Title, string Tier, string Role, string Text, string Project = "");
 public sealed record RunLogSummary(string Path, DateTime Started, int Events, string FirstText);
 
 /// <summary>
@@ -25,9 +25,10 @@ public sealed class RunLog
             try { old.Delete(); } catch (IOException) { /* in use; leave it */ }
     }
 
-    public void Write(string kind, string text, string taskId = "", string title = "", string tier = "", string role = "")
+    public void Write(string kind, string text, string taskId = "", string title = "", string tier = "", string role = "", string project = "")
     {
-        var line = JsonSerializer.Serialize(new { at = DateTimeOffset.Now.ToString("O"), kind, TaskId = taskId, Title = title, Tier = tier, Role = role, text = redact(text.Length > 4000 ? text[..4000] : text) });
+        var safeText = redact(text);
+        var line = JsonSerializer.Serialize(new { at = DateTimeOffset.Now.ToString("O"), kind, TaskId = taskId, Title = redact(title), Tier = redact(tier), Role = redact(role), Project = redact(project), text = safeText.Length > 4000 ? safeText[..4000] : safeText });
         lock (gate) { try { File.AppendAllText(Path, line + "\n"); } catch (IOException) { /* logging must never break a run */ } }
     }
 
@@ -44,7 +45,7 @@ public sealed class RunLog
                 {
                     using var doc = JsonDocument.Parse(line); var r = doc.RootElement;
                     string S(string n) { foreach (var p in r.EnumerateObject()) if (p.Name.Equals(n, StringComparison.OrdinalIgnoreCase)) return p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()! : p.Value.ToString(); return ""; }
-                    list.Add(new(S("at"), S("kind"), S("TaskId"), S("Title"), S("Tier"), S("Role"), S("text")));
+                    list.Add(new(S("at"), S("kind"), S("TaskId"), S("Title"), S("Tier"), S("Role"), S("text"), S("Project")));
                 }
                 catch (JsonException) { }
             }

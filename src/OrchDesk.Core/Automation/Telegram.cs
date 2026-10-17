@@ -146,6 +146,7 @@ public sealed class TelegramChannel(HttpClient http, string token, AppConfig con
         }
         if (chatId != config.TelegramChatId) return; // strangers are ignored silently
 
+        if (StatusMessageBuilder.IsStatusCommand(text)) { await SendAsync(chatId, host.StatusText(), ct); return; }
         var (command, argument) = Split(text);
         switch (command)
         {
@@ -164,7 +165,8 @@ public sealed class TelegramChannel(HttpClient http, string token, AppConfig con
         CurrentRun = Task.Run(async () =>
         {
             string reply; try { reply = await host.RunAsync(request, planOnly, ct); } catch (OperationCanceledException) { reply = "Stopped."; } catch (Exception e) { reply = "Failed: " + e.Message; }
-            await SendAsync(chatId, reply, CancellationToken.None);
+            if (!config.TelegramNotifyJobDone) return; // completion is delivered by the shared job notifier
+            if (host is not IJobNotificationHost) await SendAsync(chatId, reply, CancellationToken.None);
         }, CancellationToken.None);
     }
     public Task? CurrentRun { get; private set; }
@@ -193,7 +195,8 @@ public sealed class TelegramChannel(HttpClient http, string token, AppConfig con
 
     public async Task SendAsync(long chatId, string text, CancellationToken ct)
     {
-        text = Clean(text); if (text.Length > MaxReplyChars) text = text[..MaxReplyChars] + "\n[clipped; open OrchDesk for the full answer]";
+        text = Clean(text);
+        if (text.Length > MaxReplyChars) text = JobMessageBuilder.Clip(text, MaxReplyChars - 50) + "\n[clipped; open OrchDesk for the full answer]";
         try { using var _ = await http.PostAsJsonAsync(Url("sendMessage"), new { chat_id = chatId, text, disable_web_page_preview = true }, ct); }
         catch (HttpRequestException) { /* the reply is lost, the run is not */ }
     }

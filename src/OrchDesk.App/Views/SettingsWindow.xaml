@@ -24,6 +24,8 @@
                     <StackPanel Margin="{StaticResource Inset.8_12}">
                         <TextBlock Text="Integrations" FontFamily="{StaticResource UiFont}" FontSize="{StaticResource Metric.24}" FontWeight="SemiBold" />
                         <TextBlock Style="{StaticResource Muted}" Text="Connect your accounts and choose the models you work with." TextWrapping="Wrap" Margin="{StaticResource Inset.0_8_0_16}" />
+                        <CheckBox Content="Enable Telegram (pair a chat in Workspace tools ? Automation)" IsChecked="{Binding TelegramEnabled}" />
+                        <CheckBox Content="Notify when jobs finish" IsChecked="{Binding TelegramNotifyJobDone}" Margin="{StaticResource Inset.0_8_0_16}" />
                         <TextBlock Text="AI providers" FontFamily="{StaticResource UiFont}" FontSize="{StaticResource Metric.18}" FontWeight="SemiBold" Margin="{StaticResource Inset.0_8_0_16}" />
                         <ItemsControl ItemsSource="{Binding PrimaryIntegrations}">
  <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>

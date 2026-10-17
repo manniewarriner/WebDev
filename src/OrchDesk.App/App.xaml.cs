@@ -17,6 +17,11 @@ public partial class App : Application
         base.OnStartup(e);
         OrchDesk.Core.Config.ConfigStore storeOverride;
         try { storeOverride = OrchDesk.Core.Config.ConfigStore.FromArgs(e.Args); } catch (ArgumentException) { Shutdown(e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase) ? 1 : 2); return; }
+        if (e.Args.Contains("--status-preview", StringComparer.OrdinalIgnoreCase))
+        {
+            Console.WriteLine(OrchDesk.Core.Automation.StatusMessageBuilder.Build(OrchDesk.Core.Automation.StatusMessageBuilder.FromFiles(storeOverride.Directory), DateTimeOffset.UtcNow));
+            Shutdown(0); return;
+        }
         storeOverride.HasSecret = new OrchDesk.Core.Config.SecretStore(storeOverride.Directory).Has;
         if (!e.Args.Contains("--send", StringComparer.OrdinalIgnoreCase) && e.Args.Contains("--capture", StringComparer.OrdinalIgnoreCase)) { Shutdown(2); return; }
         var sdkFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
@@ -72,6 +77,7 @@ public partial class App : Application
                     results.Add(new { provider = providerId, model = modelId, manager = chat.LastTeamJob?.Manager, reply, error, elapsedMs = watch.ElapsedMilliseconds, attempts = chat.CurrentConversation?.Attempts.Select(a => new { a.ProviderId, a.Model, a.Reason }).ToArray(), team = chat.LastTeamJob, diagnostics = options.Diag ? chat.CurrentConversation?.Attempts.ToArray() : null });
                     if (exit != 0) break;
                 }
+                await sendServices.NotificationDelivery;
                 if (sendWindow is not null) sendWindow.FlushHistory();
                 else {
                     var historyDir = System.IO.Path.Combine(storeOverride.Directory, "history"); System.IO.Directory.CreateDirectory(historyDir);
@@ -114,7 +120,15 @@ public partial class App : Application
                 };
                 var policy = new OrchDesk.Core.Permissions.PermissionPolicy(); policy.ExtraAllowedCommandPrefixes.AddRange(config.ExtraAllowedCommands);
                 var runner = new OrchDesk.Core.Overnight.OvernightRoundRunner(System.IO.Path.Combine(store.Directory, "runs"), OrchDesk.Core.Tools.ToolRegistry.CreateDefault(config.WebFetchEnabled), policy);
-                await runner.RunAsync(run, providers, CancellationToken.None);
+                var started = DateTimeOffset.UtcNow;
+                var notifier = OrchDesk.Core.Automation.TelegramJobDelivery.Create(() => config, new OrchDesk.Core.Config.SecretStore(store.Directory), http, store.Directory);
+                var result = "Failed"; var summary = "Overnight run failed.";
+                try {
+                    summary = await runner.RunAsync(run, providers, CancellationToken.None);
+                    result = run.Status == "Completed" ? "Done" : run.Status == "Needs attention" ? "Failed" : "Stopped";
+                }
+                catch (Exception ex) { summary = ex.Message; throw; }
+                finally { await notifier.Notify(new(run.Id, goal, workspace, result, DateTimeOffset.UtcNow - started, summary)); }
                 Shutdown(run.Status == "Completed" ? 0 : 1);
             } catch { Shutdown(2); }
             return;

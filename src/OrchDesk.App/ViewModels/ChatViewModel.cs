@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json.Nodes;
 using System.Windows;
@@ -218,6 +218,10 @@ public sealed partial class ChatViewModel : ObservableObject
             return;
         }
 
+        var notificationId = Guid.NewGuid().ToString();
+        var notificationStarted = DateTimeOffset.UtcNow;
+        string? overnightResult = null;
+        _services.LiveStatus = new(true, text, EffectiveWorkspace, notificationStarted);
         Input = "";
         foreach (var plan in Items.OfType<PlanItem>().Where(p => p.IsPending)) plan.CancelCommand.Execute(null);
         Items.Add(new UserItem(text));
@@ -231,9 +235,9 @@ public sealed partial class ChatViewModel : ObservableObject
         try
         {
             Directory.CreateDirectory(EffectiveWorkspace);
-            if (!_services.IsScreenshot) { _runLog = new(RunsDirectory, _services.SecretFile.Redact, keep: int.MaxValue); _runLog.Write("request", text); }
+            if (!_services.IsScreenshot) { _runLog = new(RunsDirectory, _services.SecretFile.Redact, keep: int.MaxValue); _runLog.Write("request", text, title: text, project: EffectiveWorkspace); }
             if (isOvernight)
-                await RunOvernightAsync(goal, _cts.Token);
+                overnightResult = await RunOvernightAsync(goal, _cts.Token);
             else {
                 var planning = WorkModeIndex == 0;
                 var firstItem = Items.Count;
@@ -255,6 +259,11 @@ public sealed partial class ChatViewModel : ObservableObject
         }
         finally
         {
+            var errors = Items.Skip(_runFirstItem).OfType<ErrorItem>().Select(e => e.Text).ToArray();
+            var result = overnightResult ?? (errors.Any(e => e.Contains("limit", StringComparison.OrdinalIgnoreCase)) ? "Usage limit" : errors.Length > 0 || LastTeamJob?.Status == "failed" ? "Failed" : _cts?.IsCancellationRequested == true || LastTeamJob?.Status is "stopped" or "timed out" ? "Stopped" : "Done");
+            var summary = errors.LastOrDefault() ?? Items.Skip(_runFirstItem).OfType<AssistantItem>().LastOrDefault()?.Text ?? LastTeamJob?.Summary ?? "Run finished.";
+            _services.JobFinished(new(notificationId, text, EffectiveWorkspace, result, DateTimeOffset.UtcNow - notificationStarted, summary));
+            if (_services.LiveStatus is { } live) _services.LiveStatus = live with { Busy = false, Errors = errors };
             _thinkingWatch.Stop(); _thinkingTimer.Stop();
             var finalAnswer = Items.Skip(_runFirstItem).OfType<AssistantItem>().LastOrDefault();
             if (finalAnswer is not null) {
@@ -271,7 +280,7 @@ public sealed partial class ChatViewModel : ObservableObject
             _current = null;
             _runLog?.Write("complete", "Run finished"); _runLog = null;
             SelectedSkills.Clear();
-            _cts.Dispose();
+            _cts?.Dispose();
             _cts = null;
             ContentAdded?.Invoke();
         }
@@ -292,7 +301,7 @@ public sealed partial class ChatViewModel : ObservableObject
     }
 
     private string RunsDirectory => Path.Combine(_services.Store.Directory, "runs");
-    private async Task RunOvernightAsync(string goal, CancellationToken ct, OrchDesk.Core.Overnight.OvernightRun? existing = null)
+    private async Task<string> RunOvernightAsync(string goal, CancellationToken ct, OrchDesk.Core.Overnight.OvernightRun? existing = null)
     {
         var id = existing?.ManagerId ?? SelectedProvider?.Id;
         var manager = id is null ? _services.Providers.FirstOrDefault(p => !p.IsAgentic) : _services.CreateRunRotator(SelectedProvider).Find(id)?.Provider;
@@ -304,8 +313,12 @@ public sealed partial class ChatViewModel : ObservableObject
             WorkerIds = [_services.Config.Supervisor.WorkerProviderId], MaxRounds = _services.Config.Supervisor.MaxRounds, ShutdownWhenDone = ShutdownWhenDone,
             Deadline = DateTimeOffset.UtcNow.AddMinutes(_services.Config.Overnight.MaxMinutesPerTask)
         };
+        var overnightStarted = DateTimeOffset.UtcNow;
         var skill = new OrchDesk.Core.Overnight.OvernightRoundRunner(RunsDirectory, _services.Tools, _services.CreatePolicy());
-        skill.Progress += Render;
+        skill.Progress += ev => {
+            Render(ev);
+            if (_services.LiveStatus is { } live) _services.LiveStatus = live with { Loop = $"{run.Status}, round {run.Round}/{run.MaxRounds}, next run: unscheduled" };
+        };
         Items.Add(new StatusItem("Overnight run ? manager " + manager.DisplayName));
         var job = new ToolItem(run.Id, "Overnight · " + goal, System.Text.Json.JsonSerializer.Serialize(new { goal, run.MaxRounds, run.TestCommand }));
         Items.Add(job);
@@ -317,7 +330,11 @@ public sealed partial class ChatViewModel : ObservableObject
             var item = new AssistantItem(manager.DisplayName); item.Append(summary); Items.Add(item);
         }
         catch { job.IsError = true; job.Output = "Run interrupted; checkpoint retained."; throw; }
-        finally { job.IsRunning = false; }
+        finally {
+            job.IsRunning = false;
+            if (existing != null) _services.JobFinished(new(run.Id, goal, EffectiveWorkspace, run.Status == "Completed" ? "Done" : run.Status == "Needs attention" ? "Failed" : "Stopped", DateTimeOffset.UtcNow - overnightStarted, run.Summary));
+        }
+        return run.Status == "Completed" ? "Done" : run.Status == "Needs attention" ? "Failed" : "Stopped";
     }
 
     public async Task ResumeOvernightAsync()
@@ -334,11 +351,14 @@ public sealed partial class ChatViewModel : ObservableObject
                     continue;
                 }
                 IsBusy = true;
+                _runFirstItem = Items.Count;
+                _services.LiveStatus = new(true, run.Goal, run.Workspace, DateTimeOffset.UtcNow);
                 _cts = new CancellationTokenSource();
                 await RunOvernightAsync(run.Goal, _cts.Token, run);
             }
             catch (Exception) { Items.Add(new ErrorItem("Overnight checkpoint retained; manager could not resume.")); }
             finally { IsThinking = false;
+            if (_services.LiveStatus is { } live) _services.LiveStatus = live with { Busy = false };
             IsBusy = false; _cts?.Dispose(); _cts = null; }
         }
     }
@@ -453,7 +473,7 @@ public sealed partial class ChatViewModel : ObservableObject
         runner.Intake = models.FirstOrDefault(p => p.Id == intakeId && p.ModelId == intakeModel);
         runner.Job.WorkerSkips.AddRange(skipped);
         var item = new TeamItem(); Items.Add(item);
-        runner.Changed += job => Dispatch(() => { LastTeamJob = job; item.Refresh(job, _services.Usage); Agents.Update(job); });
+        runner.Changed += job => Dispatch(() => { LastTeamJob = job; item.Refresh(job, _services.Usage); Agents.Update(job); UpdateRemoteStatus(); });
         runner.Progress += ev => Dispatch(() => Render(ev));
         ActiveModel = "Auto model ? PM " + pm.ModelId;
         var refresh = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -501,6 +521,19 @@ public sealed partial class ChatViewModel : ObservableObject
     private OrchDesk.Core.Telemetry.RunLog? _runLog;
     private AssistantItem? _current;
 
+    private void UpdateRemoteStatus()
+    {
+        if (_services.LiveStatus is not { } live) return;
+        var cards = LastTeamJob?.SnapshotCards() ?? [];
+        var active = cards.LastOrDefault(c => c.Status is "running" or "planning" or "review");
+        _services.LiveStatus = live with {
+            Agents = cards.Length > 0 ? cards.Select(c => $"{c.Role} {c.Model}: {c.Status}").ToArray() : [$"Agent {ActiveModel}: {(IsThinking ? "planning" : "working")}"],
+            Task = active?.Title ?? live.Name, Step = LastTeamJob?.Status ?? (IsThinking ? "planning" : "working"),
+            Done = cards.Count(c => c.Status == "done"), Total = cards.Length,
+            Output = Items.Skip(_runFirstItem).SelectMany(i => (i switch { AssistantItem a => a.Text, StatusItem t => t.Text, _ => "" }).Split('\n')).Where(t => t.Length > 0).TakeLast(5).ToArray(),
+            Errors = Items.Skip(_runFirstItem).OfType<ErrorItem>().Select(e => e.Text).TakeLast(3).ToArray()
+        };
+    }
     private void Render(ChatEvent ev)
     {
         _runLog?.Write(ev.GetType().Name, ev switch { TextDelta t => t.Text, ErrorEvent e => e.Message, StatusUpdate status => status.Text, ToolCallResult tool => tool.Output, _ => "" });
@@ -563,6 +596,7 @@ public sealed partial class ChatViewModel : ObservableObject
                 Items.Add(new StatusItem(d.FinalText!));
                 break;
         }
+        UpdateRemoteStatus();
         ContentAdded?.Invoke();
     }
 }
